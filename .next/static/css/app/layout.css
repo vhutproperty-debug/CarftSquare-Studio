@@ -2522,6 +2522,9 @@ video {
 .ease-linear {
   animation-timing-function: linear;
 }
+.running {
+  animation-play-state: running;
+}
 .\[--cell-size\:2rem\] {
   --cell-size: 2rem;
 }

@@ -92,10 +92,16 @@ const AdminPage = () => {
     try {
       const response = await fetch('/api/auth/status', { credentials: 'include' });
       const data = await response.json();
+      if (!response.ok) {
+        setAuth({ checked: true, hasAdmin: false, authenticated: false, user: null });
+        setMessage(data.error || 'Could not reach the admin API.');
+        return;
+      }
       setAuth({ checked: true, hasAdmin: Boolean(data.hasAdmin), authenticated: Boolean(data.authenticated), user: data.user || null });
       if (data.authenticated) loadAdminData();
     } catch (error) {
       setAuth((current) => ({ ...current, checked: true }));
+      setMessage('Could not check admin session. Is the dev server running?');
     }
   }
 

@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { getDb, getDbConfigError, getMongoUrl } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
-
-let cachedClient = null;
-let cachedDb = null;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -148,24 +145,6 @@ function json(data, status = 200) {
 
 function getPathSegments(context) {
   return context?.params?.path || [];
-}
-
-function getMongoUrl() {
-  return process.env.MONGO_URL || process.env.MONGODB_URI || '';
-}
-
-function getMongoDbName() {
-  if (process.env.DB_NAME) return process.env.DB_NAME;
-  if (process.env.DATABASE_NAME) return process.env.DATABASE_NAME;
-  const mongoUrl = getMongoUrl();
-  if (!mongoUrl) return null;
-  try {
-    const parsed = new URL(mongoUrl);
-    return String(parsed.pathname || '').replace(/^\//, '') || null;
-  } catch {
-    const match = mongoUrl.match(/\/([^/?]+)(?:\?|$)/);
-    return match ? match[1] : null;
-  }
 }
 
 function getSessionSecret() {
@@ -470,46 +449,6 @@ async function retryFailedEmailNotifications(db, limit = 10) {
     }
   }
   return retried;
-}
-
-async function getDb() {
-  if (cachedClient && cachedDb) {
-    return cachedDb;
-  }
-
-  const mongoUrl = getMongoUrl();
-  if (!mongoUrl) {
-    throw new Error('MONGO_URL or MONGODB_URI is not configured');
-  }
-
-  const dbName = getMongoDbName();
-  if (!dbName) {
-    throw new Error('DB_NAME or DATABASE_NAME is not configured, and the MongoDB URI does not contain a database name');
-  }
-
-  cachedClient = new MongoClient(mongoUrl);
-  await cachedClient.connect();
-  cachedDb = cachedClient.db(dbName);
-  await cachedDb.collection('leads').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('leads').createIndex({ createdAt: -1 });
-  await cachedDb.collection('leads').createIndex({ status: 1 });
-  await cachedDb.collection('admins').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('admins').createIndex({ email: 1 }, { unique: true });
-  await cachedDb.collection('quotes').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('settings').createIndex({ key: 1 }, { unique: true });
-  await cachedDb.collection('vendors').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('vendors').createIndex({ status: 1 });
-  await cachedDb.collection('vendors').createIndex({ createdAt: -1 });
-  await cachedDb.collection('whatsapp_messages').createIndex({ createdAt: -1 });
-  await cachedDb.collection('paint_shades').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('paint_shades').createIndex({ brand: 1, shadeCode: 1 }, { unique: true });
-  await cachedDb.collection('paint_shades').createIndex({ brand: 1 });
-  await cachedDb.collection('paint_shades').createIndex({ category: 1 });
-  await cachedDb.collection('email_notifications').createIndex({ id: 1 }, { unique: true });
-  await cachedDb.collection('email_notifications').createIndex({ status: 1, attempts: 1, createdAt: -1 });
-  await cachedDb.collection('enquiry_events').createIndex({ createdAt: -1 });
-
-  return cachedDb;
 }
 
 function parseNumber(value, fallback = 0) {
@@ -903,14 +842,32 @@ async function dashboard() {
 }
 
 async function authStatus(request) {
-  const db = await getDb();
-  const hasAdmin = await db.collection('admins').countDocuments({ role: 'admin' }) > 0;
-  const sessionAdmin = await requireAdmin(request);
-  return json({ hasAdmin, authenticated: Boolean(sessionAdmin), user: safeAdmin(sessionAdmin) });
+  const configError = getDbConfigError();
+  if (configError) {
+    return json({ hasAdmin: false, authenticated: false, user: null, dbConfigured: false, error: configError }, 503);
+  }
+
+  try {
+    const db = await getDb();
+    const hasAdmin = await db.collection('admins').countDocuments({ role: 'admin' }) > 0;
+    const sessionAdmin = await requireAdmin(request);
+    return json({ hasAdmin, authenticated: Boolean(sessionAdmin), user: safeAdmin(sessionAdmin), dbConfigured: true });
+  } catch (error) {
+    return json({ hasAdmin: false, authenticated: false, user: null, dbConfigured: false, error: error.message }, 503);
+  }
 }
 
 async function setupAdmin(request) {
-  const db = await getDb();
+  const configError = getDbConfigError();
+  if (configError) return json({ error: configError }, 503);
+
+  let db;
+  try {
+    db = await getDb();
+  } catch (error) {
+    return json({ error: error.message }, 503);
+  }
+
   const existingAdmins = await db.collection('admins').countDocuments({ role: 'admin' });
   if (existingAdmins > 0) {
     return json({ error: 'Admin already exists. Please login.' }, 409);
@@ -942,7 +899,16 @@ async function setupAdmin(request) {
 }
 
 async function loginAdmin(request) {
-  const db = await getDb();
+  const configError = getDbConfigError();
+  if (configError) return json({ error: configError }, 503);
+
+  let db;
+  try {
+    db = await getDb();
+  } catch (error) {
+    return json({ error: error.message }, 503);
+  }
+
   const body = await request.json();
   const email = String(body.email || '').trim().toLowerCase();
   const password = String(body.password || '');
