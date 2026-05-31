@@ -1,28 +1,33 @@
 import Script from 'next/script';
+import { BRAND, absoluteLogoUrl } from '@/lib/brand';
 import './globals.css';
 
 export const metadata = {
-  title: 'Brush & Bloom | Premium Painting & Interior Solutions Mumbai',
-  description: 'Transform your home with expert painting, modular kitchens, wardrobes, and complete interior consultation in Mumbai. Book free site visit today.',
+  title: 'CraftSquare Studio | Premium Interior Design & Solutions Mumbai',
+  description: 'Transform your space with expert interior design, modular kitchens, wardrobes, rental interiors and turnkey execution in Mumbai. Book free consultation today.',
   keywords: [
-    'Painting Services Mumbai',
+    'Interior Design Mumbai',
     'Modular Kitchen Mumbai',
-    'Wardrobe Contractors Mumbai',
-    'Interior Designer Mumbai',
+    'Wardrobe Design Mumbai',
+    'Rental Interiors Mumbai',
+    'Turnkey Interiors Mumbai',
+    'Commercial Interiors Mumbai',
     'Home Renovation Mumbai',
-    'Luxury Painting Mumbai',
-    'Premium Interiors Mumbai',
-    'House Painting Mumbai',
-    'Waterproofing Services Mumbai',
-    'Interior Painting Mumbai',
-    '2BHK Painting Cost Mumbai',
-    'Painter Near Me',
-    'Complete Home Transformation Mumbai',
+    'Interior Designer Mumbai',
+    'Residential Interiors Mumbai',
+    'Space Planning Mumbai',
+    'Interior Styling Mumbai',
+    'Modular Wardrobes Mumbai',
   ],
   openGraph: {
-    title: 'Brush & Bloom | Premium Painting & Complete Interior Solutions Mumbai',
-    description: 'From premium painting to complete interior solutions. Modular kitchens, wardrobes, and interior consultation under one trusted brand in Mumbai.',
+    title: 'CraftSquare Studio | Premium Interior Design & Solutions Mumbai',
+    description: 'Design-to-execution interior solutions — modular kitchens, wardrobes, rental interiors and complete home transformations in Mumbai.',
     type: 'website',
+    images: [{ url: absoluteLogoUrl, alt: BRAND.name }],
+  },
+  icons: {
+    icon: BRAND.logoUrl,
+    apple: BRAND.logoUrl,
   },
 };
 

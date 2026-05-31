@@ -32,12 +32,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { BRAND } from '@/lib/brand';
+import BrandLogo from '@/components/BrandLogo';
+import CmsPanel from './CmsPanel';
 
 function formatCurrency(value = 0) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
 }
-
-const logoUrl = 'https://customer-assets.emergentagent.com/job_paint-modern/artifacts/7r55o0ho_Logo.jpeg';
 
 const AdminPage = () => {
   const [auth, setAuth] = useState({ checked: false, hasAdmin: false, authenticated: false, user: null });
@@ -350,8 +351,8 @@ const AdminPage = () => {
       <nav className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white p-1"><img src={logoUrl} alt="Brush & Bloom logo" className="h-full w-full object-contain" /></span>
-            <span className="text-sm font-black tracking-tight sm:text-lg">Brush & Bloom Admin</span>
+            <BrandLogo variant="compact" />
+            <span className="text-sm font-black tracking-tight sm:text-lg">Admin</span>
           </a>
           <a href="/">
             <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Home className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Public Site</span></Button>
@@ -376,7 +377,7 @@ const AdminPage = () => {
             <CardContent>
               <form onSubmit={submitAuth} className="grid gap-4">
                 {!auth.hasAdmin && <Input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Admin name" />}
-                <Input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="admin@brushandbloom.in" required />
+                <Input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder={`admin@${BRAND.domain}`} required />
                 <Input type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} placeholder="Password" required />
                 <Button disabled={loading} className="bg-orange-600 font-black text-white hover:bg-orange-700">{loading ? 'Please wait...' : auth.hasAdmin ? 'Login to Admin' : 'Create Admin'}</Button>
                 {message && <p className="text-sm font-semibold text-orange-600">{message}</p>}
@@ -476,6 +477,8 @@ const AdminPage = () => {
                 )}
               </Card>
 
+
+              <CmsPanel onMessage={setMessage} />
 
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader><CardTitle>Secure lead management</CardTitle></CardHeader>

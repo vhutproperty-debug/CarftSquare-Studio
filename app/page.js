@@ -54,12 +54,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { BRAND, absoluteLogoUrl, whatsappUrl } from '@/lib/brand';
+import AboutSection from '@/components/AboutSection';
+import BrandLogo from '@/components/BrandLogo';
+import GalleryViewer from '@/components/GalleryViewer';
 
-const brand = 'Brush & Bloom';
-const logoUrl = 'https://customer-assets.emergentagent.com/job_paint-modern/artifacts/7r55o0ho_Logo.jpeg';
-const whatsappNumber = '917304242604';
-const whatsappText = encodeURIComponent('Hi Brush & Bloom, I want a free site inspection for my home in Mumbai.');
-const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappText}`;
+const brand = BRAND.name;
+const whatsappNumber = BRAND.whatsappNumber;
 
 const iconMap = {
   Paintbrush,
@@ -73,19 +74,19 @@ const iconMap = {
 };
 
 const trustStats = [
-  { label: 'Mumbai homes transformed', value: '2,400+', icon: Home },
-  { label: 'Average rating', value: '4.8/5', icon: Star },
-  { label: 'Warranty-backed jobs', value: '1 Year+', icon: ShieldCheck },
-  { label: 'Inspection booking time', value: '30 sec', icon: Clock },
+  { label: 'Mumbai spaces transformed', value: '850+', icon: Home },
+  { label: 'Average rating', value: '4.9/5', icon: Star },
+  { label: 'Warranty-backed projects', value: '5 Year+', icon: ShieldCheck },
+  { label: 'Consultation booking time', value: '30 sec', icon: Clock },
 ];
 
 const whyChoose = [
-  { title: 'Verified Contractors', text: 'Background-checked teams with supervised execution across painting, interiors and modular work.', icon: Users },
-  { title: 'Branded Materials', text: 'Asian Paints, Birla Opus, Nerolac, Dulux, Dr Fixit and premium modular hardware options.', icon: BadgeCheck },
-  { title: 'Dedicated Manager', text: 'One project owner for quote, schedule, execution and handover across all services.', icon: CalendarClock },
-  { title: 'Digital Quotation', text: 'Transparent scope, material recommendation and timeline in writing for every project.', icon: FileText },
-  { title: 'Real-Time Tracking', text: 'Lead, inspection and work status ready for dashboard workflows with live updates.', icon: BarChart3 },
-  { title: 'Clean Handover', text: 'Masking, floor protection and post-work cleanup included on every project.', icon: Sparkles },
+  { title: 'Design-to-Execution', text: 'Single team handles design, modular work, furniture and final styling.', icon: Users },
+  { title: 'Premium Materials', text: 'Curated materials and hardware from trusted global and Indian brands.', icon: BadgeCheck },
+  { title: 'Dedicated Manager', text: 'One project owner for quote, schedule, execution and handover.', icon: CalendarClock },
+  { title: 'Digital Quotation', text: 'Transparent scope, material recommendation and timeline in writing.', icon: FileText },
+  { title: 'Real-Time Tracking', text: 'Project status updates from design approval to final handover.', icon: BarChart3 },
+  { title: 'Warranty-Backed', text: 'Structural warranty on modular work and workmanship guarantee.', icon: Sparkles },
 ];
 
 const steps = [
@@ -97,25 +98,7 @@ const steps = [
   'Final Handover',
 ];
 
-const brandLogos = ['Asian Paints', 'Birla Opus', 'Nerolac', 'Dulux', 'Dr Fixit'];
-
-const campaignAreas = [
-  {
-    area: 'Malad',
-    title: 'Home Services in Malad',
-    text: 'Fast site inspection for flats, societies and shops across Malad East & West with waterproofing and modular kitchen support.',
-  },
-  {
-    area: 'Kandivali',
-    title: 'Interior Solutions in Kandivali',
-    text: 'Interior repaint, wardrobe installation, modular kitchens and texture walls for Kandivali homes with transparent quote.',
-  },
-  {
-    area: 'Borivali',
-    title: 'Premium Services in Borivali',
-    text: 'Premium painting, modular kitchens, custom wardrobes and complete renovation for Borivali apartments and villas.',
-  },
-];
+const brandLogos = ['Hettich', 'Hafele', 'Greenlam', 'Merino', 'Century Ply', 'Ebco'];
 
 const albumShowcases = [
   {
@@ -136,22 +119,22 @@ const testimonials = [
   {
     name: 'Rhea Shah',
     area: 'Bandra West',
-    text: 'The digital quote was clear and the team completed our 2BHK before the promised date. The modular kitchen they installed is stunning.',
+    text: 'CraftSquare Studio transformed our 2BHK with a stunning modular kitchen and custom wardrobes. The design-to-execution process was seamless.',
   },
   {
     name: 'Amit Menon',
     area: 'Andheri',
-    text: 'Booked waterproofing before monsoon then upgraded to a full interior package. Inspection, material recommendation and warranty felt very professional.',
+    text: 'Booked rental interior furnishing for our investment property. Professional execution, transparent pricing and tenant-ready delivery.',
   },
   {
     name: 'Neha & Karan',
     area: 'Powai',
-    text: 'Premium finish, polite painters and daily updates. The wardrobe team was equally brilliant. It felt like a truly managed premium service.',
+    text: 'Premium finishes, dedicated project manager and daily updates. Our complete home transformation exceeded expectations.',
   },
   {
     name: 'Priya Kapoor',
     area: 'Juhu',
-    text: 'Brush & Bloom handled our complete 3BHK transformation — painting, modular kitchen, and custom wardrobes. One point of contact made it stress-free.',
+    text: 'CraftSquare Studio handled our complete 3BHK interior — modular kitchen, wardrobes and styling. One point of contact made it stress-free.',
   },
 ];
 
@@ -159,7 +142,7 @@ const defaultLead = {
   name: '',
   phone: '',
   location: '',
-  service: 'interior-painting',
+  service: 'residential-interiors',
   propertyType: 'apartment',
   bhk: '2BHK',
   area: 750,
@@ -197,9 +180,9 @@ const interiorServices = [
 ];
 
 const aiFuture = [
-  { title: 'AI Room Color Visualizer', desc: 'Upload your room photo and see wall colors instantly before committing. Powered by AI.', icon: Camera, status: 'Coming Soon' },
-  { title: 'AI Quotation Assistant', desc: 'Chat-based intelligent quote builder for painting, kitchens, and wardrobes in seconds.', icon: Bot, status: 'Coming Soon' },
-  { title: 'Smart Paint Calculator', desc: 'Upload floor plan or enter dimensions for instant paint quantity and cost estimate.', icon: Calculator, status: 'Coming Soon' },
+  { title: 'AI Room Visualizer', desc: 'Upload your room photo and preview interior designs instantly before committing. Powered by AI.', icon: Camera, status: 'Coming Soon' },
+  { title: 'AI Quotation Assistant', desc: 'Chat-based intelligent quote builder for interiors, kitchens, and wardrobes in seconds.', icon: Bot, status: 'Coming Soon' },
+  { title: 'Smart Project Estimator', desc: 'Upload floor plan or enter dimensions for instant interior project cost estimate.', icon: Calculator, status: 'Coming Soon' },
   { title: 'Renovation Recommender', desc: 'AI-powered renovation priority suggestions based on your home type, age and budget.', icon: Brain, status: 'Coming Soon' },
 ];
 
@@ -308,8 +291,8 @@ function LeadForm({ compact = false, onLeadCreated }) {
       <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-950 to-slate-800 text-white">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-black">Book Free Site Visit</CardTitle>
-            <p className="mt-1 text-sm text-slate-300">Complete Home Transformation • Mumbai</p>
+            <CardTitle className="text-xl font-black">Book Free Consultation</CardTitle>
+            <p className="mt-1 text-sm text-slate-300">Complete Interior Solutions • Mumbai</p>
           </div>
           <Badge className="bg-orange-500 text-white hover:bg-orange-500">30 sec</Badge>
         </div>
@@ -330,24 +313,19 @@ function LeadForm({ compact = false, onLeadCreated }) {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Service">
               <SelectField value={form.service} onChange={(value) => update('service', value)}>
-                <optgroup label="Painting">
-                  <option value="interior-painting">Interior Painting</option>
-                  <option value="exterior-painting">Exterior Painting</option>
-                  <option value="waterproofing">Waterproofing</option>
-                  <option value="texture-design">Texture Design</option>
-                  <option value="rental-painting">Rental Painting</option>
-                  <option value="wood-polish">Wood Polish</option>
+                <optgroup label="Interior Services">
+                  <option value="residential-interiors">Residential Interiors</option>
+                  <option value="commercial-interiors">Commercial Interiors</option>
+                  <option value="rental-interiors">Rental Furnishing</option>
+                  <option value="modular-kitchens">Modular Kitchens</option>
+                  <option value="modular-wardrobes">Modular Wardrobes</option>
+                  <option value="renovation-remodeling">Renovation & Remodeling</option>
+                  <option value="turnkey-projects">Turnkey Projects</option>
                 </optgroup>
-                <optgroup label="Interiors">
-                  <option value="modular-kitchen">Modular Kitchen</option>
-                  <option value="wardrobe">Wardrobe</option>
-                  <option value="false-ceiling">False Ceiling</option>
-                  <option value="interior-consultation">Interior Consultation</option>
-                  <option value="complete-renovation">Complete Renovation</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="deep-cleaning">Deep Cleaning</option>
-                  <option value="wallpaper">Wallpaper</option>
+                <optgroup label="Design Services">
+                  <option value="space-planning">Space Planning</option>
+                  <option value="interior-styling">Interior Styling</option>
+                  <option value="design-consultation">Design Consultation</option>
                 </optgroup>
               </SelectField>
             </Field>
@@ -366,7 +344,7 @@ function LeadForm({ compact = false, onLeadCreated }) {
                     <option>Commercial</option>
                   </SelectField>
                 </Field>
-                <Field label="Quality">
+                <Field label="Finish level">
                   <SelectField value={form.paintQuality} onChange={(value) => update('paintQuality', value)}>
                     <option value="economy">Economy</option>
                     <option value="standard">Standard</option>
@@ -381,11 +359,11 @@ function LeadForm({ compact = false, onLeadCreated }) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Project type">
                 <SelectField value={form.projectType} onChange={(value) => update('projectType', value)}>
-                  <option value="repaint">Repaint / Upgrade</option>
-                  <option value="fresh">Fresh / New Home</option>
+                  <option value="repaint">Renovation / Upgrade</option>
+                  <option value="fresh">New / Fresh Project</option>
                 </SelectField>
               </Field>
-              <Field label="Inspection slot">
+              <Field label="Consultation slot">
                 <SelectField value={form.preferredSlot} onChange={(value) => update('preferredSlot', value)}>
                   <option>Today / Tomorrow</option>
                   <option>This Weekend</option>
@@ -433,7 +411,8 @@ function Navbar({ onQuote }) {
   }, []);
 
   const navLinks = [
-    { label: 'Painting', href: '#painting' },
+    { label: 'Services', href: '#services' },
+    { label: 'About', href: '#about' },
     { label: 'Interiors', href: '#interiors' },
     { label: 'Modular Kitchen', href: '#modular-kitchen' },
     { label: 'Wardrobes', href: '#wardrobes' },
@@ -444,18 +423,15 @@ function Navbar({ onQuote }) {
     <>
       <nav className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${scrolled ? 'border-b border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-lg' : 'bg-slate-950/80 backdrop-blur-xl'}`}>
         <div className="container flex h-16 items-center justify-between gap-3">
-          <a href="#" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white p-1">
-              <img src={logoUrl} alt="Brush & Bloom logo" className="h-full w-full object-contain" />
-            </span>
-            <span className="text-base font-black tracking-tight text-white sm:text-lg" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{brand}</span>
+          <a href="#" className="flex items-center">
+            <BrandLogo variant="nav" />
           </a>
           <div className="hidden items-center gap-5 text-sm font-semibold text-slate-300 lg:flex">
             {navLinks.map((link) => (
               <a key={link.label} href={link.href} className="hover:text-white transition-colors">{link.label}</a>
             ))}
-            <a href="#service-areas" className="hover:text-white transition-colors">Areas</a>
-            <a href="/shade-explorer" className="hover:text-white transition-colors">Shades</a>
+            <a href="/gallery" className="hover:text-white transition-colors">Gallery</a>
+            <a href="/rental-interiors" className="hover:text-white transition-colors">Rental Furnishing</a>
             <a href="/admin" className="hover:text-white transition-colors">Admin</a>
           </div>
           <div className="flex items-center gap-2">
@@ -486,7 +462,6 @@ function Navbar({ onQuote }) {
                 {link.label}
               </a>
             ))}
-            <a href="#service-areas" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Areas</a>
             <a href="/admin" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Admin</a>
           </div>
         )}
@@ -503,18 +478,18 @@ function Hero({ onLeadCreated, onQuote }) {
       <div className="container relative grid min-h-[800px] items-center gap-10 py-24 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <Badge className="mb-5 border border-orange-300/40 bg-white/10 px-4 py-2 text-orange-100 backdrop-blur hover:bg-white/10">
-            Mumbai's Complete Home Transformation Company
+            Mumbai&apos;s Premium Interior Design Studio
           </Badge>
           <h1 className="max-w-4xl text-5xl font-black tracking-tight md:text-7xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Premium Painting & Interior Solutions
+            Premium Interior Design & Solutions
           </h1>
           <p className="mt-6 max-w-2xl text-xl leading-8 text-slate-300">
-            Transform your home with expert painting, modular kitchens, wardrobes, and complete interior consultation — all under one trusted Mumbai brand.
+            Transform your space with expert interior design, modular kitchens, wardrobes, rental interiors and turnkey execution — all under one trusted Mumbai brand.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#quote">
               <Button size="lg" className="w-full bg-orange-600 px-8 font-black text-white hover:bg-orange-700 sm:w-auto rounded-full">
-                Book Free Site Visit <ChevronRight className="ml-2 h-5 w-5" />
+                Book Free Consultation <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             </a>
             <button onClick={onQuote} className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-8 py-3 text-base font-black text-white backdrop-blur hover:bg-white/20 transition-colors">
@@ -529,7 +504,7 @@ function Hero({ onLeadCreated, onQuote }) {
 
           {/* Service pills */}
           <div className="mt-8 flex flex-wrap gap-2">
-            {['Painting', 'Modular Kitchen', 'Wardrobes', 'False Ceiling', 'Interior Design', 'Waterproofing'].map((service) => (
+            {['Residential Interiors', 'Modular Kitchen', 'Wardrobes', 'Rental Furnishing', 'Turnkey Projects', 'Commercial'].map((service) => (
               <span key={service} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-4 py-1.5 text-sm font-semibold text-slate-200 backdrop-blur">
                 <CheckCircle2 className="h-3.5 w-3.5 text-orange-300" /> {service}
               </span>
@@ -558,18 +533,18 @@ function Hero({ onLeadCreated, onQuote }) {
   );
 }
 
-function PaintingServices({ services = [] }) {
+function ServicesSection({ services = [] }) {
   return (
-    <section id="painting" className="bg-white py-24">
+    <section id="services" className="bg-white py-24">
       <div className="container">
         <SectionHeader
-          eyebrow="Painting Services"
-          title="Expert painting for every Mumbai home"
-          text="From quick rental repainting to monsoon-proof waterproofing — every job backed by transparent quote, trained teams and clean delivery."
+          eyebrow="Our Services"
+          title="Complete interior solutions for every space"
+          text="From residential and commercial interiors to modular kitchens, wardrobes and rental furnishing — design-to-execution under one roof."
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {services.map((service) => {
-            const Icon = iconMap[service.icon] || Paintbrush;
+            const Icon = iconMap[service.icon] || Sparkles;
             return (
               <Card key={service.id} className="group border-slate-100 bg-white transition duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-orange-950/10">
                 <CardContent className="p-6">
@@ -579,8 +554,8 @@ function PaintingServices({ services = [] }) {
                   <h3 className="text-lg font-black text-slate-950">{service.title}</h3>
                   <p className="mt-2 text-sm font-bold text-orange-600">{service.price}</p>
                   <p className="mt-3 min-h-[72px] text-sm leading-6 text-slate-600">{service.description}</p>
-                  <a href="#quote" className="mt-5 inline-flex items-center text-sm font-black text-slate-950">
-                    Get quote <ArrowRight className="ml-2 h-4 w-4" />
+                  <a href={`/services/${service.slug || service.id}`} className="mt-5 inline-flex items-center text-sm font-black text-slate-950">
+                    Learn more <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </CardContent>
               </Card>
@@ -625,8 +600,8 @@ function InteriorSolutions() {
           <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
             <div>
               <Badge className="mb-4 bg-orange-500 text-white hover:bg-orange-500">One-stop solution</Badge>
-              <h3 className="text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Why handle multiple contractors when Brush & Bloom does it all?</h3>
-              <p className="mt-4 text-slate-300">From the first coat of paint to the last kitchen cabinet handle — one team, one timeline, one point of contact for your complete home transformation.</p>
+              <h3 className="text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Why handle multiple contractors when {brand} does it all?</h3>
+              <p className="mt-4 text-slate-300">From the first design concept to the last cabinet handle — one team, one timeline, one point of contact for your complete interior transformation.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {['Single point of contact', 'Unified timeline', 'Coordinated teams', 'One warranty guarantee'].map((point) => (
@@ -762,7 +737,7 @@ function Wardrobes() {
 
         <div className="mt-14 grid gap-8 lg:grid-cols-2 lg:items-center">
           <div className="rounded-3xl bg-slate-950 p-8 text-white">
-            <Badge className="mb-4 bg-orange-500 text-white hover:bg-orange-500">Why Brush & Bloom Wardrobes</Badge>
+            <Badge className="mb-4 bg-orange-500 text-white hover:bg-orange-500">Why {brand} Wardrobes</Badge>
             <h3 className="text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Built to last. Designed to impress.</h3>
             <div className="mt-6 space-y-4">
               {[
@@ -786,7 +761,7 @@ function Wardrobes() {
               <CardContent className="p-6">
                 <ChefHat className="h-8 w-8 text-orange-600 mb-3" />
                 <h4 className="text-xl font-black text-slate-950">Complete Home Bundle</h4>
-                <p className="mt-2 text-slate-600">Book painting + modular kitchen + wardrobes together for the best pricing and a single coordinated timeline.</p>
+                <p className="mt-2 text-slate-600">Book modular kitchen + wardrobes + complete interior styling together for the best pricing and a single coordinated timeline.</p>
                 <div className="mt-4 flex items-center gap-3">
                   <Badge className="bg-green-100 text-green-700">Save up to 15%</Badge>
                   <Badge className="bg-orange-100 text-orange-700">Priority scheduling</Badge>
@@ -813,43 +788,6 @@ function Wardrobes() {
   );
 }
 
-function AreaCampaignSection() {
-  return (
-    <section id="service-areas" className="bg-gradient-to-br from-orange-50 via-white to-slate-50 py-24">
-      <div className="container">
-        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-          <div>
-            <Badge className="mb-4 bg-orange-600 text-white hover:bg-orange-600">Western suburbs service areas</Badge>
-            <h2 className="text-4xl font-black tracking-tight text-slate-950 md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Premium home transformation in Malad, Kandivali & Borivali
-            </h2>
-            <p className="mt-5 text-lg leading-8 text-slate-600">
-              Brush & Bloom delivers painting, modular kitchens, wardrobes and complete interior solutions for homes and societies across Mumbai's western suburbs.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="#quote"><Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full">Book Free Site Visit</Button></a>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer"><Button variant="outline" className="border-orange-200 font-black text-orange-700 hover:bg-orange-50 rounded-full">WhatsApp Local Team</Button></a>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {campaignAreas.map((item) => (
-              <Card key={item.area} className="border-orange-100 bg-white shadow-xl shadow-orange-950/5">
-                <CardContent className="p-6">
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-orange-300"><Home className="h-6 w-6" /></div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">{item.area}</p>
-                  <h3 className="mt-2 text-xl font-black text-slate-950">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.text}</p>
-                  <a href="#quote" className="mt-5 inline-flex items-center text-sm font-black text-slate-950">Get local quote <ArrowRight className="ml-2 h-4 w-4" /></a>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function CalculatorSection({ onLeadCreated }) {
   return (
     <section id="calculator" className="bg-slate-50 py-24">
@@ -860,11 +798,11 @@ function CalculatorSection({ onLeadCreated }) {
             Get instant Mumbai home transformation estimate.
           </h2>
           <p className="mt-5 text-lg leading-8 text-slate-600">
-            Estimate cost for painting, waterproofing, modular kitchens, wardrobes and complete renovation — all in one form.
+            Estimate cost for residential interiors, modular kitchens, wardrobes, rental furnishing and complete renovation — all in one form.
           </p>
           <div className="mt-8 grid gap-4">
             {[
-              ['Material suggestion', 'Paint system and material recommendation based on quality and service.'],
+              ['Material suggestion', 'Material and finish recommendation based on project scope and finish level.'],
               ['Labor estimate', 'Separates material and execution planning costs clearly.'],
               ['CRM-ready lead', 'Every request lands in the backend admin dashboard instantly.'],
             ].map(([title, text]) => (
@@ -916,7 +854,7 @@ function HowItWorks() {
   return (
     <section className="overflow-hidden bg-slate-950 py-24 text-white">
       <div className="container">
-        <SectionHeader eyebrow="How it works" title="A seamless 6-step transformation journey" text="From inspection to warranty, every step is structured to minimize confusion and maximize trust — for painting, kitchens, wardrobes and more." light />
+        <SectionHeader eyebrow="How it works" title="A seamless 6-step design journey" text="From consultation to warranty, every step is structured to minimize confusion and maximize trust — for interiors, kitchens, wardrobes and more." light />
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           {steps.map((step, index) => (
             <div key={step} className="relative rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur transition hover:bg-white/15">
@@ -931,47 +869,55 @@ function HowItWorks() {
   );
 }
 
-function ProjectsGallery({ projects = [] }) {
-  const [activeFilter, setActiveFilter] = useState('All');
-  const categories = ['All', 'Interior Painting', 'Modular Kitchen', 'Wardrobes', 'Waterproofing', 'Texture Design'];
-  const filtered = activeFilter === 'All' ? projects : projects.filter(p => p.category === activeFilter);
+function RentalInteriorsSection({ rental }) {
+  if (!rental?.service) return null;
+  const subServices = rental.subServices || [];
 
   return (
-    <section id="projects" className="bg-white py-24">
+    <section id="rental-interiors" className="bg-gradient-to-br from-orange-50 via-white to-slate-50 py-24">
       <div className="container">
-        <SectionHeader eyebrow="Project showcase" title="Premium transformations across Mumbai homes" text="Before and after project gallery from painting, modular kitchens, wardrobes and complete home renovations." />
-
-        {/* Filter */}
-        <div className="mb-8 flex flex-wrap justify-center gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveFilter(cat)}
-              className={`rounded-full px-5 py-2 text-sm font-bold transition ${activeFilter === cat ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          {(filtered.length ? filtered : projects).map((project) => (
-            <Card key={project.id} className="overflow-hidden border-0 shadow-xl shadow-slate-950/10 group">
-              <div className="relative h-72 overflow-hidden">
-                <img src={project.image} alt={project.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-slate-950 backdrop-blur">{project.category}</div>
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
+        <SectionHeader
+          eyebrow="Rental Furnishing"
+          title={rental.service.name || 'Rental Furnishing Solutions'}
+          text={rental.service.shortDescription || rental.service.description}
+        />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {subServices.slice(0, 8).map((sub) => (
+            <Card key={sub.id} className="group border-orange-100 bg-white transition duration-300 hover:-translate-y-2 hover:shadow-xl">
               <CardContent className="p-6">
-                <h3 className="text-xl font-black text-slate-950">{project.title}</h3>
-                <p className="mt-1 text-sm text-slate-500">{project.location} • {project.duration}</p>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{project.result}</p>
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
+                  <Home className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-black text-slate-950">{sub.name}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{sub.description}</p>
+                <a href="/rental-interiors" className="mt-5 inline-flex items-center text-sm font-black text-orange-600">
+                  Learn more <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
               </CardContent>
             </Card>
           ))}
         </div>
+        <div className="mt-10 text-center">
+          <a href="/rental-interiors" className="inline-flex items-center rounded-full bg-orange-600 px-8 py-3 text-sm font-black text-white hover:bg-orange-700">
+            Explore Rental Furnishing <ArrowRight className="ml-2 h-4 w-4" />
+          </a>
+        </div>
       </div>
     </section>
+  );
+}
+
+function ProjectsGallery({ projects = [] }) {
+  return (
+    <GalleryViewer
+      items={projects}
+      featuredOnly
+      showViewAllLink
+      sectionId="projects"
+      eyebrow="Project showcase"
+      title="Premium interior transformations across Mumbai"
+      subtitle="Featured residential, commercial, rental and modular projects from our portfolio."
+    />
   );
 }
 
@@ -1014,7 +960,7 @@ function TestimonialsAndBrands() {
   return (
     <section className="bg-white py-24">
       <div className="container">
-        <SectionHeader eyebrow="Customer trust" title="What Mumbai homeowners say about us" text="Real reviews from clients who transformed their homes with Brush & Bloom's complete interior solutions." />
+        <SectionHeader eyebrow="Customer trust" title="What Mumbai homeowners say about us" text={`Real reviews from clients who transformed their spaces with ${brand}'s complete interior solutions.`} />
         <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="grid gap-4 sm:grid-cols-2">
             {testimonials.map((review) => (
@@ -1031,8 +977,8 @@ function TestimonialsAndBrands() {
           <Card className="border-0 bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
             <CardContent className="p-8">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500"><Droplets className="h-8 w-8" /></div>
-              <h3 className="mt-8 text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Premium brands we use</h3>
-              <p className="mt-3 text-slate-300">Paint and material recommendations selected after surface inspection, budget and project requirements.</p>
+              <h3 className="mt-8 text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Premium brands we partner with</h3>
+              <p className="mt-3 text-slate-300">Material and hardware recommendations selected after design consultation, budget and project requirements.</p>
               <div className="mt-8 grid grid-cols-2 gap-3">
                 {brandLogos.map((item) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-white/10 p-4 text-center font-black backdrop-blur">{item}</div>
@@ -1096,20 +1042,20 @@ function TrustSection() {
   return (
     <section className="bg-gradient-to-br from-orange-50 to-white py-24">
       <div className="container">
-        <SectionHeader eyebrow="Trust & guarantees" title="Why 2,400+ Mumbai families choose Brush & Bloom" text="Every promise backed by process, every project backed by warranty." />
+        <SectionHeader eyebrow="Trust & guarantees" title={`Why 850+ Mumbai families choose ${brand}`} text="Every promise backed by process, every project backed by warranty." />
         <div className="grid gap-6 md:grid-cols-3">
           <Card className="border-0 bg-slate-950 text-white shadow-xl">
             <CardContent className="p-8 text-center">
               <ShieldCheck className="mx-auto h-12 w-12 text-orange-400 mb-4" />
               <h3 className="text-2xl font-black mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>1-Year Warranty</h3>
-              <p className="text-slate-300">Workmanship warranty on all eligible painting and interior projects. Written, not verbal.</p>
+              <p className="text-slate-300">Workmanship warranty on all eligible interior projects. Written, not verbal.</p>
             </CardContent>
           </Card>
           <Card className="border-orange-100 shadow-xl">
             <CardContent className="p-8 text-center">
               <Award className="mx-auto h-12 w-12 text-orange-600 mb-4" />
               <h3 className="text-2xl font-black text-slate-950 mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Certified Teams</h3>
-              <p className="text-slate-600">Background-checked, trained professionals for every service — painting, kitchens, wardrobes.</p>
+              <p className="text-slate-600">Background-checked, trained professionals for every service — interiors, kitchens, wardrobes.</p>
             </CardContent>
           </Card>
           <Card className="border-0 bg-orange-600 text-white shadow-xl">
@@ -1127,8 +1073,8 @@ function TrustSection() {
 
 function DashboardPreview() {
   const projectSteps = [
-    { title: 'Inspection booked', text: 'Your free site visit is scheduled with the Brush & Bloom team.' },
-    { title: 'Digital quote shared', text: 'You receive a clear painting/interiors estimate and material plan.' },
+    { title: 'Consultation booked', text: `Your free design consultation is scheduled with the ${brand} team.` },
+    { title: 'Digital quote shared', text: 'You receive a clear interior estimate and material plan.' },
     { title: 'Work started', text: 'Teams arrive on schedule with masking, materials and supervision.' },
     { title: 'Quality check', text: 'Finish, cleanup and touch-ups are checked before handover.' },
     { title: 'Warranty issued', text: 'Eligible work receives warranty guidance and final documentation.' },
@@ -1143,7 +1089,7 @@ function DashboardPreview() {
             <div>
               <Badge className="bg-orange-500 text-white hover:bg-orange-500">Customer journey</Badge>
               <h3 className="mt-5 text-3xl font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>A transparent managed home transformation experience.</h3>
-              <p className="mt-4 text-slate-300">No confusion, no contractor follow-up stress. Brush & Bloom keeps your project journey clear from first call to final cleanup.</p>
+              <p className="mt-4 text-slate-300">No confusion, no contractor follow-up stress. {brand} keeps your project journey clear from first call to final handover.</p>
               <a href="#quote">
                 <Button className="mt-6 bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full">Book Free Site Visit</Button>
               </a>
@@ -1193,7 +1139,7 @@ function StickyCTA({ onOpen }) {
         <div className="flex items-center justify-between gap-4 pl-5 text-white">
           <div>
             <p className="text-sm font-black">Transform your Mumbai home today</p>
-            <p className="text-xs text-slate-300">Painting • Modular Kitchen • Wardrobes • Free site visit</p>
+            <p className="text-xs text-slate-300">Interiors • Modular Kitchen • Wardrobes • Free consultation</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={onOpen} className="rounded-full bg-orange-600 font-black hover:bg-orange-700">Get Quote</Button>
@@ -1203,7 +1149,7 @@ function StickyCTA({ onOpen }) {
           </div>
         </div>
       </div>
-      <a href={whatsappUrl} target="_blank" rel="noreferrer" className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-950/30 transition hover:scale-105" aria-label="WhatsApp Brush and Bloom">
+      <a href={whatsappUrl} target="_blank" rel="noreferrer" className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-950/30 transition hover:scale-105" aria-label={`WhatsApp ${brand}`}>
         <MessageCircle className="h-7 w-7" />
       </a>
     </>
@@ -1266,9 +1212,9 @@ function VendorRegistrationSection({ services = [] }) {
   }
 
   const allServices = services.length ? services : [
-    { title: 'Interior Painting' }, { title: 'Exterior Painting' }, { title: 'Waterproofing' },
-    { title: 'Texture Design' }, { title: 'Modular Kitchen' }, { title: 'Wardrobe Installation' },
-    { title: 'False Ceiling' }, { title: 'Interior Design' },
+    { title: 'Residential Interiors' }, { title: 'Commercial Interiors' }, { title: 'Rental Interiors' },
+    { title: 'Modular Kitchens' }, { title: 'Modular Wardrobes' }, { title: 'Renovation & Remodeling' },
+    { title: 'Turnkey Projects' }, { title: 'Interior Styling' },
   ];
 
   return (
@@ -1276,10 +1222,10 @@ function VendorRegistrationSection({ services = [] }) {
       <div className="container grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <Badge className="mb-4 bg-orange-100 text-orange-700 hover:bg-orange-100">Contractor partnership</Badge>
-          <h2 className="text-4xl font-black tracking-tight text-slate-950 md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Join the Brush & Bloom contractor network</h2>
-          <p className="mt-5 text-lg leading-8 text-slate-600">Painting, kitchen, wardrobe, and home-service teams can partner with us for premium Mumbai projects. Approved vendors receive prioritized lead assignments.</p>
+          <h2 className="text-4xl font-black tracking-tight text-slate-950 md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Join the {brand} partner network</h2>
+          <p className="mt-5 text-lg leading-8 text-slate-600">Interior design, kitchen, wardrobe, and execution teams can partner with us for premium Mumbai projects. Approved partners receive prioritized project assignments.</p>
           <div className="mt-8 grid gap-4">
-            {['Mumbai-focused premium service opportunities', 'Admin review and approval workflow', 'Lead assignment for painting, kitchens & wardrobes'].map((item) => (
+            {['Mumbai-focused premium interior opportunities', 'Admin review and approval workflow', 'Project assignment for interiors, kitchens & wardrobes'].map((item) => (
               <div key={item} className="flex gap-4 rounded-2xl bg-slate-50 p-4">
                 <BadgeCheck className="mt-1 h-5 w-5 flex-none text-orange-600" />
                 <p className="font-bold text-slate-800">{item}</p>
@@ -1326,6 +1272,8 @@ function App() {
   const [services, setServices] = useState([]);
   const [projects, setProjects] = useState([]);
   const [faqs, setFaqs] = useState([]);
+  const [about, setAbout] = useState(null);
+  const [rental, setRental] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [leads, setLeads] = useState([]);
   const [popupOpen, setPopupOpen] = useState(false);
@@ -1334,40 +1282,45 @@ function App() {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     name: brand,
-    image: logoUrl,
-    telephone: '+91 7304242604',
+    image: absoluteLogoUrl,
+    telephone: BRAND.phone,
     areaServed: 'Mumbai',
     address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressCountry: 'IN' },
     priceRange: '₹₹₹',
-    aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: '2400' },
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.9', reviewCount: '850' },
     makesOffer: [
-      'House Painting Mumbai', 'Interior Painting Mumbai', 'Exterior Painting Mumbai',
-      'Waterproofing Mumbai', 'Texture Painting Mumbai', 'Modular Kitchen Mumbai',
-      'Wardrobe Contractors Mumbai', 'Interior Designer Mumbai', 'Home Renovation Mumbai',
-      'Luxury Painting Mumbai', 'Premium Interiors Mumbai', 'False Ceiling Mumbai',
-      'Painting Services in Malad', 'Painter in Kandivali', 'Home Painting in Borivali',
+      'Interior Design Mumbai', 'Residential Interiors Mumbai', 'Commercial Interiors Mumbai',
+      'Rental Interiors Mumbai', 'Modular Kitchen Mumbai', 'Wardrobe Design Mumbai',
+      'Turnkey Interiors Mumbai', 'Home Renovation Mumbai', 'Interior Styling Mumbai',
+      'Interior Designer Malad', 'Modular Kitchen Kandivali', 'Rental Interiors Borivali',
     ],
   }), []);
 
   async function refreshData() {
     try {
-      const [servicesRes, projectsRes, faqsRes, dashboardRes, leadsRes] = await Promise.all([
+      const [servicesRes, projectsRes, faqsRes, aboutRes, rentalRes, dashboardRes, leadsRes] = await Promise.all([
         fetch('/api/services'),
         fetch('/api/projects'),
         fetch('/api/faqs'),
+        fetch('/api/about'),
+        fetch('/api/rental-interiors'),
         fetch('/api/dashboard'),
         fetch('/api/leads'),
       ]);
-      const [servicesData, projectsData, faqsData, dashboardData, leadsData] = await Promise.all([
+      const [servicesData, projectsData, faqsData, aboutData, rentalData, dashboardData, leadsData] = await Promise.all([
         servicesRes.json(),
         projectsRes.json(),
         faqsRes.json(),
+        aboutRes.json(),
+        rentalRes.json(),
         dashboardRes.json(),
         leadsRes.json(),
       ]);
       setServices(servicesData.services || []);
       setProjects(projectsData.projects || []);
       setFaqs(faqsData.faqs || []);
+      setAbout(aboutData.about || null);
+      setRental(rentalData || null);
       setDashboard(dashboardData || null);
       setLeads(leadsData.leads || []);
     } catch (error) {
@@ -1393,16 +1346,16 @@ function App() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <Navbar onQuote={() => setPopupOpen(true)} />
       <Hero onLeadCreated={handleLeadCreated} onQuote={() => setPopupOpen(true)} />
-      <PaintingServices services={services} />
+      <ServicesSection services={services} />
+      <AboutSection about={about} />
+      <RentalInteriorsSection rental={rental} />
       <InteriorSolutions />
       <ModularKitchen />
       <Wardrobes />
-      <AreaCampaignSection />
       <CalculatorSection onLeadCreated={handleLeadCreated} />
       <WhyChoose />
       <HowItWorks />
       <ProjectsGallery projects={projects} />
-      <AlbumGallerySection />
       <TestimonialsAndBrands />
       <TrustSection />
       <AIFeaturesSection />
@@ -1413,10 +1366,10 @@ function App() {
         <div className="container text-center">
           <Badge className="mb-5 bg-orange-500 text-white hover:bg-orange-500">Start your transformation</Badge>
           <h2 className="mx-auto max-w-3xl text-4xl font-black md:text-6xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Ready to make your Mumbai home look newly built?
+            Ready to transform your Mumbai space?
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-300">
-            From premium painting to modular kitchens and wardrobes — book a free site visit and get a digital quotation with no obligation.
+            From residential interiors to modular kitchens and wardrobes — book a free consultation and get a digital quotation with no obligation.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button onClick={() => setPopupOpen(true)} size="lg" className="bg-orange-600 px-8 font-black text-white hover:bg-orange-700 rounded-full">Book Free Site Visit</Button>
@@ -1435,28 +1388,26 @@ function App() {
         <div className="container">
           <div className="grid gap-8 md:grid-cols-4 mb-8">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-slate-950 p-1">
-                  <img src={logoUrl} alt="Brush & Bloom logo" className="h-full w-full object-contain" />
-                </span>
-                <span className="text-base font-black" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{brand}</span>
+              <div className="mb-4">
+                <BrandLogo variant="footer" />
               </div>
-              <p className="text-sm text-slate-500">From premium painting to complete interior solutions. Mumbai's trusted home transformation partner.</p>
+              <p className="text-sm text-slate-500">Premium interior design and complete interior solutions. Mumbai&apos;s trusted design-to-execution partner.</p>
             </div>
             <div>
               <h4 className="font-black text-slate-950 mb-3">Services</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li><a href="#painting" className="hover:text-orange-600">Painting Services</a></li>
-                <li><a href="#interiors" className="hover:text-orange-600">Interior Solutions</a></li>
+                <li><a href="#services" className="hover:text-orange-600">Interior Services</a></li>
+                <li><a href="/rental-interiors" className="hover:text-orange-600">Rental Furnishing</a></li>
                 <li><a href="#modular-kitchen" className="hover:text-orange-600">Modular Kitchen</a></li>
                 <li><a href="#wardrobes" className="hover:text-orange-600">Wardrobes</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-black text-slate-950 mb-3">Areas</h4>
+              <h4 className="font-black text-slate-950 mb-3">Company</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li>Malad</li><li>Kandivali</li><li>Borivali</li>
-                <li>Andheri</li><li>Bandra</li><li>Powai</li>
+                <li><a href="/about" className="hover:text-orange-600">About Us</a></li>
+                <li><a href="/gallery" className="hover:text-orange-600">Gallery</a></li>
+                <li><a href="#projects" className="hover:text-orange-600">Projects</a></li>
               </ul>
             </div>
             <div>
@@ -1465,13 +1416,12 @@ function App() {
                 <li><a href="tel:+917304242604" className="hover:text-orange-600">+91 73042 42604</a></li>
                 <li><a href={whatsappUrl} target="_blank" rel="noreferrer" className="hover:text-orange-600">WhatsApp</a></li>
                 <li><a href="/admin" className="hover:text-orange-600">Admin Portal</a></li>
-                <li><a href="/shade-explorer" className="hover:text-orange-600">Shade Explorer</a></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-100 pt-6 flex flex-col gap-2 md:flex-row md:justify-between text-xs text-slate-400">
-            <p>© 2025 {brand}. Premium painting & complete interior solutions in Mumbai.</p>
-            <p>Painting Mumbai • Modular Kitchen Mumbai • Wardrobe Mumbai • Interior Designer Mumbai • Home Renovation Mumbai</p>
+            <p>© 2025 {brand}. Premium interior design & solutions in Mumbai.</p>
+            <p>Interior Design Mumbai • Modular Kitchen Mumbai • Rental Interiors Mumbai • Turnkey Interiors Mumbai</p>
           </div>
         </div>
       </footer>

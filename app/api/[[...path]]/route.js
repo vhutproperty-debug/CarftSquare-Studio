@@ -2,6 +2,35 @@ import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { BRAND, absoluteLogoUrl } from '@/lib/brand';
+import { DEFAULT_FAQS, DEFAULT_PRICING_SETTINGS } from '@/lib/cms/defaults';
+import {
+  adminDeleteGalleryItem,
+  adminDeleteService,
+  adminGetAbout,
+  adminGetGallery,
+  adminGetRentalInteriors,
+  adminGetSeo,
+  adminGetServices,
+  adminReorderGallery,
+  adminReorderServices,
+  adminSaveAbout,
+  adminSaveGalleryCategory,
+  adminSaveGalleryItem,
+  adminSaveRentalInteriors,
+  adminSaveSeo,
+  adminSaveService,
+  adminUploadMedia,
+  ensureCmsIndexes,
+  getPublicAbout,
+  getPublicGallery,
+  getPublicProjectsFromDb,
+  getPublicRentalInteriors,
+  getPublicSeo,
+  getPublicServiceBySlug,
+  getPublicServices,
+  seedCmsDefaults,
+} from '@/lib/cms/handlers';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,104 +45,18 @@ const corsHeaders = {
 
 const SESSION_COOKIE = 'bb_admin_session';
 const SESSION_MAX_AGE = 60 * 60 * 12;
-const LEAD_NOTIFICATION_EMAIL = 'arunpandey@brushandbloom.space';
-const EMAIL_SUBJECT = 'New Lead - Brush & Bloom Painting Services';
-const LOGO_URL = 'https://customer-assets.emergentagent.com/job_paint-modern/artifacts/7r55o0ho_Logo.jpeg';
+const LEAD_NOTIFICATION_EMAIL = BRAND.emailTo;
+const EMAIL_SUBJECT = `New Lead - ${BRAND.name} Interior Solutions`;
+const LOGO_URL = absoluteLogoUrl;
 
+const defaultPricingSettings = DEFAULT_PRICING_SETTINGS;
 
-
-const services = [
-  { id: 'interior-painting', title: 'Interior Painting', price: '₹12/sq.ft onwards', icon: 'Paintbrush', description: 'Premium wall finish, putty, primer, washable paints and neat masking.' },
-  { id: 'exterior-painting', title: 'Exterior Painting', price: '₹18/sq.ft onwards', icon: 'Building2', description: 'Weatherproof exterior coating for Mumbai humidity and rains.' },
-  { id: 'waterproofing', title: 'Waterproofing', price: '₹45/sq.ft onwards', icon: 'ShieldCheck', description: 'Terrace, bathroom, damp wall and crack treatment with warranty.' },
-  { id: 'texture-design', title: 'Texture Design', price: '₹75/sq.ft onwards', icon: 'Sparkles', description: 'Accent walls, stencils, metallic texture and designer finishes.' },
-  { id: 'rental-painting', title: 'Rental Painting', price: '₹8/sq.ft onwards', icon: 'Home', description: 'Fast budget repainting for move-in and move-out homes.' },
-  { id: 'wood-polish', title: 'Wood Polish', price: '₹95/sq.ft onwards', icon: 'Hammer', description: 'PU, melamine and touch-up polish for doors, cabinets and furniture.' },
-  { id: 'deep-cleaning', title: 'Deep Cleaning', price: '₹2,999 onwards', icon: 'BadgeCheck', description: 'Post-paint cleanup, bathroom, kitchen and complete home cleaning.' },
-  { id: 'wallpaper', title: 'Wallpaper Installation', price: '₹35/sq.ft onwards', icon: 'Layers', description: 'Premium wallpaper sourcing, surface preparation and installation.' },
-  { id: 'modular-kitchen', title: 'Modular Kitchen', price: '₹1.2L onwards', icon: 'Sparkles', description: 'Custom L-shaped, parallel, and island kitchens with premium hardware and finishes.' },
-  { id: 'wardrobe', title: 'Wardrobe', price: '₹45,000 onwards', icon: 'Layers', description: 'Sliding, hinged and walk-in wardrobes with custom interiors and German hardware.' },
-  { id: 'false-ceiling', title: 'False Ceiling', price: '₹55/sq.ft onwards', icon: 'Layers', description: 'Gypsum, POP and designer false ceilings with integrated lighting solutions.' },
-  { id: 'interior-consultation', title: 'Interior Consultation', price: '₹2,999 onwards', icon: 'Sparkles', description: 'Professional space planning, material and color consultation for complete homes.' },
-];
-
-const defaultServiceRates = {
-  'interior-painting': 18,
-  'exterior-painting': 24,
-  waterproofing: 55,
-  'texture-design': 85,
-  'rental-painting': 11,
-  'wood-polish': 110,
-  'deep-cleaning': 5,
-  wallpaper: 42,
-};
-
-const defaultPricingSettings = {
-  key: 'pricing',
-  services: services.map((service) => ({
-    ...service,
-    active: true,
-    baseRate: defaultServiceRates[service.id] || 18,
-  })),
-  qualityMultipliers: {
-    economy: 0.82,
-    standard: 1,
-    premium: 1.28,
-    luxury: 1.65,
-  },
-  freshMultiplier: 1.38,
-  villaMultiplier: 1.18,
-  commercialMultiplier: 1.12,
-  materialPercent: 58,
-  laborPercent: 34,
-  repaintSqftPerDay: 380,
-  freshSqftPerDay: 280,
-  standardWarranty: '1 year workmanship warranty on eligible painting projects',
-  waterproofingWarranty: 'Up to 5 years on selected waterproofing systems',
-  updatedAt: null,
-};
-
-
-const projects = [
-  {
-    id: 'pali-hill-2bhk',
-    title: '2BHK Premium Repaint, Bandra',
-    category: 'Interior Painting',
-    location: 'Pali Hill, Mumbai',
-    duration: '5 days',
-    image: 'https://images.unsplash.com/photo-1606744837616-56c9a5c6a6eb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHw0fHxpbnRlcmlvciUyMGRlc2lnbnxlbnwwfHx8fDE3NzgzMTE0MDh8MA&ixlib=rb-4.1.0&q=85',
-    result: 'Washable luxury emulsion with orange-navy accent wall',
-  },
-  {
-    id: 'andheri-waterproofing',
-    title: 'Terrace Waterproofing, Andheri',
-    category: 'Waterproofing',
-    location: 'Andheri West, Mumbai',
-    duration: '3 days',
-    image: 'https://images.unsplash.com/photo-1601480336042-1fbfb466be54?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwxfHxob21lJTIwcGFpbnRpbmd8ZW58MHx8fG9yYW5nZXwxNzc4MzExNDAzfDA&ixlib=rb-4.1.0&q=85',
-    result: 'Leakage stopped before monsoon with warranty certificate',
-  },
-  {
-    id: 'thane-exterior',
-    title: 'Villa Exterior Refresh, Thane',
-    category: 'Exterior Painting',
-    location: 'Thane, Mumbai MMR',
-    duration: '8 days',
-    image: 'https://images.unsplash.com/photo-1580836618629-7fc7ff649765?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwyfHxob21lJTIwcGFpbnRpbmd8ZW58MHx8fG9yYW5nZXwxNzc4MzExNDAzfDA&ixlib=rb-4.1.0&q=85',
-    result: 'Anti-fungal exterior coating for coastal weather',
-  },
-];
-
-const faqs = [
-  { q: 'Is the site inspection really free?', a: 'Yes. Brush & Bloom offers free site inspection across Mumbai for painting, waterproofing, modular kitchen and wardrobe enquiries.' },
-  { q: 'How accurate is the cost calculator?', a: 'The calculator gives a planning range based on Mumbai market rates. The final digital quotation is shared after measurements and surface inspection.' },
-  { q: 'Do you provide warranty on your work?', a: 'Yes. Eligible painting and waterproofing projects receive a digital warranty certificate. Modular kitchens and wardrobes come with a 5-year structural warranty.' },
-  { q: 'Can I book multiple services together?', a: 'Absolutely. Many clients book painting + modular kitchen + wardrobes together as a Complete Home Transformation package. This allows better scheduling and pricing.' },
-  { q: 'How long does a modular kitchen take?', a: 'A typical modular kitchen takes 7–15 working days from order confirmation depending on design complexity and material availability.' },
-  { q: 'Can I track my project?', a: 'Yes. The customer dashboard is built to track inspection, quote, work progress, photos and handover status for all services.' },
-  { q: 'Which paint brands do you use?', a: 'We recommend Asian Paints, Birla Opus, Nerolac, Dulux and Dr Fixit based on surface type and budget requirements.' },
-  { q: 'What wardrobe finishes are available?', a: 'We offer laminate, acrylic, and PU finish wardrobes with German-brand hardware (Hettich & Hafele) for smooth, silent operation.' },
-];
+function getDefaultServiceRates() {
+  return defaultPricingSettings.services.reduce((acc, service) => {
+    acc[service.id] = service.baseRate || 450;
+    return acc;
+  }, {});
+}
 
 const defaultPaintShades = [
   { brand: 'Asian Paints', shadeName: 'Ivory Palace', shadeCode: 'AP-WH-101', hexColor: '#F4EFE3', category: 'Whites' },
@@ -170,7 +113,7 @@ function getMongoDbName() {
 
 function getSessionSecret() {
   const mongoUrl = getMongoUrl();
-  return process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || `${mongoUrl || 'local'}::brushandbloom-admin-session`;
+  return process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || `${mongoUrl || 'local'}::${BRAND.sessionSuffix}`;
 }
 
 function hashPassword(password, salt = randomBytes(16).toString('hex')) {
@@ -257,10 +200,10 @@ function createSimplePdf(lines = []) {
     'BT',
     '/F1 20 Tf',
     '50 790 Td',
-    `(Brush & Bloom Quote) Tj`,
+    `(CraftSquare Studio Quote) Tj`,
     '/F1 10 Tf',
     '0 -24 Td',
-    `(Premium Painting & Waterproofing Services, Mumbai) Tj`,
+    `(Premium Interior Design & Solutions, Mumbai) Tj`,
     ...lines.flatMap((line) => ['0 -18 Td', `(${escapePdfText(line)}) Tj`]),
     'ET',
   ].join('\n');
@@ -315,6 +258,7 @@ function normalizePhone(phone = '') {
 }
 
 function mergePricingSettings(settings = {}) {
+  const rates = getDefaultServiceRates();
   const savedServices = Array.isArray(settings.services) ? settings.services : [];
   const servicesById = savedServices.reduce((acc, service) => {
     if (service?.id) acc[service.id] = service;
@@ -327,7 +271,7 @@ function mergePricingSettings(settings = {}) {
     services: defaultPricingSettings.services.map((service) => ({
       ...service,
       ...(servicesById[service.id] || {}),
-      baseRate: parseNumber(servicesById[service.id]?.baseRate, service.baseRate),
+      baseRate: parseNumber(servicesById[service.id]?.baseRate, rates[service.id] || service.baseRate || 450),
       active: servicesById[service.id]?.active !== false,
     })),
     qualityMultipliers: {
@@ -383,8 +327,8 @@ function buildNotificationHtml(payload) {
     <div style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:24px;color:#0f172a">
       <div style="max-width:640px;margin:auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e2e8f0">
         <div style="background:#0f172a;color:white;padding:24px;display:flex;align-items:center;gap:16px">
-          <img src="${LOGO_URL}" alt="Brush & Bloom" style="height:52px;width:52px;border-radius:14px;object-fit:cover;background:white" />
-          <div><h1 style="margin:0;font-size:22px">New Brush & Bloom Lead</h1><p style="margin:4px 0 0;color:#fed7aa">Painting Services Enquiry</p></div>
+          <img src="${LOGO_URL}" alt="${BRAND.name}" style="height:64px;width:auto;border-radius:12px;object-fit:contain" />
+          <div><h1 style="margin:0;font-size:22px">New ${BRAND.name} Lead</h1><p style="margin:4px 0 0;color:#fed7aa">Interior Solutions Enquiry</p></div>
         </div>
         <div style="padding:24px">
           ${rows.map(([label, value]) => `<div style="padding:14px 0;border-bottom:1px solid #f1f5f9"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#64748b;font-weight:700">${escapeHtml(label)}</div><div style="margin-top:6px;font-size:16px;font-weight:700;white-space:pre-wrap">${escapeHtml(value)}</div></div>`).join('')}
@@ -405,7 +349,7 @@ async function sendResendEmail(payload) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM || 'Brush & Bloom <notifications@brushandbloom.space>',
+      from: process.env.EMAIL_FROM || BRAND.emailFrom,
       to: [process.env.EMAIL_TO || LEAD_NOTIFICATION_EMAIL],
       subject: EMAIL_SUBJECT,
       html: buildNotificationHtml(payload),
@@ -508,6 +452,8 @@ async function getDb() {
   await cachedDb.collection('email_notifications').createIndex({ id: 1 }, { unique: true });
   await cachedDb.collection('email_notifications').createIndex({ status: 1, attempts: 1, createdAt: -1 });
   await cachedDb.collection('enquiry_events').createIndex({ createdAt: -1 });
+  await ensureCmsIndexes(cachedDb);
+  await seedCmsDefaults(cachedDb);
 
   return cachedDb;
 }
@@ -605,10 +551,11 @@ function calculateEstimate(payload = {}, settings = defaultPricingSettings) {
   const bhk = payload.bhk || '2BHK';
   const quality = payload.paintQuality || 'premium';
   const projectType = payload.projectType || 'repaint';
-  const service = payload.service || 'interior-painting';
+  const service = payload.service || 'residential-interiors';
+  const rates = getDefaultServiceRates();
 
   const serviceConfig = (settings.services || defaultPricingSettings.services).find((item) => item.id === service);
-  const serviceBaseRate = parseNumber(serviceConfig?.baseRate, defaultServiceRates[service] || 18);
+  const serviceBaseRate = parseNumber(serviceConfig?.baseRate, rates[service] || 450);
   const qualityMultiplier = settings.qualityMultipliers || defaultPricingSettings.qualityMultipliers;
 
   const projectMultiplier = projectType === 'fresh' ? parseNumber(settings.freshMultiplier, 1.38) : 1;
@@ -634,13 +581,15 @@ function calculateEstimate(payload = {}, settings = defaultPricingSettings) {
     bufferEstimate: buffer,
     timelineDays: days,
     recommendation: quality === 'luxury'
-      ? 'Luxury washable emulsion with designer finish and stain protection.'
+      ? 'Luxury interior package with premium finishes, imported materials and designer styling.'
       : quality === 'premium'
-        ? 'Premium washable emulsion with primer, putty touch-up and clean masking.'
+        ? 'Premium interior package with branded materials, modular solutions and professional execution.'
         : quality === 'economy'
-          ? 'Budget-friendly repaint for rental and quick possession homes.'
-          : 'Standard emulsion package for durable everyday interiors.',
-    warranty: service === 'waterproofing' ? settings.waterproofingWarranty : settings.standardWarranty,
+          ? 'Budget-friendly interior package for rental and quick possession projects.'
+          : 'Standard interior package for durable, well-designed everyday spaces.',
+    warranty: service.includes('modular') || service.includes('kitchen') || service.includes('wardrobe')
+      ? settings.waterproofingWarranty
+      : settings.standardWarranty,
   };
 }
 
@@ -648,11 +597,11 @@ async function createLead(request) {
   const db = await getDb();
   const body = await request.json();
   if (String(body.website || body.companyWebsite || '').trim()) {
-    return json({ message: 'Thank you for contacting Brush & Bloom Painting Services. We will get back to you shortly.' }, 201);
+    return json({ message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
   }
   const name = String(body.name || '').trim();
   const phone = String(body.phone || '').trim();
-  const service = String(body.service || 'interior-painting').trim();
+  const service = String(body.service || 'residential-interiors').trim();
 
   if (!name || phone.length < 8) {
     return json({ error: 'Name and valid phone number are required.' }, 400);
@@ -700,7 +649,7 @@ async function createLead(request) {
   await db.collection('leads').updateOne({ id: lead.id }, { $set: { emailNotification: lead.emailNotification } });
   await retryFailedEmailNotifications(db, 3);
   const { _id, ...safeLead } = lead;
-  return json({ lead: safeLead, message: 'Thank you for contacting Brush & Bloom Painting Services. We will get back to you shortly.' }, 201);
+  return json({ lead: safeLead, message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
 }
 
 async function getLeads(request) {
@@ -756,7 +705,7 @@ async function createVendorRequest(request) {
   const db = await getDb();
   const body = await request.json();
   if (String(body.website || body.companyWebsite || '').trim()) {
-    return json({ message: 'Thank you for contacting Brush & Bloom Painting Services. We will get back to you shortly.' }, 201);
+    return json({ message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
   }
   const name = String(body.name || '').trim();
   const phone = String(body.phone || '').trim();
@@ -803,7 +752,7 @@ async function createVendorRequest(request) {
   await db.collection('vendors').updateOne({ id: vendor.id }, { $set: { emailNotification: vendor.emailNotification } });
   await retryFailedEmailNotifications(db, 3);
   const { _id, ...safeVendor } = vendor;
-  return json({ vendor: safeVendor, message: 'Thank you for contacting Brush & Bloom Painting Services. We will get back to you shortly.' }, 201);
+  return json({ vendor: safeVendor, message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
 }
 
 async function adminVendors(request) {
@@ -919,7 +868,7 @@ async function setupAdmin(request) {
   const body = await request.json();
   const email = String(body.email || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const name = String(body.name || 'Brush & Bloom Admin').trim();
+  const name = String(body.name || `${BRAND.name} Admin`).trim();
 
   if (!email.includes('@') || password.length < 8) {
     return json({ error: 'Valid email and minimum 8 character password are required.' }, 400);
@@ -994,7 +943,7 @@ function sanitizePricingPayload(body = {}) {
       icon: service.icon || 'Paintbrush',
       description: String(service.description || '').trim(),
       active: service.active !== false,
-      baseRate: Math.max(0, parseNumber(service.baseRate, defaultServiceRates[service.id] || 18)),
+      baseRate: Math.max(0, parseNumber(service.baseRate, getDefaultServiceRates()[service.id] || 450)),
     })),
     qualityMultipliers: {
       economy: Math.max(0, parseNumber(merged.qualityMultipliers.economy, 0.82)),
@@ -1080,7 +1029,7 @@ async function quotePdf(request, leadId) {
     headers: {
       ...corsHeaders,
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="brush-bloom-${quote.quoteNumber}.pdf"`,
+      'Content-Disposition': `attachment; filename="craftsquare-${quote.quoteNumber}.pdf"`,
     },
   });
 }
@@ -1102,7 +1051,7 @@ async function sendWhatsAppQuote(request) {
   if (!lead) return json({ error: 'Lead not found.' }, 404);
 
   const to = normalizePhone(lead.phone);
-  const message = `Hi ${lead.name}, your Brush & Bloom ${lead.service} estimate for ${lead.location || 'Mumbai'} is ${lead.estimate?.formattedRange || 'ready'}. Reply YES to schedule your free site inspection.`;
+  const message = `Hi ${lead.name}, your ${BRAND.name} ${lead.service} estimate for ${lead.location || 'Mumbai'} is ${lead.estimate?.formattedRange || 'ready'}. Reply YES to schedule your free design consultation.`;
   const response = await fetch(`https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: {
@@ -1148,15 +1097,44 @@ export async function GET(request, context) {
   try {
     const path = getPathSegments(context);
     const route = path[0] || 'health';
+    const db = await getDb();
 
     if (route === 'health') {
-      return json({ ok: true, app: 'brushandbloom', city: 'Mumbai', timestamp: new Date().toISOString() });
+      return json({ ok: true, app: BRAND.appId, city: BRAND.city, timestamp: new Date().toISOString() });
     }
 
     if (route === 'services') {
-      const db = await getDb();
-      const pricing = await getPricingSettings(db);
-      return json({ services: publicServicesFromSettings(pricing) });
+      if (path[1]) {
+        const service = await getPublicServiceBySlug(db, path[1]);
+        if (!service) return json({ error: 'Service not found.' }, 404);
+        return json({ service });
+      }
+      const cmsServices = await getPublicServices(db);
+      return json({ services: cmsServices.services.map((s) => ({
+        id: s.slug,
+        title: s.name,
+        price: s.priceLabel,
+        icon: s.icon,
+        description: s.shortDescription,
+        slug: s.slug,
+        heroImage: s.heroImage,
+      })) });
+    }
+
+    if (route === 'about') {
+      return json(await getPublicAbout(db));
+    }
+
+    if (route === 'gallery') {
+      return json(await getPublicGallery(db, request));
+    }
+
+    if (route === 'rental-interiors') {
+      return json(await getPublicRentalInteriors(db));
+    }
+
+    if (route === 'seo') {
+      return json(await getPublicSeo(db, path[1] || 'home'));
     }
 
     if (route === 'leads') {
@@ -1172,15 +1150,45 @@ export async function GET(request, context) {
     }
 
     if (route === 'projects') {
-      return json({ projects });
+      return json(await getPublicProjectsFromDb(db));
     }
 
     if (route === 'faqs') {
-      return json({ faqs });
+      return json({ faqs: DEFAULT_FAQS });
     }
 
     if (route === 'auth' && path[1] === 'status') {
       return authStatus(request);
+    }
+
+    if (route === 'admin' && path[1] === 'about') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminGetAbout(db));
+    }
+
+    if (route === 'admin' && path[1] === 'services') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminGetServices(db));
+    }
+
+    if (route === 'admin' && path[1] === 'rental-interiors') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminGetRentalInteriors(db));
+    }
+
+    if (route === 'admin' && path[1] === 'gallery') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminGetGallery(db));
+    }
+
+    if (route === 'admin' && path[1] === 'seo') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminGetSeo(db));
     }
 
     if (route === 'admin' && path[1] === 'leads') {
@@ -1206,11 +1214,11 @@ export async function GET(request, context) {
     if (route === 'city' && path[1] === 'mumbai') {
       return json({
         page: {
-          slug: 'painting-services-mumbai',
-          title: 'House Painting & Waterproofing Services in Mumbai | Brush & Bloom',
-          metaDescription: 'Book professional interior painting, exterior painting and waterproofing services in Mumbai with free site inspection, digital quotation and warranty.',
-          h1: 'Premium Painting Services in Mumbai',
-          internalLinks: ['2BHK Painting Cost Mumbai', 'Waterproofing Services Mumbai', 'Painter Near Me Mumbai'],
+          slug: 'interior-design-mumbai',
+          title: `Interior Design & Solutions in Mumbai | ${BRAND.name}`,
+          metaDescription: 'Book professional interior design, modular kitchens, wardrobes and turnkey execution in Mumbai with free consultation and digital quotation.',
+          h1: 'Premium Interior Design Services in Mumbai',
+          internalLinks: ['Modular Kitchen Mumbai', 'Rental Interiors Mumbai', 'Interior Designer Near Me Mumbai'],
         },
       });
     }
@@ -1285,6 +1293,81 @@ export async function POST(request, context) {
       return visualizerTransform(request);
     }
 
+    const db = await getDb();
+
+    if (route === 'admin' && path[1] === 'about') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      const result = await adminSaveAbout(db, body);
+      return json(result);
+    }
+
+    if (route === 'admin' && path[1] === 'services' && path[2] === 'reorder') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      return json(await adminReorderServices(db, body));
+    }
+
+    if (route === 'admin' && path[1] === 'services') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      const result = await adminSaveService(db, body);
+      if (result.error) return json({ error: result.error }, result.status || 400);
+      return json(result);
+    }
+
+    if (route === 'admin' && path[1] === 'rental-interiors') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      const result = await adminSaveRentalInteriors(db, body);
+      if (result.error) return json({ error: result.error }, result.status || 400);
+      return json(result);
+    }
+
+    if (route === 'admin' && path[1] === 'gallery' && path[2] === 'reorder') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      return json(await adminReorderGallery(db, body));
+    }
+
+    if (route === 'admin' && path[1] === 'gallery' && path[2] === 'categories') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      const result = await adminSaveGalleryCategory(db, body);
+      if (result.error) return json({ error: result.error }, result.status || 400);
+      return json(result);
+    }
+
+    if (route === 'admin' && path[1] === 'gallery') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      const result = await adminSaveGalleryItem(db, body);
+      if (result.error) return json({ error: result.error }, result.status || 400);
+      return json(result);
+    }
+
+    if (route === 'admin' && path[1] === 'seo') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const body = await request.json();
+      return json(await adminSaveSeo(db, body));
+    }
+
+    if (route === 'admin' && path[1] === 'media' && path[2] === 'upload') {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const result = await adminUploadMedia(request);
+      if (result.error) return json({ error: result.error }, result.status || 400);
+      return json(result);
+    }
+
     return json({ error: 'API route not found.' }, 404);
   } catch (error) {
     return json({ error: error.message || 'Unexpected server error.' }, 500);
@@ -1316,11 +1399,24 @@ export async function PUT(request, context) {
 export async function DELETE(request, context) {
   try {
     const path = getPathSegments(context);
-    if (path[0] !== 'leads' || !path[1]) {
-      return json({ error: 'Lead id is required.' }, 400);
+    const db = await getDb();
+
+    if (path[0] === 'admin' && path[1] === 'services' && path[2]) {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminDeleteService(db, path[2]));
     }
 
-    const db = await getDb();
+    if (path[0] === 'admin' && path[1] === 'gallery' && path[2]) {
+      const admin = await requireAdmin(request);
+      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      return json(await adminDeleteGalleryItem(db, path[2]));
+    }
+
+    if (path[0] !== 'leads' || !path[1]) {
+      return json({ error: 'Resource id is required.' }, 400);
+    }
+
     const result = await db.collection('leads').deleteOne({ id: path[1] });
     return json({ deleted: result.deletedCount === 1 });
   } catch (error) {

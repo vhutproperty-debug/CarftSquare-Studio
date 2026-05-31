@@ -6,21 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { BRAND } from '@/lib/brand';
+import BrandLogo from '@/components/BrandLogo';
 
 const brands = ['Asian Paints', 'Nerolac', 'Berger', 'Dulux'];
 const categories = ['All', 'Whites', 'Beige', 'Grey', 'Blue', 'Luxury', 'Exterior', 'Texture-inspired'];
-const whatsappNumber = '917304242604';
-const logoUrl = 'https://customer-assets.emergentagent.com/job_paint-modern/artifacts/7r55o0ho_Logo.jpeg';
+const whatsappNumber = BRAND.whatsappNumber;
+
+function buildWhatsAppUrl(shade) {
+  const text = encodeURIComponent(`Hi ${BRAND.name}, I am interested in ${shade.brand} shade ${shade.shadeName} (${shade.shadeCode}). Please share interior consultation details.`);
+  return `https://wa.me/${whatsappNumber}?text=${text}`;
+}
 
 function trackAnalyticsEvent(eventName, parameters = {}) {
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
     window.gtag('event', eventName, parameters);
   }
-}
-
-function buildWhatsAppUrl(shade) {
-  const text = encodeURIComponent(`Hi Brush & Bloom, I am interested in ${shade.brand} shade ${shade.shadeName} (${shade.shadeCode}). Please share painting quotation.`);
-  return `https://wa.me/${whatsappNumber}?text=${text}`;
 }
 
 function App() {
@@ -73,9 +74,8 @@ function App() {
       <div className="absolute inset-0 -z-0 bg-[radial-gradient(circle_at_20%_10%,rgba(249,115,22,0.22),transparent_28%),radial-gradient(circle_at_90%_20%,rgba(59,130,246,0.16),transparent_28%)]" />
       <nav className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between gap-3">
-          <a href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white p-1"><img src={logoUrl} alt="Brush & Bloom logo" className="h-full w-full object-contain" /></span>
-            <span className="text-base font-black tracking-tight sm:text-lg">Brush & Bloom Shades</span>
+          <a href="/" className="flex items-center">
+            <BrandLogo variant="nav" />
           </a>
           <a href="/">
             <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Button>
