@@ -1,35 +1,8 @@
 import Script from 'next/script';
-import { BRAND, absoluteLogoUrl } from '@/lib/brand';
+import { getRootMetadata } from '@/lib/seo/metadata';
 import './globals.css';
 
-export const metadata = {
-  title: 'CraftSquare Studio | Premium Interior Design & Solutions Mumbai',
-  description: 'Transform your space with expert interior design, modular kitchens, wardrobes, rental interiors and turnkey execution in Mumbai. Book free consultation today.',
-  keywords: [
-    'Interior Design Mumbai',
-    'Modular Kitchen Mumbai',
-    'Wardrobe Design Mumbai',
-    'Rental Interiors Mumbai',
-    'Turnkey Interiors Mumbai',
-    'Commercial Interiors Mumbai',
-    'Home Renovation Mumbai',
-    'Interior Designer Mumbai',
-    'Residential Interiors Mumbai',
-    'Space Planning Mumbai',
-    'Interior Styling Mumbai',
-    'Modular Wardrobes Mumbai',
-  ],
-  openGraph: {
-    title: 'CraftSquare Studio | Premium Interior Design & Solutions Mumbai',
-    description: 'Design-to-execution interior solutions — modular kitchens, wardrobes, rental interiors and complete home transformations in Mumbai.',
-    type: 'website',
-    images: [{ url: absoluteLogoUrl, alt: BRAND.name }],
-  },
-  icons: {
-    icon: BRAND.logoUrl,
-    apple: BRAND.logoUrl,
-  },
-};
+export const metadata = getRootMetadata();
 
 const RootLayout = ({ children }) => {
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
