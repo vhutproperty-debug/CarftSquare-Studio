@@ -1296,31 +1296,25 @@ function App() {
 
   async function refreshData() {
     try {
-      const [servicesRes, projectsRes, faqsRes, aboutRes, rentalRes, dashboardRes, leadsRes] = await Promise.all([
+      const [servicesRes, projectsRes, faqsRes, aboutRes, rentalRes] = await Promise.all([
         fetch('/api/services'),
         fetch('/api/projects'),
         fetch('/api/faqs'),
         fetch('/api/about'),
         fetch('/api/rental-interiors'),
-        fetch('/api/dashboard'),
-        fetch('/api/leads'),
       ]);
-      const [servicesData, projectsData, faqsData, aboutData, rentalData, dashboardData, leadsData] = await Promise.all([
+      const [servicesData, projectsData, faqsData, aboutData, rentalData] = await Promise.all([
         servicesRes.json(),
         projectsRes.json(),
         faqsRes.json(),
         aboutRes.json(),
         rentalRes.json(),
-        dashboardRes.json(),
-        leadsRes.json(),
       ]);
       setServices(servicesData.services || []);
       setProjects(projectsData.projects || []);
       setFaqs(faqsData.faqs || []);
       setAbout(aboutData.about || null);
       setRental(rentalData || null);
-      setDashboard(dashboardData || null);
-      setLeads(leadsData.leads || []);
     } catch (error) {
       console.error('Could not load app data', error);
     }

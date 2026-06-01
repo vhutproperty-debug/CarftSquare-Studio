@@ -602,6 +602,8 @@ async function createLead(request) {
 }
 
 async function getLeads(request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
   const db = await getDb();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -775,7 +777,9 @@ async function updateVendorAdmin(request, id) {
   return json({ vendor: result, message: 'Vendor request updated.' });
 }
 
-async function dashboard() {
+async function dashboard(request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
   const db = await getDb();
   const leads = await db.collection('leads').find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(100).toArray();
   const statusCounts = leads.reduce((acc, lead) => {
@@ -1091,7 +1095,7 @@ export async function GET(request, context) {
     }
 
     if (route === 'dashboard') {
-      return dashboard();
+      return dashboard(request);
     }
 
     if (route === 'shades') {
