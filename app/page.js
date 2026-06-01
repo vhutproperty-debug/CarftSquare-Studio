@@ -432,7 +432,6 @@ function Navbar({ onQuote }) {
             ))}
             <a href="/gallery" className="hover:text-white transition-colors">Gallery</a>
             <a href="/rental-interiors" className="hover:text-white transition-colors">Rental Furnishing</a>
-            <a href="/admin" className="hover:text-white transition-colors">Admin</a>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -462,7 +461,6 @@ function Navbar({ onQuote }) {
                 {link.label}
               </a>
             ))}
-            <a href="/admin" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Admin</a>
           </div>
         )}
       </nav>
