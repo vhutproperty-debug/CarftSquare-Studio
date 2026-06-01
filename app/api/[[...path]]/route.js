@@ -10,6 +10,23 @@ import {
   signSession,
 } from '@/lib/auth/session';
 import {
+  applyCorsHeaders,
+  getCorsHeaders,
+  resolveCorsOrigin,
+} from '@/lib/security/cors';
+import {
+  authLoginSchema,
+  authResetPasswordSchema,
+  authSetupSchema,
+  enquiryEventSchema,
+  leadCreateSchema,
+  parseRequestBody,
+  updateLeadSchema,
+  updateVendorSchema,
+  vendorCreateSchema,
+} from '@/lib/validation/schemas';
+import { DEFAULT_FAQS, DEFAULT_PRICING_SETTINGS } from '@/lib/cms/defaults';
+import {
   adminDeleteGalleryItem,
   adminDeleteService,
   adminGetAbout,
@@ -41,11 +58,19 @@ export const dynamic = 'force-dynamic';
 
 let cmsInitialized = false;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+function ensureAllowedOrigin(request) {
+  if (!request.headers.get('origin')) return true;
+  return Boolean(resolveCorsOrigin(request));
+}
+
+function json(data, status = 200, request) {
+  const response = NextResponse.json(data, { status });
+  return applyCorsHeaders(response, request || { headers: { get: () => null } });
+}
+
+function getPathSegments(context) {
+  return context?.params?.path || [];
+}
 
 const LEAD_NOTIFICATION_EMAIL = BRAND.emailTo;
 const EMAIL_SUBJECT = `New Lead - ${BRAND.name} Interior Solutions`;
@@ -85,15 +110,6 @@ const defaultPaintShades = [
 
 const shadeBrands = ['Asian Paints', 'Nerolac', 'Berger', 'Dulux'];
 const shadeCategories = ['Whites', 'Beige', 'Grey', 'Blue', 'Luxury', 'Exterior', 'Texture-inspired'];
-
-
-function json(data, status = 200) {
-  return NextResponse.json(data, { status, headers: corsHeaders });
-}
-
-function getPathSegments(context) {
-  return context?.params?.path || [];
-}
 
 function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   const hash = scryptSync(String(password), salt, 64).toString('hex');
@@ -508,17 +524,16 @@ function calculateEstimate(payload = {}, settings = defaultPricingSettings) {
 
 async function createLead(request) {
   const db = await getDb();
-  const body = await request.json();
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(leadCreateSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const body = parsed.data;
   if (String(body.website || body.companyWebsite || '').trim()) {
     return json({ message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
   }
-  const name = String(body.name || '').trim();
-  const phone = String(body.phone || '').trim();
-  const service = String(body.service || 'residential-interiors').trim();
-
-  if (!name || phone.length < 8) {
-    return json({ error: 'Name and valid phone number are required.' }, 400);
-  }
+  const name = body.name;
+  const phone = body.phone;
+  const service = body.service || 'residential-interiors';
 
   const estimate = body.estimate || calculateEstimate(body, await getPricingSettings(db));
   const now = new Date().toISOString();
@@ -582,8 +597,11 @@ async function updateLead(request, id) {
   }
 
   const db = await getDb();
-  const body = await request.json();
-  const allowed = ['status', 'assignedVendor', 'paymentStatus', 'notes', 'preferredSlot'];
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(updateLeadSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const body = parsed.data;
+  const allowed = ['status', 'assignedVendor', 'paymentStatus', 'notes', 'preferredSlot', 'adminNotes'];
   const updates = {};
 
   allowed.forEach((key) => {
@@ -618,17 +636,20 @@ function normalizeServicesOffered(value) {
 
 async function createVendorRequest(request) {
   const db = await getDb();
-  const body = await request.json();
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(vendorCreateSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const body = parsed.data;
   if (String(body.website || body.companyWebsite || '').trim()) {
     return json({ message: `Thank you for contacting ${BRAND.name}. We will get back to you shortly.` }, 201);
   }
-  const name = String(body.name || '').trim();
-  const phone = String(body.phone || '').trim();
-  const cityArea = String(body.cityArea || body.location || '').trim();
+  const name = body.name;
+  const phone = body.phone;
+  const cityArea = body.cityArea || body.location || '';
   const servicesOffered = normalizeServicesOffered(body.servicesOffered);
 
-  if (!name || phone.length < 8 || !cityArea || servicesOffered.length === 0) {
-    return json({ error: 'Name, valid phone, city/area and at least one service are required.' }, 400);
+  if (!cityArea || servicesOffered.length === 0) {
+    return json({ error: 'City/area and at least one service are required.' }, 400);
   }
 
   const now = new Date().toISOString();
@@ -683,7 +704,10 @@ async function adminVendors(request) {
 
 async function createEnquiryEvent(request) {
   const db = await getDb();
-  const body = await request.json();
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(enquiryEventSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const body = parsed.data;
   const now = new Date().toISOString();
   const event = {
     id: uuidv4(),
@@ -715,14 +739,13 @@ async function updateVendorAdmin(request, id) {
   if (!id) return json({ error: 'Vendor id is required.' }, 400);
 
   const db = await getDb();
-  const body = await request.json();
-  const allowedStatuses = ['new', 'contacted', 'approved', 'rejected'];
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(updateVendorSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const body = parsed.data;
   const updates = {};
 
   if (body.status !== undefined) {
-    if (!allowedStatuses.includes(body.status)) {
-      return json({ error: 'Invalid vendor status.' }, 400);
-    }
     updates.status = body.status;
   }
 
@@ -779,22 +802,19 @@ async function setupAdmin(request) {
   const db = await getDb();
   const existingAdmins = await db.collection('admins').countDocuments({ role: 'admin' });
   if (existingAdmins > 0) {
-    return json({ error: 'Admin already exists. Please login.' }, 409);
+    return json({ error: 'Admin already exists. Please login.' }, 409, request);
   }
 
   const body = await request.json();
-  const email = String(body.email || '').trim().toLowerCase();
-  const password = String(body.password || '');
-  const name = String(body.name || `${BRAND.name} Admin`).trim();
-
-  if (!email.includes('@') || password.length < 8) {
-    return json({ error: 'Valid email and minimum 8 character password are required.' }, 400);
-  }
+  const parsed = parseRequestBody(authSetupSchema, body);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const { email, password, name: setupName } = parsed.data;
+  const name = setupName || `${BRAND.name} Admin`;
 
   const now = new Date().toISOString();
   const admin = {
     id: uuidv4(),
-    email,
+    email: email.toLowerCase(),
     name,
     role: 'admin',
     passwordHash: hashPassword(password),
@@ -803,22 +823,25 @@ async function setupAdmin(request) {
   };
 
   await db.collection('admins').insertOne(admin);
-  const response = NextResponse.json({ user: safeAdmin(admin), message: 'First admin created and logged in.' }, { status: 201, headers: corsHeaders });
+  const response = NextResponse.json({ user: safeAdmin(admin), message: 'First admin created and logged in.' }, { status: 201 });
+  applyCorsHeaders(response, request);
   return setSessionCookie(response, admin);
 }
 
 async function loginAdmin(request) {
   const db = await getDb();
-  const body = await request.json();
-  const email = String(body.email || '').trim().toLowerCase();
-  const password = String(body.password || '');
-  const admin = await db.collection('admins').findOne({ email, role: 'admin' });
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(authLoginSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const { email, password } = parsed.data;
+  const admin = await db.collection('admins').findOne({ email: email.toLowerCase(), role: 'admin' });
 
   if (!admin || !verifyPassword(password, admin.passwordHash)) {
     return json({ error: 'Invalid admin credentials.' }, 401);
   }
 
-  const response = NextResponse.json({ user: safeAdmin(admin), message: 'Admin logged in.' }, { headers: corsHeaders });
+  const response = NextResponse.json({ user: safeAdmin(admin), message: 'Admin logged in.' });
+  applyCorsHeaders(response, request);
   return setSessionCookie(response, admin);
 }
 
@@ -826,11 +849,10 @@ async function resetAdminPassword(request) {
   const admin = await requireAdmin(request);
   if (!admin) return json({ error: 'Admin authentication required.' }, 401);
 
-  const body = await request.json();
-  const password = String(body.password || '');
-  if (password.length < 8) {
-    return json({ error: 'New password must be at least 8 characters.' }, 400);
-  }
+  const rawBody = await request.json();
+  const parsed = parseRequestBody(authResetPasswordSchema, rawBody);
+  if (parsed.error) return json({ error: parsed.error }, 400, request);
+  const { password } = parsed.data;
 
   const db = await getDb();
   const updatedAt = new Date().toISOString();
@@ -900,8 +922,9 @@ async function resetAdminPricing(request) {
   return json({ pricing, message: 'Pricing reset to defaults.' });
 }
 
-async function logoutAdmin() {
-  const response = NextResponse.json({ message: 'Logged out.' }, { headers: corsHeaders });
+async function logoutAdmin(request) {
+  const response = NextResponse.json({ message: 'Logged out.' });
+  applyCorsHeaders(response, request);
   return clearSessionCookie(response);
 }
 
@@ -941,14 +964,15 @@ async function quotePdf(request, leadId) {
   };
   await db.collection('quotes').insertOne(quote);
   const pdf = createSimplePdf(quote.lines);
-  return new NextResponse(pdf, {
+  const response = new NextResponse(pdf, {
     status: 200,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(request),
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="craftsquare-${quote.quoteNumber}.pdf"`,
     },
   });
+  return response;
 }
 
 async function sendWhatsAppQuote(request) {
@@ -1006,12 +1030,18 @@ async function visualizerTransform(request) {
   });
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders });
+export async function OPTIONS(request) {
+  if (!ensureAllowedOrigin(request)) {
+    return json({ error: 'Origin not allowed.' }, 403, request);
+  }
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(request) });
 }
 
 export async function GET(request, context) {
   try {
+    if (!ensureAllowedOrigin(request)) {
+      return json({ error: 'Origin not allowed.' }, 403, request);
+    }
     const path = getPathSegments(context);
     const route = path[0] || 'health';
     const db = await getDb();
@@ -1140,14 +1170,17 @@ export async function GET(request, context) {
       });
     }
 
-    return json({ error: 'API route not found.' }, 404);
+    return json({ error: 'API route not found.' }, 404, request);
   } catch (error) {
-    return json({ error: error.message || 'Unexpected server error.' }, 500);
+    return json({ error: error.message || 'Unexpected server error.' }, 500, request);
   }
 }
 
 export async function POST(request, context) {
   try {
+    if (!ensureAllowedOrigin(request)) {
+      return json({ error: 'Origin not allowed.' }, 403, request);
+    }
     const path = getPathSegments(context);
     const route = path[0];
 
@@ -1179,7 +1212,7 @@ export async function POST(request, context) {
     }
 
     if (route === 'auth' && path[1] === 'logout') {
-      return logoutAdmin();
+      return logoutAdmin(request);
     }
 
     if (route === 'auth' && path[1] === 'reset-password') {
@@ -1285,14 +1318,17 @@ export async function POST(request, context) {
       return json(result);
     }
 
-    return json({ error: 'API route not found.' }, 404);
+    return json({ error: 'API route not found.' }, 404, request);
   } catch (error) {
-    return json({ error: error.message || 'Unexpected server error.' }, 500);
+    return json({ error: error.message || 'Unexpected server error.' }, 500, request);
   }
 }
 
 export async function PUT(request, context) {
   try {
+    if (!ensureAllowedOrigin(request)) {
+      return json({ error: 'Origin not allowed.' }, 403, request);
+    }
     const path = getPathSegments(context);
 
     if (path[0] === 'leads') {
@@ -1307,14 +1343,17 @@ export async function PUT(request, context) {
       return updateVendorAdmin(request, path[2]);
     }
 
-    return json({ error: 'API route not found.' }, 404);
+    return json({ error: 'API route not found.' }, 404, request);
   } catch (error) {
-    return json({ error: error.message || 'Unexpected server error.' }, 500);
+    return json({ error: error.message || 'Unexpected server error.' }, 500, request);
   }
 }
 
 export async function DELETE(request, context) {
   try {
+    if (!ensureAllowedOrigin(request)) {
+      return json({ error: 'Origin not allowed.' }, 403, request);
+    }
     const path = getPathSegments(context);
     const db = await getDb();
 
@@ -1335,8 +1374,8 @@ export async function DELETE(request, context) {
     }
 
     const result = await db.collection('leads').deleteOne({ id: path[1] });
-    return json({ deleted: result.deletedCount === 1 });
+    return json({ deleted: result.deletedCount === 1 }, 200, request);
   } catch (error) {
-    return json({ error: error.message || 'Unexpected server error.' }, 500);
+    return json({ error: error.message || 'Unexpected server error.' }, 500, request);
   }
 }
