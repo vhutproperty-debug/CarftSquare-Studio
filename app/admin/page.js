@@ -92,11 +92,17 @@ const AdminPage = () => {
   async function loadAuth() {
     try {
       const response = await fetch('/api/auth/status', { credentials: 'include' });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setAuth((current) => ({ ...current, checked: true }));
+        setMessage(data.error || 'Could not connect to the admin API. Check MongoDB in .env.local and restart the dev server.');
+        return;
+      }
       setAuth({ checked: true, hasAdmin: Boolean(data.hasAdmin), authenticated: Boolean(data.authenticated), user: data.user || null });
       if (data.authenticated) loadAdminData();
     } catch (error) {
       setAuth((current) => ({ ...current, checked: true }));
+      setMessage('Could not reach the admin API. Make sure npm run dev is running.');
     }
   }
 

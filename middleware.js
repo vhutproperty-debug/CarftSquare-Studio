@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest, SESSION_COOKIE } from '@/lib/auth/session';
+import { SESSION_COOKIE } from '@/lib/auth/session-constants';
+import { getSessionFromRequest } from '@/lib/auth/session-edge';
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/login',
@@ -20,9 +21,9 @@ function isProtectedDataApi(pathname) {
   return pathname === '/api/leads' || pathname === '/api/dashboard';
 }
 
-export function middleware(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl;
-  const session = getSessionFromRequest(request);
+  const session = await getSessionFromRequest(request);
 
   if (isProtectedAdminApi(pathname) || isProtectedDataApi(pathname)) {
     if (!session) {
@@ -35,11 +36,6 @@ export function middleware(request) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-
-    if (!session) {
-      return response;
-    }
-
     return response;
   }
 
