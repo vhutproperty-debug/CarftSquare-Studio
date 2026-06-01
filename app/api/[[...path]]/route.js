@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { BRAND, absoluteLogoUrl } from '@/lib/brand';
-import { getDb as connectDb, getMongoUrl } from '@/lib/mongodb';
-import { DEFAULT_FAQS, DEFAULT_PRICING_SETTINGS } from '@/lib/cms/defaults';
+import { getDb as connectDb } from '@/lib/mongodb';
+import {
+  getSessionCookieOptions,
+  readSessionToken,
+  SESSION_COOKIE,
+  signSession,
+} from '@/lib/auth/session';
 import {
   adminDeleteGalleryItem,
   adminDeleteService,
@@ -42,8 +47,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-const SESSION_COOKIE = 'bb_admin_session';
-const SESSION_MAX_AGE = 60 * 60 * 12;
 const LEAD_NOTIFICATION_EMAIL = BRAND.emailTo;
 const EMAIL_SUBJECT = `New Lead - ${BRAND.name} Interior Solutions`;
 const LOGO_URL = absoluteLogoUrl;
@@ -92,11 +95,6 @@ function getPathSegments(context) {
   return context?.params?.path || [];
 }
 
-function getSessionSecret() {
-  const mongoUrl = getMongoUrl();
-  return process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || `${mongoUrl || 'local'}::${BRAND.sessionSuffix}`;
-}
-
 function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   const hash = scryptSync(String(password), salt, 64).toString('hex');
   return `${salt}:${hash}`;
@@ -110,51 +108,17 @@ function verifyPassword(password, storedHash = '') {
   return expected.length === candidate.length && timingSafeEqual(expected, candidate);
 }
 
-function signSession(admin) {
-  const payload = {
-    id: admin.id,
-    email: admin.email,
-    name: admin.name,
-    role: admin.role || 'admin',
-    exp: Date.now() + SESSION_MAX_AGE * 1000,
-  };
-  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = createHmac('sha256', getSessionSecret()).update(encoded).digest('base64url');
-  return `${encoded}.${signature}`;
-}
-
 function readSession(request) {
-  const token = request.cookies?.get(SESSION_COOKIE)?.value;
-  if (!token || !token.includes('.')) return null;
-  const [encoded, signature] = token.split('.');
-  const expected = createHmac('sha256', getSessionSecret()).update(encoded).digest('base64url');
-  if (Buffer.from(signature).length !== Buffer.from(expected).length) return null;
-  const valid = timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  if (!valid) return null;
-  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
-  if (!payload?.exp || payload.exp < Date.now() || payload.role !== 'admin') return null;
-  return payload;
+  return readSessionToken(request.cookies?.get(SESSION_COOKIE)?.value);
 }
 
 function setSessionCookie(response, admin) {
-  response.cookies.set(SESSION_COOKIE, signSession(admin), {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: SESSION_MAX_AGE,
-  });
+  response.cookies.set(SESSION_COOKIE, signSession(admin), getSessionCookieOptions());
   return response;
 }
 
 function clearSessionCookie(response) {
-  response.cookies.set(SESSION_COOKIE, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 0,
-  });
+  response.cookies.set(SESSION_COOKIE, '', { ...getSessionCookieOptions(), maxAge: 0 });
   return response;
 }
 
