@@ -8,7 +8,25 @@ function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   return `${salt}:${hash}`;
 }
 
+const email = process.argv[2];
+const password = process.argv[3];
+
+if (!email || !password) {
+  console.error('Usage: node scripts/reset-admin-password.js <email> <new-password>');
+  process.exit(1);
+}
+
+if (password.length < 8) {
+  console.error('Password must be at least 8 characters.');
+  process.exit(1);
+}
+
 const envPath = path.join(__dirname, '..', '.env.local');
+if (!fs.existsSync(envPath)) {
+  console.error('.env.local not found');
+  process.exit(1);
+}
+
 const envContent = fs.readFileSync(envPath, 'utf8');
 const uriMatch = envContent.match(/^MONGODB_URI=(.+)$/m);
 const uri = uriMatch?.[1]?.trim();
@@ -18,13 +36,11 @@ if (!uri) {
   process.exit(1);
 }
 
-const email = process.argv[2] || 'vhutproperty@gmail.com';
-const password = process.argv[3] || 'Aarush12345';
-
 MongoClient.connect(uri).then(async (client) => {
-  const db = client.db('brushandbloom');
+  const dbName = envContent.match(/^DB_NAME=(.+)$/m)?.[1]?.trim() || 'brushandbloom';
+  const db = client.db(dbName);
   const result = await db.collection('admins').updateOne(
-    { email, role: 'admin' },
+    { email: email.trim().toLowerCase(), role: 'admin' },
     { $set: { passwordHash: hashPassword(password), updatedAt: new Date().toISOString() } },
   );
   console.log(`Password reset for ${email}: ${result.modifiedCount ? 'success' : 'no admin found'}`);
