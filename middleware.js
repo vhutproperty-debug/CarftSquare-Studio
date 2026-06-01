@@ -23,7 +23,12 @@ function isProtectedDataApi(pathname) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
-  const session = await getSessionFromRequest(request);
+  let session = null;
+  try {
+    session = await getSessionFromRequest(request);
+  } catch {
+    session = null;
+  }
 
   if (isProtectedAdminApi(pathname) || isProtectedDataApi(pathname)) {
     if (!session) {
