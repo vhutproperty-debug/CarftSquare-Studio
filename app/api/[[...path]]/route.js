@@ -12,7 +12,7 @@ import {
 import {
   applyCorsHeaders,
   getCorsHeaders,
-  resolveCorsOrigin,
+  isOriginAllowed,
 } from '@/lib/security/cors';
 import {
   authLoginSchema,
@@ -59,8 +59,7 @@ export const dynamic = 'force-dynamic';
 let cmsInitialized = false;
 
 function ensureAllowedOrigin(request) {
-  if (!request.headers.get('origin')) return true;
-  return Boolean(resolveCorsOrigin(request));
+  return isOriginAllowed(request);
 }
 
 function json(data, status = 200, request) {
