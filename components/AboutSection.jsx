@@ -1,20 +1,8 @@
-'use client';
-
-import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-
-function SectionHeader({ eyebrow, title, text }) {
-  return (
-    <div className="mx-auto mb-10 max-w-3xl text-center">
-      <Badge className="mb-4 bg-orange-100 text-orange-700 hover:bg-orange-100">{eyebrow}</Badge>
-      <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{title}</h2>
-      <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">{text}</p>
-    </div>
-  );
-}
+import { Badge } from '@/components/ui/badge';
+import SectionHeader from '@/components/SectionHeader';
 
 export default function AboutSection({ about }) {
   if (!about || about.enabled === false) return null;
@@ -55,11 +43,11 @@ export default function AboutSection({ about }) {
                 </div>
               )}
             </div>
-            <Link href="/about">
+            <a href="/about">
               <Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full">
                 Learn more about us <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </Link>
+            </a>
           </div>
 
           <div className="space-y-6">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -33,7 +33,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { BRAND, whatsappUrl } from '@/lib/brand';
-import AboutSection from '@/components/AboutSection';
 import LeadForm, { Field } from '@/components/LeadForm';
 import SectionHeader from '@/components/SectionHeader';
 import Navbar from '@/components/Navbar';
@@ -43,6 +42,7 @@ import Portfolio from '@/components/Portfolio';
 import Testimonials from '@/components/Testimonials';
 import FAQ from '@/components/FAQ';
 import Footer from '@/components/Footer';
+import AboutSection from '@/components/AboutSection';
 
 const brand = BRAND.name;
 
@@ -459,7 +459,7 @@ function TrustSection() {
             <CardContent className="p-8 text-center">
               <BadgeCheck className="mx-auto h-12 w-12 text-white mb-4" />
               <h3 className="text-2xl font-black mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Price Guarantee</h3>
-              <p className="text-orange-100">Transparent digital quotes. No hidden charges. What's quoted is what's billed.</p>
+              <p className="text-orange-100">Transparent digital quotes. No hidden charges. What&apos;s quoted is what&apos;s billed.</p>
             </CardContent>
           </Card>
         </div>

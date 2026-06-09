@@ -41,7 +41,7 @@ export default function Testimonials() {
               <Card key={review.name} className="border-slate-100 transition hover:shadow-lg">
                 <CardContent className="p-5">
                   <div className="flex gap-1 text-orange-500">{Array.from({ length: 5 }).map((_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}</div>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">"{review.text}"</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">&quot;{review.text}&quot;</p>
                   <p className="mt-4 font-black text-slate-950">{review.name}</p>
                   <p className="text-sm text-slate-500">{review.area}</p>
                 </CardContent>

@@ -804,7 +804,7 @@ const AdminPage = () => {
                         <div className="rounded-3xl border-2 border-dashed border-slate-200 p-10 text-center">
                           <FolderOpen className="mx-auto h-10 w-10 text-slate-300 mb-3" />
                           <p className="font-black text-slate-950">No banners configured</p>
-                          <p className="text-sm text-slate-500 mt-1">Upload images and check "Use as Homepage Banner" to add them here.</p>
+                          <p className="text-sm text-slate-500 mt-1">Upload images and check &quot;Use as Homepage Banner&quot; to add them here.</p>
                         </div>
                       ) : (
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -894,7 +894,7 @@ const AdminPage = () => {
                                 <div>
                                   <p className="font-black text-slate-950">{t.name} — {t.area}</p>
                                   <p className="text-orange-500 text-sm">{'★'.repeat(t.rating)}</p>
-                                  <p className="mt-2 text-sm text-slate-600">"{t.text}"</p>
+                                  <p className="mt-2 text-sm text-slate-600">&quot;{t.text}&quot;</p>
                                 </div>
                                 <button onClick={() => setTestimonials(prev => prev.filter(x => x.id !== t.id))} className="text-red-400 hover:text-red-600">
                                   <Trash2 className="h-4 w-4" />

@@ -1,0 +1,17 @@
+  ▲ Next.js 14.2.3
+  - Local:        http://127.0.0.1:3005
+  - Network:      http://127.0.0.1:3005
+  - Environments: .env.local
+
+ ✓ Starting...
+'yarn' is not recognized as an internal or external command,
+operable program or batch file.
+ ✓ Ready in 7.7s
+ ○ Compiling / ...
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 33.9s (679 modules)
+ ✓ Compiled in 8.6s (329 modules)
+ GET / 200 in 47392ms
+ GET / 200 in 4078ms
