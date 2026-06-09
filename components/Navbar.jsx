@@ -17,6 +17,7 @@ export default function Navbar({ onQuote }) {
   }, []);
 
   const navLinks = [
+    { label: 'AI Estimate', href: '/estimate' },
     { label: 'Services', href: '#services' },
     { label: 'About', href: '#about' },
     { label: 'Interiors', href: '#interiors' },
@@ -40,12 +41,12 @@ export default function Navbar({ onQuote }) {
             <a href="/rental-interiors" className="hover:text-white transition-colors">Rental Furnishing</a>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onQuote}
+            <a
+              href="/estimate"
               className="hidden rounded-full bg-orange-600 px-5 py-2 text-sm font-black text-white hover:bg-orange-700 transition-colors sm:block"
             >
-              Get Quote
-            </button>
+              AI Consultation
+            </a>
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <Button className="bg-emerald-600 px-3 font-bold text-white hover:bg-emerald-700 rounded-full sm:px-4">
                 <MessageCircle className="h-4 w-4 sm:mr-2" />
@@ -67,6 +68,8 @@ export default function Navbar({ onQuote }) {
                 {link.label}
               </a>
             ))}
+            <a href="/gallery" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Gallery</a>
+            <a href="/rental-interiors" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Rental Furnishing</a>
           </div>
         )}
       </nav>

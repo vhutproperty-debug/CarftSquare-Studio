@@ -1,0 +1,107 @@
+@keyframes estimate-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes estimate-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes estimate-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes estimate-dot-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes estimate-progress-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.estimate-fade-in {
+  animation: estimate-fade-in 0.7s ease-out both;
+}
+
+.estimate-fade-in-up {
+  animation: estimate-fade-in-up 0.6s ease-out both;
+}
+
+.estimate-scale-in {
+  animation: estimate-scale-in 0.5s ease-out both;
+}
+
+.estimate-dot {
+  animation: estimate-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.estimate-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.estimate-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.estimate-glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.04),
+    0 20px 50px -12px rgba(15, 23, 42, 0.12);
+}
+
+.estimate-progress-fill {
+  background: linear-gradient(90deg, #ea580c, #f97316, #fb923c, #f97316, #ea580c);
+  background-size: 200% 100%;
+  animation: estimate-progress-shimmer 3s ease-in-out infinite;
+}
+
+.estimate-selection-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.estimate-selection-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.15);
+}
+
+.estimate-selection-card.selected {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b, 0 20px 40px -12px rgba(249, 115, 22, 0.2);
+  transform: scale(1.02);
+}

@@ -37,15 +37,17 @@ export default function Hero({ onLeadCreated, onQuote }) {
           <p className="mt-6 max-w-2xl text-xl leading-8 text-slate-300">
             Transform your space with expert interior design, modular kitchens, wardrobes, rental interiors and turnkey execution — all under one trusted Mumbai brand.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#quote">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <a href="/estimate">
               <Button size="lg" className="w-full bg-orange-600 px-8 font-black text-white hover:bg-orange-700 sm:w-auto rounded-full">
-                Book Free Consultation <ChevronRight className="ml-2 h-5 w-5" />
+                Get Instant AI Interior Consultation <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             </a>
-            <button onClick={onQuote} className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-8 py-3 text-base font-black text-white backdrop-blur hover:bg-white/20 transition-colors">
-              Get Instant Estimate
-            </button>
+            <a href="#quote">
+              <Button size="lg" variant="outline" className="w-full border-white/20 bg-white/10 px-8 font-black text-white backdrop-blur hover:bg-white/20 sm:w-auto rounded-full">
+                Book Free Consultation
+              </Button>
+            </a>
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <Button size="lg" variant="outline" className="w-full border-emerald-500/40 bg-emerald-500/10 px-8 font-black text-emerald-200 backdrop-blur hover:bg-emerald-500/20 sm:w-auto rounded-full">
                 <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp Consultation

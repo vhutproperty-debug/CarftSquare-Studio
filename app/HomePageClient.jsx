@@ -91,10 +91,10 @@ const interiorServices = [
 ];
 
 const aiFuture = [
-  { title: 'AI Room Visualizer', desc: 'Upload your room photo and preview interior designs instantly before committing. Powered by AI.', icon: Camera, status: 'Coming Soon' },
-  { title: 'AI Quotation Assistant', desc: 'Chat-based intelligent quote builder for interiors, kitchens, and wardrobes in seconds.', icon: Bot, status: 'Coming Soon' },
-  { title: 'Smart Project Estimator', desc: 'Upload floor plan or enter dimensions for instant interior project cost estimate.', icon: Calculator, status: 'Coming Soon' },
-  { title: 'Renovation Recommender', desc: 'AI-powered renovation priority suggestions based on your home type, age and budget.', icon: Brain, status: 'Coming Soon' },
+  { title: 'AI Room Visualizer', desc: 'Upload your room photo and preview interior designs instantly before committing. Powered by AI.', icon: Camera, status: 'Coming Soon', href: null },
+  { title: 'AI Quotation Assistant', desc: 'Chat-based intelligent quote builder for interiors, kitchens, and wardrobes in seconds.', icon: Bot, status: 'Available Now', href: '/estimate' },
+  { title: 'Smart Project Estimator', desc: 'Upload floor plan or enter dimensions for instant interior project cost estimate.', icon: Calculator, status: 'Available Now', href: '/estimate' },
+  { title: 'Renovation Recommender', desc: 'AI-powered renovation priority suggestions based on your home type, age and budget.', icon: Brain, status: 'Coming Soon', href: null },
 ];
 
 function InteriorSolutions() {
@@ -221,11 +221,14 @@ function ModularKitchen() {
               );
             })}
           </div>
-          <div className="mt-8 text-center">
-            <a href="#quote">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="/estimate/kitchen">
               <Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full px-8">
-                Get Kitchen Design Quote <ArrowRight className="ml-2 h-4 w-4" />
+                AI Kitchen Estimate <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
+            </a>
+            <a href="#quote" className="text-sm font-bold text-orange-600 hover:text-orange-700">
+              Or request a design quote
             </a>
           </div>
         </div>
@@ -254,8 +257,8 @@ function Wardrobes() {
                   </div>
                   <h3 className="text-xl font-black text-slate-950">{wardrobe.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{wardrobe.desc}</p>
-                  <a href="#quote" className="mt-5 inline-flex items-center text-sm font-black text-slate-950">
-                    Get wardrobe quote <ArrowRight className="ml-2 h-4 w-4" />
+                  <a href="/estimate/wardrobe" className="mt-5 inline-flex items-center text-sm font-black text-slate-950">
+                    AI Wardrobe Estimate <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </CardContent>
               </Card>
@@ -328,6 +331,9 @@ function CalculatorSection({ onLeadCreated }) {
           <p className="mt-5 text-lg leading-8 text-slate-600">
             Estimate cost for residential interiors, modular kitchens, wardrobes, rental furnishing and complete renovation — all in one form.
           </p>
+          <a href="/estimate" className="mt-4 inline-flex items-center text-sm font-black text-orange-600 hover:text-orange-700">
+            Prefer AI consultation? Get instant AI estimate <ArrowRight className="ml-2 h-4 w-4" />
+          </a>
           <div className="mt-8 grid gap-4">
             {[
               ['Material suggestion', 'Material and finish recommendation based on project scope and finish level.'],
@@ -425,9 +431,12 @@ function RentalInteriorsSection({ rental }) {
             </Card>
           ))}
         </div>
-        <div className="mt-10 text-center">
-          <a href="/rental-interiors" className="inline-flex items-center rounded-full bg-orange-600 px-8 py-3 text-sm font-black text-white hover:bg-orange-700">
-            Explore Rental Furnishing <ArrowRight className="ml-2 h-4 w-4" />
+        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a href="/estimate" className="inline-flex items-center rounded-full bg-orange-600 px-8 py-3 text-sm font-black text-white hover:bg-orange-700">
+            Get AI Furnishing Estimate <ArrowRight className="ml-2 h-4 w-4" />
+          </a>
+          <a href="/rental-interiors" className="inline-flex items-center rounded-full border border-orange-200 px-8 py-3 text-sm font-black text-orange-600 hover:bg-orange-50">
+            Explore Rental Furnishing
           </a>
         </div>
       </div>
@@ -481,27 +490,36 @@ function AIFeaturesSection() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {aiFuture.map((feature) => {
             const Icon = feature.icon;
-            return (
-              <Card key={feature.title} className="border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10">
+            const card = (
+              <Card className="border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10">
                 <CardContent className="p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/20 text-orange-300">
                       <Icon className="h-6 w-6" />
                     </div>
-                    <Badge className="bg-white/10 text-slate-300 border-white/20 text-xs">{feature.status}</Badge>
+                    <Badge className={`text-xs border-white/20 ${feature.href ? 'bg-orange-500 text-white hover:bg-orange-500' : 'bg-white/10 text-slate-300 hover:bg-white/10'}`}>{feature.status}</Badge>
                   </div>
                   <h3 className="text-base font-black text-white">{feature.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-slate-400">{feature.desc}</p>
+                  {feature.href && (
+                    <span className="mt-5 inline-flex items-center text-sm font-black text-orange-300">
+                      Start now <ArrowRight className="ml-2 h-4 w-4" />
+                    </span>
+                  )}
                 </CardContent>
               </Card>
+            );
+            return feature.href ? (
+              <a key={feature.title} href={feature.href} className="block">{card}</a>
+            ) : (
+              <div key={feature.title}>{card}</div>
             );
           })}
         </div>
         <div className="mt-8 text-center">
-          <p className="text-slate-400 text-sm">Be the first to access these features</p>
-          <a href={whatsappUrl} target="_blank" rel="noreferrer">
-            <Button className="mt-4 bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full px-8">
-              <MessageCircle className="mr-2 h-4 w-4" /> Join the waitlist on WhatsApp
+          <a href="/estimate">
+            <Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full px-8">
+              Start AI Estimate <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </a>
         </div>
@@ -561,7 +579,9 @@ function StickyCTA({ onOpen }) {
             <p className="text-xs text-slate-300">Interiors • Modular Kitchen • Wardrobes • Free consultation</p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={onOpen} className="rounded-full bg-orange-600 font-black hover:bg-orange-700">Get Quote</Button>
+            <a href="/estimate">
+              <Button className="rounded-full bg-orange-600 font-black hover:bg-orange-700">AI Consultation</Button>
+            </a>
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <Button variant="outline" className="rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20">WhatsApp</Button>
             </a>
@@ -761,10 +781,12 @@ export default function HomePageClient() {
             From residential interiors to modular kitchens and wardrobes — book a free consultation and get a digital quotation with no obligation.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button onClick={() => setPopupOpen(true)} size="lg" className="bg-orange-600 px-8 font-black text-white hover:bg-orange-700 rounded-full">Book Free Site Visit</Button>
-            <button onClick={() => setPopupOpen(true)} className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-8 py-3 text-base font-black text-white hover:bg-white/20 transition-colors">
-              Get Instant Estimate
-            </button>
+            <a href="/estimate">
+              <Button size="lg" className="bg-orange-600 px-8 font-black text-white hover:bg-orange-700 rounded-full">
+                Get Instant AI Interior Consultation
+              </Button>
+            </a>
+            <Button onClick={() => setPopupOpen(true)} size="lg" variant="outline" className="border-white/20 bg-white/10 px-8 font-black text-white hover:bg-white/20 rounded-full">Book Free Site Visit</Button>
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <Button size="lg" variant="outline" className="border-white/20 bg-white/10 px-8 font-black text-white hover:bg-white/20 rounded-full">
                 <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp Now

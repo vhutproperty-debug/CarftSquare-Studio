@@ -17,6 +17,7 @@ export default function Footer() {
           <div>
             <h4 className="font-black text-slate-950 mb-3">Services</h4>
             <ul className="space-y-2 text-sm text-slate-500">
+              <li><a href="/estimate" className="hover:text-orange-600">AI Interior Estimate</a></li>
               <li><a href="#services" className="hover:text-orange-600">Interior Services</a></li>
               <li><a href="/rental-interiors" className="hover:text-orange-600">Rental Furnishing</a></li>
               <li><a href="#modular-kitchen" className="hover:text-orange-600">Modular Kitchen</a></li>
@@ -28,6 +29,8 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-slate-500">
               <li><a href="/about" className="hover:text-orange-600">About Us</a></li>
               <li><a href="/gallery" className="hover:text-orange-600">Gallery</a></li>
+              <li><a href="/estimate/commercial" className="hover:text-orange-600">Commercial AI Estimate</a></li>
+              <li><a href="/estimate/office" className="hover:text-orange-600">Office AI Estimate</a></li>
               <li><a href="#projects" className="hover:text-orange-600">Projects</a></li>
             </ul>
           </div>

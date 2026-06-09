@@ -360,9 +360,14 @@ const AdminPage = () => {
             <BrandLogo variant="compact" />
             <span className="text-sm font-black tracking-tight sm:text-lg">Admin</span>
           </a>
-          <a href="/">
-            <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Home className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Public Site</span></Button>
-          </a>
+          <div className="flex items-center gap-2">
+            <a href="/admin/quotation">
+              <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><WalletCards className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">AI Quotations</span></Button>
+            </a>
+            <a href="/">
+              <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Home className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Public Site</span></Button>
+            </a>
+          </div>
         </div>
       </nav>
 

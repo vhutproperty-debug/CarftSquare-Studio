@@ -8,6 +8,8 @@ export default async function sitemap() {
     { path: '/about', priority: 0.8, changeFrequency: 'monthly' },
     { path: '/gallery', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/rental-interiors', priority: 0.8, changeFrequency: 'weekly' },
+    { path: '/estimate', priority: 0.9, changeFrequency: 'weekly' },
+    { path: '/estimate/rental-furnishing', priority: 0.7, changeFrequency: 'weekly' },
     { path: '/shade-explorer', priority: 0.6, changeFrequency: 'monthly' },
   ];
 

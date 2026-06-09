@@ -67,8 +67,9 @@ export default function RentalInteriorsPage() {
             <Badge className="mb-4 border border-orange-300/40 bg-white/10 text-orange-100 hover:bg-white/10">Rental Interiors</Badge>
             <h1 className="text-4xl font-black md:text-6xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{service?.name || 'Rental Interiors'}</h1>
             <p className="mt-6 text-lg leading-8 text-slate-300">{service?.description || service?.shortDescription}</p>
-            <div className="mt-8 flex gap-3">
-              <Link href="/#quote"><Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full">Get Rental Quote <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/estimate"><Button className="bg-orange-600 font-black text-white hover:bg-orange-700 rounded-full">Get AI Furnishing Estimate <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
+              <Link href="/#quote"><Button variant="outline" className="border-white/20 bg-white/10 font-black text-white hover:bg-white/20 rounded-full">Book Consultation</Button></Link>
               <a href={whatsappUrl} target="_blank" rel="noreferrer"><Button variant="outline" className="border-emerald-500/40 text-emerald-200 rounded-full">WhatsApp</Button></a>
             </div>
           </div>
