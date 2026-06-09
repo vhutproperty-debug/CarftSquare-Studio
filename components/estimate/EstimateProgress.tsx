@@ -3,7 +3,7 @@
 const DISPLAY_TOTAL_STEPS = 8;
 
 export function getEstimateProgress(answeredCount: number, phase: string) {
-  if (phase === 'summary' || phase === 'lead' || phase === 'complete') {
+  if (phase === 'summary' || phase === 'lead_prompt' || phase === 'lead' || phase === 'followup' || phase === 'complete') {
     return { step: DISPLAY_TOTAL_STEPS, percent: 100 };
   }
   const step = Math.min(DISPLAY_TOTAL_STEPS, Math.max(1, answeredCount + 1));

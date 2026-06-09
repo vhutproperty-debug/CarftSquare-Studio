@@ -9,10 +9,10 @@ export default function EstimateLeadCapture({
   onSubmit,
   loading,
 }: {
-  onSubmit: (data: { name: string; phone: string; whatsapp: string; email: string }) => void;
+  onSubmit: (data: { name: string; phone: string }) => void;
   loading?: boolean;
 }) {
-  const [form, setForm] = useState({ name: '', phone: '', whatsapp: '', email: '' });
+  const [form, setForm] = useState({ name: '', phone: '' });
 
   return (
     <div className="estimate-glass-card rounded-[2rem] p-8 md:p-10">
@@ -21,10 +21,10 @@ export default function EstimateLeadCapture({
         className="mt-3 text-2xl font-black text-slate-950 md:text-3xl"
         style={{ fontFamily: "'Cormorant Garamond', serif" }}
       >
-        Your AI Interior Report is Ready
+        Let&apos;s Connect You with a Designer
       </h2>
       <p className="mt-3 text-sm leading-7 text-slate-600">
-        Share your contact details to receive your personalised estimate and design recommendations.
+        Share your name and mobile number — a Craft Square Studio designer will reach out to prepare your project.
       </p>
 
       <form
@@ -46,19 +46,6 @@ export default function EstimateLeadCapture({
           value={form.phone}
           onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           required
-          className="h-14 rounded-2xl border-slate-200 px-5"
-        />
-        <Input
-          placeholder="WhatsApp number"
-          value={form.whatsapp}
-          onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
-          className="h-14 rounded-2xl border-slate-200 px-5"
-        />
-        <Input
-          type="email"
-          placeholder="Email address"
-          value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
           className="h-14 rounded-2xl border-slate-200 px-5"
         />
         <Button

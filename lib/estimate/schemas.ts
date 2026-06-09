@@ -22,7 +22,8 @@ export const estimateChatSchema = z.object({
     )
     .default([]),
   userMessage: z.string().trim().max(2000).optional(),
-  phase: z.enum(['discovery', 'summary', 'lead', 'complete']).default('discovery'),
+  phase: z.enum(['discovery', 'summary', 'lead_prompt', 'lead', 'followup', 'complete']).default('discovery'),
+  activeFieldId: z.string().trim().max(80).optional(),
   leadSource: z.string().trim().max(80).optional(),
   campaignName: z.string().trim().max(80).optional(),
   landingPage: z.string().trim().max(200).optional(),

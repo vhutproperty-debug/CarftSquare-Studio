@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { applyPropertyPurposeAnswer } from '@/lib/estimate/modules/qualification';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId, ProjectSummary, PropertyPurpose } from '@/lib/estimate/types';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
@@ -15,7 +14,17 @@ import EstimateSelectionCards from './EstimateSelectionCards';
 import EstimateSummaryPreview from './EstimateSummaryPreview';
 import EstimateTypingIndicator from './EstimateTypingIndicator';
 
-type Phase = 'discovery' | 'summary' | 'lead' | 'complete';
+type Phase = 'discovery' | 'summary' | 'lead_prompt' | 'lead' | 'followup' | 'complete';
+
+type PricingPreview = {
+  formattedRange: string;
+  estimateLow: number;
+  estimateHigh: number;
+  recommendedPackage: string;
+  styleRecommendation: string;
+  timelineWeeks: string;
+  recommendedAddons: string[];
+};
 
 export default function EstimateChat({
   moduleId,
@@ -35,6 +44,7 @@ export default function EstimateChat({
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [nextQuestion, setNextQuestion] = useState<{ id: string; text: string; options?: string[]; type: string } | null>(null);
   const [summary, setSummary] = useState<ProjectSummary | null>(null);
+  const [pricing, setPricing] = useState<PricingPreview | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<EstimateModuleId>(moduleId);
   const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose | null>(null);
   const [input, setInput] = useState('');
@@ -47,7 +57,11 @@ export default function EstimateChat({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [questionKey, setQuestionKey] = useState(0);
 
-  const answeredCount = Object.keys(answers).filter((k) => answers[k] !== undefined && answers[k] !== '').length;
+  const answeredCount = Object.keys(answers).filter((k) => {
+    if (k === 'propertyPurposeRaw') return false;
+    const v = answers[k];
+    return v !== undefined && v !== null && String(v).trim() !== '';
+  }).length;
   const progress = getEstimateProgress(answeredCount, phase);
 
   async function sendChat(payload: {
@@ -55,6 +69,7 @@ export default function EstimateChat({
     conversation: ConversationMessage[];
     userMessage?: string;
     phase?: Phase;
+    activeFieldId?: string;
   }) {
     setLoading(true);
     setError('');
@@ -68,6 +83,7 @@ export default function EstimateChat({
           conversation: payload.conversation,
           userMessage: payload.userMessage,
           phase: payload.phase || phase,
+          activeFieldId: payload.activeFieldId,
           leadSource,
           campaignName,
           landingPage,
@@ -81,11 +97,17 @@ export default function EstimateChat({
       setShowTyping(false);
       setConversation(data.conversation);
       setNextQuestion(data.nextQuestion);
+      if (data.answers) setAnswers(data.answers);
       if (data.summary) setSummary(data.summary);
+      if (data.pricing) setPricing(data.pricing);
       if (data.activeModuleId) setActiveModuleId(data.activeModuleId);
       if (data.propertyPurpose) setPropertyPurpose(data.propertyPurpose);
+
       if (data.phase === 'summary') {
-        setPhase('summary');
+        setPhase('lead_prompt');
+        setShowQuestion(false);
+      } else if (data.phase === 'followup') {
+        setPhase('followup');
         setShowQuestion(false);
       } else {
         setQuestionKey((k) => k + 1);
@@ -112,16 +134,8 @@ export default function EstimateChat({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, phase, loading, analyzing, showTyping, showQuestion]);
 
-  function applyAnswer(value: string) {
-    if (!nextQuestion || analyzing || loading) return;
-
-    let updated: EstimateAnswers = {
-      ...answers,
-      [nextQuestion.id]: nextQuestion.type === 'number' ? Number(value) : value,
-    };
-    if (nextQuestion.id === 'propertyPurpose') {
-      updated = applyPropertyPurposeAnswer(updated, value);
-    }
+  function submitAnswer(value: string, fieldId?: string) {
+    if (!value.trim() || analyzing || loading) return;
 
     setSelectedOption(value);
     setShowQuestion(false);
@@ -130,13 +144,22 @@ export default function EstimateChat({
     setTimeout(() => {
       setAnalyzing(false);
       setShowTyping(true);
-      setAnswers(updated);
       setInput('');
-      sendChat({ answers: updated, conversation, userMessage: value });
+      sendChat({
+        answers,
+        conversation,
+        userMessage: value.trim(),
+        activeFieldId: fieldId || nextQuestion?.id,
+      });
     }, 800);
   }
 
-  async function generateQuote(lead: { name: string; phone: string; whatsapp: string; email: string }) {
+  function applyAnswer(value: string) {
+    if (!nextQuestion || analyzing || loading) return;
+    submitAnswer(value, nextQuestion.id);
+  }
+
+  async function generateQuote(lead: { name: string; phone: string }) {
     setSubmitting(true);
     setError('');
     try {
@@ -149,8 +172,8 @@ export default function EstimateChat({
           conversation,
           name: lead.name,
           phone: lead.phone,
-          whatsapp: lead.whatsapp || lead.phone,
-          email: lead.email,
+          whatsapp: lead.phone,
+          email: '',
           leadSource,
           campaignName,
           landingPage,
@@ -166,7 +189,8 @@ export default function EstimateChat({
     }
   }
 
-  const showInputArea = phase === 'discovery' && nextQuestion && showQuestion && !analyzing && !loading && !showTyping;
+  const showInputArea =
+    phase === 'discovery' && nextQuestion && showQuestion && !analyzing && !loading && !showTyping;
 
   return (
     <>
@@ -192,24 +216,42 @@ export default function EstimateChat({
 
             {showInputArea && nextQuestion.options && (
               <div key={questionKey} className="mt-8 space-y-5 border-t border-slate-100/80 pt-8 estimate-fade-in-up">
-                <p className="text-center text-sm font-semibold text-slate-500">{nextQuestion.text}</p>
                 <EstimateSelectionCards
                   questionId={nextQuestion.id}
                   options={nextQuestion.options}
                   selected={selectedOption}
                   onSelect={applyAnswer}
                 />
+                <form
+                  className="flex flex-col gap-4 sm:flex-row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (input.trim()) submitAnswer(input.trim(), nextQuestion.id);
+                  }}
+                >
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Or type your answer naturally..."
+                    className="h-14 flex-1 rounded-2xl border-slate-200 px-5 text-base"
+                  />
+                  <Button
+                    type="submit"
+                    className="h-14 rounded-2xl bg-orange-600 px-8 font-black text-white hover:bg-orange-700"
+                  >
+                    Send <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </form>
               </div>
             )}
 
             {showInputArea && !nextQuestion.options && (
               <div key={questionKey} className="mt-8 space-y-5 border-t border-slate-100/80 pt-8 estimate-fade-in-up">
-                <p className="text-center text-sm font-semibold text-slate-500">{nextQuestion.text}</p>
                 <form
                   className="flex flex-col gap-4 sm:flex-row"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (input.trim()) applyAnswer(input.trim());
+                    if (input.trim()) submitAnswer(input.trim(), nextQuestion.id);
                   }}
                 >
                   <Input
@@ -228,14 +270,74 @@ export default function EstimateChat({
               </div>
             )}
 
-            {phase === 'summary' && summary && (
+            {(phase === 'lead_prompt' || phase === 'summary') && summary && (
               <div className="mt-8 space-y-6 border-t border-slate-100/80 pt-8">
-                <EstimateSummaryPreview summary={summary} propertyPurpose={propertyPurpose} />
+                <EstimateSummaryPreview
+                  summary={summary}
+                  propertyPurpose={propertyPurpose}
+                  budgetRange={pricing?.formattedRange}
+                />
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 font-black text-white shadow-lg shadow-orange-600/25 transition hover:from-orange-700 hover:to-orange-600"
+                    onClick={() => setPhase('lead')}
+                  >
+                    Yes, Contact Me
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-14 flex-1 rounded-2xl border-slate-200 font-bold text-slate-700"
+                    onClick={() => {
+                      setPhase('followup');
+                      setShowQuestion(false);
+                      setConversation((prev) => [
+                        ...prev,
+                        {
+                          role: 'assistant',
+                          content: "Of course — feel free to ask me anything about your interior project. What would you like to explore?",
+                          timestamp: new Date().toISOString(),
+                        },
+                      ]);
+                    }}
+                  >
+                    Continue with AI
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {phase === 'followup' && !loading && !showTyping && (
+              <div className="mt-8 space-y-5 border-t border-slate-100/80 pt-8 estimate-fade-in-up">
+                <form
+                  className="flex flex-col gap-4 sm:flex-row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (input.trim()) {
+                      setShowTyping(true);
+                      sendChat({ answers, conversation, userMessage: input.trim(), phase: 'followup' });
+                      setInput('');
+                    }
+                  }}
+                >
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Ask about design, materials, storage..."
+                    className="h-14 flex-1 rounded-2xl border-slate-200 px-5 text-base"
+                  />
+                  <Button
+                    type="submit"
+                    className="h-14 rounded-2xl bg-orange-600 px-8 font-black text-white hover:bg-orange-700"
+                  >
+                    Ask <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </form>
                 <Button
-                  className="h-14 w-full rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 font-black text-white shadow-lg shadow-orange-600/25 transition hover:from-orange-700 hover:to-orange-600"
+                  variant="outline"
+                  className="h-12 w-full rounded-2xl border-slate-200 font-bold text-slate-700"
                   onClick={() => setPhase('lead')}
                 >
-                  Generate My AI Interior Report <ArrowRight className="ml-2 h-5 w-5" />
+                  Yes, Contact Me
                 </Button>
               </div>
             )}

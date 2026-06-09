@@ -1,28 +1,21 @@
 import { NextResponse } from 'next/server';
-import { generateConsultantReply, generateSummaryNarrative, getWelcomeMessage } from '@/lib/estimate/ai-consultant';
 import {
-  getNextQuestion,
-  isConversationComplete,
-  resolveActiveModule,
-  resolvePropertyPurpose,
-} from '@/lib/estimate/modules/registry';
-import { applyPropertyPurposeAnswer } from '@/lib/estimate/modules/qualification';
+  generateConsultantReply,
+  generateFollowUpReply,
+  generateRecommendationsNarrative,
+  getWelcomeMessage,
+} from '@/lib/estimate/ai-consultant';
+import {
+  applyPricingDefaults,
+  extractAnswersFromMessage,
+  getNextConsultQuestion,
+  isConsultComplete,
+} from '@/lib/estimate/consultant';
+import { resolveActiveModule, resolvePropertyPurpose } from '@/lib/estimate/modules/registry';
 import { calculateQuotation } from '@/lib/estimate/pricing-engine';
 import { estimateChatSchema } from '@/lib/estimate/schemas';
 import { getDatabase, getModulePricing, ensureQuotationIndexes, seedDefaultPricing } from '@/lib/estimate/store';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId } from '@/lib/estimate/types';
-
-function normalizeAnswers(entryModuleId: EstimateModuleId, answers: EstimateAnswers, userMessage?: string): EstimateAnswers {
-  if (!userMessage) return answers;
-  if (answers.propertyPurpose && String(answers.propertyPurpose).length > 0) return answers;
-  const isPurposeReply =
-    userMessage.includes('Own Residence') ||
-    userMessage.includes('Rental Income') ||
-    userMessage.includes('live here') ||
-    userMessage.includes('furnish it for Rental');
-  if (isPurposeReply) return applyPropertyPurposeAnswer(answers, userMessage);
-  return answers;
-}
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +26,20 @@ export async function POST(request: Request) {
     }
 
     const { moduleId: entryModuleId, conversation, userMessage, phase, leadSource, campaignName, landingPage } = parsed.data;
-    let answers = normalizeAnswers(entryModuleId as EstimateModuleId, parsed.data.answers, userMessage);
+    const activeFieldId = parsed.data.activeFieldId as string | undefined;
+
+    let answers: EstimateAnswers = { ...parsed.data.answers };
+
+    if (userMessage) {
+      const nextQ = getNextConsultQuestion(entryModuleId as EstimateModuleId, answers);
+      answers = await extractAnswersFromMessage(
+        userMessage,
+        entryModuleId as EstimateModuleId,
+        answers,
+        activeFieldId || nextQ?.id,
+        nextQ?.options,
+      );
+    }
 
     const activeModuleId = resolveActiveModule(entryModuleId as EstimateModuleId, answers);
     const propertyPurpose = resolvePropertyPurpose(entryModuleId as EstimateModuleId, answers);
@@ -53,19 +59,52 @@ export async function POST(request: Request) {
       history.push({ role: 'user', content: userMessage, timestamp: now });
     }
 
-    const complete = isConversationComplete(entryModuleId as EstimateModuleId, answers);
-    const nextQuestion = getNextQuestion(entryModuleId as EstimateModuleId, answers);
+    if (phase === 'followup' && userMessage) {
+      const enrichedAnswers = applyPricingDefaults(answers, activeModuleId);
+      const followUp = await generateFollowUpReply(history, enrichedAnswers, userMessage);
+      history.push({ role: 'assistant', content: followUp, timestamp: new Date().toISOString() });
+      return NextResponse.json({
+        phase: 'followup',
+        complete: true,
+        conversation: history,
+        summary: null,
+        pricing: null,
+        answers: enrichedAnswers,
+        nextQuestion: null,
+        activeModuleId,
+        propertyPurpose,
+        leadSource,
+        campaignName,
+        landingPage,
+      });
+    }
 
-    if (phase === 'summary' || complete) {
-      const pricing = calculateQuotation(activeModuleId, answers, config);
+    const complete = isConsultComplete(entryModuleId as EstimateModuleId, answers);
+    const nextQuestion = getNextConsultQuestion(entryModuleId as EstimateModuleId, answers);
+
+    if (phase === 'summary' || phase === 'lead_prompt' || complete) {
+      const enrichedAnswers = applyPricingDefaults(answers, activeModuleId);
+      const pricing = calculateQuotation(activeModuleId, enrichedAnswers, config);
       if (propertyPurpose) pricing.aiSummary.propertyPurpose = propertyPurpose;
-      const summaryText = await generateSummaryNarrative(pricing.aiSummary);
-      history.push({ role: 'assistant', content: summaryText, timestamp: new Date().toISOString() });
+
+      const recommendationsText = await generateRecommendationsNarrative(pricing, enrichedAnswers);
+      history.push({ role: 'assistant', content: recommendationsText, timestamp: new Date().toISOString() });
+
       return NextResponse.json({
         phase: 'summary',
         complete: true,
         conversation: history,
         summary: pricing.aiSummary,
+        pricing: {
+          formattedRange: pricing.formattedRange,
+          estimateLow: pricing.estimateLow,
+          estimateHigh: pricing.estimateHigh,
+          recommendedPackage: pricing.packageName,
+          styleRecommendation: pricing.styleRecommendation,
+          timelineWeeks: pricing.timelineWeeks,
+          recommendedAddons: pricing.recommendedAddons,
+        },
+        answers: enrichedAnswers,
         nextQuestion: null,
         activeModuleId,
         propertyPurpose,
@@ -90,6 +129,8 @@ export async function POST(request: Request) {
       conversation: history,
       nextQuestion,
       summary: null,
+      pricing: null,
+      answers,
       activeModuleId,
       propertyPurpose,
       leadSource,

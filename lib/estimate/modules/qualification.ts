@@ -4,10 +4,7 @@ import type { QuestionDef } from './interior';
 export const QUALIFICATION_QUESTION: QuestionDef = {
   id: 'propertyPurpose',
   text: 'What is the purpose of this property?',
-  options: [
-    '🏠 I will live here (Own Residence)',
-    '💼 I want to furnish it for Rental Income',
-  ],
+  options: ['Own Residence', 'Rental Income'],
   type: 'choice',
 };
 
@@ -15,7 +12,7 @@ export function normalizePropertyPurpose(raw: string): PropertyPurpose | null {
   const value = String(raw || '').trim();
   if (!value) return null;
   if (value.includes('Own Residence') || value.includes('live here')) return 'Own Residence';
-  if (value.includes('Rental Income') || value.includes('furnish it for Rental')) return 'Rental Furnishing';
+  if (value.includes('Rental Income') || value.includes('Rental Furnishing') || value.includes('furnish it for Rental')) return 'Rental Furnishing';
   if (value === 'Own Residence' || value === 'Rental Furnishing') return value as PropertyPurpose;
   return null;
 }

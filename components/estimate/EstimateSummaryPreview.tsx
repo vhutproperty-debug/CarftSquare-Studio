@@ -11,14 +11,25 @@ function storageScore(priority: string) {
 export default function EstimateSummaryPreview({
   summary,
   propertyPurpose,
+  budgetRange,
 }: {
   summary: ProjectSummary;
   propertyPurpose?: string | null;
+  budgetRange?: string | null;
 }) {
   const score = storageScore(summary.priority);
 
   return (
     <div className="estimate-scale-in space-y-4">
+      {budgetRange && (
+        <Card className="estimate-glass-card border-0 shadow-none">
+          <CardContent className="p-6">
+            <p className="text-xs font-bold uppercase tracking-wider text-orange-600">Estimated Budget Range</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{budgetRange}</p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="estimate-glass-card border-0 shadow-none">
           <CardContent className="p-6">

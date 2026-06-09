@@ -1,6 +1,7 @@
+import { getNextConsultQuestion, isConsultComplete } from '../consultant';
 import type { EstimateAnswers, EstimateModuleId } from '../types';
-import { getNextInteriorQuestion, INTERIOR_QUESTIONS, type QuestionDef } from './interior';
-import { getNextRentalQuestion, RENTAL_QUESTIONS } from './rental-furnishing';
+import { INTERIOR_QUESTIONS, type QuestionDef } from './interior';
+import { RENTAL_QUESTIONS } from './rental-furnishing';
 import {
   needsQualification,
   QUALIFICATION_QUESTION,
@@ -28,25 +29,11 @@ export function getQuestionsForModule(moduleId: EstimateModuleId): QuestionDef[]
 }
 
 export function getNextQuestion(entryModuleId: EstimateModuleId, answers: EstimateAnswers): QuestionDef | null {
-  if (needsQualification(entryModuleId, answers)) {
-    return QUALIFICATION_QUESTION;
-  }
-
-  const activeModule = resolveActiveModule(entryModuleId, answers);
-  if (activeModule === 'rental-furnishing') return getNextRentalQuestion(answers);
-
-  const all = getQuestionsForModule(activeModule);
-  for (const question of all) {
-    if (answers[question.id] !== undefined && answers[question.id] !== '') continue;
-    if (question.when && !question.when(answers)) continue;
-    if (answers.ownership === 'Rental' && ['modularKitchen', 'smartHome'].includes(question.id)) continue;
-    return question;
-  }
-  return getNextInteriorQuestion(answers);
+  return getNextConsultQuestion(entryModuleId, answers);
 }
 
 export function isConversationComplete(entryModuleId: EstimateModuleId, answers: EstimateAnswers): boolean {
-  return getNextQuestion(entryModuleId, answers) === null;
+  return isConsultComplete(entryModuleId, answers);
 }
 
 export function getModuleLandingPath(moduleId: EstimateModuleId): string {
