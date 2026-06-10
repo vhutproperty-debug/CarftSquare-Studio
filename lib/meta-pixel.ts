@@ -27,10 +27,12 @@ export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
 }
 
+const DEFAULT_META_PIXEL_ID = '1340743388120075';
+
 /** Returns the pixel ID or null when disabled / missing. */
 export function getMetaPixelId(): string | null {
-  const id = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
-  return id || null;
+  if (process.env.NODE_ENV !== 'production') return null;
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || DEFAULT_META_PIXEL_ID;
 }
 
 function safeFbq(...args: unknown[]): void {
