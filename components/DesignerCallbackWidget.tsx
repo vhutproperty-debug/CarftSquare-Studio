@@ -115,6 +115,7 @@ export default function DesignerCallbackWidget() {
           if (!next) resetForm();
         }}
       >
+        {open && (
         <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[1.75rem] border-slate-100 bg-white p-0 sm:max-w-md">
           {success ? (
             <div className="p-8 text-center md:p-10">
@@ -207,6 +208,7 @@ export default function DesignerCallbackWidget() {
             </div>
           )}
         </DialogContent>
+        )}
       </Dialog>
     </>
   );
