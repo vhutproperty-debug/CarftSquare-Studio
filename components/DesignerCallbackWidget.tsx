@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { trackLeadFromSource } from '@/lib/meta-pixel';
 
 const PROJECT_TYPES = ['Home', 'Office', 'Commercial', 'Rental Property', 'Other'] as const;
 
@@ -74,6 +75,12 @@ export default function DesignerCallbackWidget() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
 
+      if (!data.duplicate) {
+        trackLeadFromSource('designer_callback', {
+          project_type: form.projectType || undefined,
+          landing_page: pathname,
+        });
+      }
       setSuccess(true);
     } catch (err) {
       submittedRef.current = false;

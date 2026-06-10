@@ -23,6 +23,8 @@ const defaultLead = {
   website: '',
 };
 
+import { trackLeadFromSource } from '@/lib/meta-pixel';
+
 function trackAnalyticsEvent(eventName, parameters = {}) {
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
     window.gtag('event', eventName, parameters);
@@ -102,6 +104,10 @@ export default function LeadForm({ compact = false, onLeadCreated }) {
         event_label: 'Lead form submission',
         service: form.service,
         source: compact ? 'sticky_popup' : 'homepage',
+      });
+      trackLeadFromSource('contact_consultation_form', {
+        service: form.service,
+        form_source: compact ? 'sticky_popup' : 'homepage',
       });
       setForm((current) => ({ ...defaultLead, phone: current.phone }));
       setEstimate(data.lead?.estimate || currentEstimate);

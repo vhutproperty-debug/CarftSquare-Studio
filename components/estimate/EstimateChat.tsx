@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId, PropertyPurpose } from '@/lib/estimate/types';
+import { trackLeadFromSource } from '@/lib/meta-pixel';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
 import EstimateMessageBubble from './EstimateMessageBubble';
@@ -171,6 +172,12 @@ export default function EstimateChat({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Quote failed');
       if (data.quote?.id) {
+        if (!data.duplicate) {
+          trackLeadFromSource('ai_interior_consultant', {
+            module_id: moduleId,
+            landing_page: landingPage,
+          });
+        }
         router.push(`/estimate/result/${data.quote.id}`);
       }
     } catch (err) {
