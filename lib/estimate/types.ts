@@ -9,10 +9,11 @@ export type EstimateModuleId =
 export type LeadStatus =
   | 'new'
   | 'contacted'
-  | 'site_visit'
-  | 'negotiation'
+  | 'meeting_scheduled'
   | 'won'
-  | 'lost';
+  | 'lost'
+  | 'site_visit'
+  | 'negotiation';
 
 export type PackageTier = 'economy' | 'standard' | 'premium' | 'luxury';
 
@@ -118,6 +119,8 @@ export interface ProjectSummary {
   materialRecommendation: string;
   timeline: string;
   propertyPurpose?: PropertyPurpose | null;
+  customerRequirementSummary?: string;
+  suggestedNextStep?: string;
 }
 
 export interface QuotationQuote {
@@ -146,6 +149,7 @@ export interface QuotationQuote {
   pdfStored: boolean;
   pdfPath?: string;
   status: LeadStatus;
+  notes: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -14,3 +14,9 @@ export {
   getConsultQuestionCount,
   getConsultProgress,
 } from './engine';
+export {
+  validateConsultationAnswers,
+  getMissingConsultationFields,
+  normalizePhone,
+  isValidIndianPhone,
+} from './validation';

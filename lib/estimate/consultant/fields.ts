@@ -28,7 +28,7 @@ export const OWN_RESIDENCE_FIELDS: ConsultField[] = [
   { id: 'designStyle', text: 'Which design style appeals to you most?', options: ['Modern Minimal', 'Contemporary', 'Scandinavian', 'Luxury Classic', 'Industrial'], type: 'choice', required: false, priority: 5 },
   { id: 'familySize', text: 'How many family members will live here?', options: ['1-2', '3-4', '5-6', '7+'], type: 'choice', required: false, priority: 6 },
   { id: 'storagePriority', text: 'How important is storage optimization?', options: ['Essential', 'Important', 'Moderate', 'Not a priority'], type: 'choice', required: false, priority: 7 },
-  { id: 'possession', text: 'When would you like the project completed?', options: ['Immediately', 'Within 1 month', '1–3 months', '3–6 months', 'Flexible'], type: 'choice', required: false, priority: 8 },
+  { id: 'possession', text: 'When would you like the project completed?', options: ['Immediately', 'Within 1 month', '1–3 months', '3–6 months', 'Flexible'], type: 'choice', required: true, priority: 8 },
 ];
 
 export const RENTAL_FIELDS: ConsultField[] = [
@@ -38,7 +38,7 @@ export const RENTAL_FIELDS: ConsultField[] = [
   { id: 'rentalType', text: 'Is this for long-term rental or Airbnb?', options: ['Long-term Rental', 'Airbnb / Short Stay'], type: 'choice', required: false, priority: 4 },
   { id: 'furnishingLevel', text: 'What furnishing level are you looking for?', options: ['Basic', 'Premium', 'Luxury'], type: 'choice', required: false, priority: 5 },
   { id: 'budget', text: 'What is your furnishing budget?', options: ['Under ₹3L', '₹3L – ₹6L', '₹6L – ₹10L', '₹10L+'], type: 'choice', required: true, priority: 6 },
-  { id: 'possessionDate', text: 'When do you need possession / handover?', options: ['Immediately', 'Within 2 weeks', 'Within 1 month', '1–3 months', 'Flexible'], type: 'choice', required: false, priority: 7 },
+  { id: 'possessionDate', text: 'When do you need possession / handover?', options: ['Immediately', 'Within 2 weeks', 'Within 1 month', '1–3 months', 'Flexible'], type: 'choice', required: true, priority: 7 },
 ];
 
 export const KITCHEN_FIELDS: ConsultField[] = [

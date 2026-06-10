@@ -39,7 +39,7 @@ export const estimateLeadSchema = z.object({
     'office-interior',
     'commercial-interior',
   ]),
-  name: z.string().trim().min(2).max(120),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(120),
   phone: phoneSchema,
   whatsapp: phoneSchema.optional(),
   email: z.string().trim().email().max(254).optional().or(z.literal('')),

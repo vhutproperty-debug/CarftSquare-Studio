@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import DesignerCallbackRoot from '@/components/DesignerCallbackRoot';
 import { getRootMetadata } from '@/lib/seo/metadata';
 import './globals.css';
 
@@ -18,6 +19,7 @@ const RootLayout = ({ children }) => {
       </head>
       <body>
         {children}
+        <DesignerCallbackRoot />
         {gaId && (
           <>
             <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />

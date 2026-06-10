@@ -95,6 +95,15 @@ export default function EstimateResultView({
         </CardContent>
       </Card>
 
+      {aiSummary.customerRequirementSummary && (
+        <Card className="estimate-glass-card border-0 shadow-none">
+          <CardContent className="space-y-2 p-6">
+            <p className="text-xs font-bold uppercase tracking-wider text-orange-600">Customer Requirement Summary</p>
+            <p className="text-sm leading-7 text-slate-600">{aiSummary.customerRequirementSummary}</p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="estimate-glass-card border-0 shadow-none">
         <CardContent className="space-y-3 p-6">
           <p className="flex items-center gap-2 font-black text-slate-950">
@@ -109,6 +118,15 @@ export default function EstimateResultView({
           </p>
         </CardContent>
       </Card>
+
+      {aiSummary.suggestedNextStep && (
+        <Card className="estimate-glass-card border-0 border-l-4 border-l-orange-500 shadow-none">
+          <CardContent className="space-y-2 p-6">
+            <p className="text-xs font-bold uppercase tracking-wider text-orange-600">Suggested Next Step</p>
+            <p className="text-sm font-semibold leading-7 text-slate-800">{aiSummary.suggestedNextStep}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="estimate-glass-card border-0 shadow-none">
         <CardContent className="space-y-4 p-6">

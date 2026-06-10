@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import DesignerLeadsPanel from '@/components/admin/quotation/DesignerLeadsPanel';
 import QuotationAnalyticsPanel from '@/components/admin/quotation/QuotationAnalyticsPanel';
 import QuotationLeadsPanel from '@/components/admin/quotation/QuotationLeadsPanel';
 import QuotationPricingPanel from '@/components/admin/quotation/QuotationPricingPanel';
 
-type Tab = 'pricing' | 'leads' | 'analytics';
+type Tab = 'pricing' | 'leads' | 'designer-leads' | 'analytics';
 
 export default function QuotationAdminPage() {
   const [tab, setTab] = useState<Tab>('pricing');
@@ -60,9 +61,14 @@ export default function QuotationAdminPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(['pricing', 'leads', 'analytics'] as Tab[]).map((item) => (
-            <Button key={item} onClick={() => setTab(item)} className={tab === item ? 'bg-orange-600 text-white' : 'bg-white/10 text-white'}>
-              {item}
+          {([
+            { id: 'pricing' as Tab, label: 'Pricing' },
+            { id: 'leads' as Tab, label: 'AI Leads' },
+            { id: 'designer-leads' as Tab, label: 'Human Designer Leads' },
+            { id: 'analytics' as Tab, label: 'Analytics' },
+          ]).map((item) => (
+            <Button key={item.id} onClick={() => setTab(item.id)} className={tab === item.id ? 'bg-orange-600 text-white' : 'bg-white/10 text-white'}>
+              {item.label}
             </Button>
           ))}
         </div>
@@ -70,6 +76,7 @@ export default function QuotationAdminPage() {
         <div className="rounded-3xl border border-white/10 bg-white p-6 text-slate-950">
           {tab === 'pricing' && <QuotationPricingPanel />}
           {tab === 'leads' && <QuotationLeadsPanel />}
+          {tab === 'designer-leads' && <DesignerLeadsPanel />}
           {tab === 'analytics' && <QuotationAnalyticsPanel />}
         </div>
       </div>

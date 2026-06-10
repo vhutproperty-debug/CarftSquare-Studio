@@ -1,25 +1,61 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { LeadStatus, QuotationLead } from '@/lib/estimate/types';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import type { EstimateModuleId, LeadStatus, QuotationLead } from '@/lib/estimate/types';
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'site_visit', 'negotiation', 'won', 'lost'];
+const STATUSES: { id: LeadStatus; label: string }[] = [
+  { id: 'new', label: 'New' },
+  { id: 'contacted', label: 'Contacted' },
+  { id: 'meeting_scheduled', label: 'Meeting Scheduled' },
+  { id: 'won', label: 'Won' },
+  { id: 'lost', label: 'Lost' },
+];
+
+const MODULES: EstimateModuleId[] = [
+  'home-interior',
+  'rental-furnishing',
+  'modular-kitchen',
+  'wardrobe',
+  'office-interior',
+  'commercial-interior',
+];
+
+function statusLabel(status: LeadStatus) {
+  return STATUSES.find((s) => s.id === status)?.label || status.replace(/_/g, ' ');
+}
 
 export default function QuotationLeadsPanel() {
   const [leads, setLeads] = useState<QuotationLead[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [moduleFilter, setModuleFilter] = useState('');
+  const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
 
-  async function load() {
-    const res = await fetch('/api/admin/quotation/leads', { credentials: 'include' });
+  const load = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set('q', search.trim());
+    if (statusFilter) params.set('status', statusFilter);
+    if (moduleFilter) params.set('moduleId', moduleFilter);
+    const res = await fetch(`/api/admin/quotation/leads?${params}`, { credentials: 'include' });
     const data = await res.json();
-    if (res.ok) setLeads(data.leads || []);
-  }
+    if (res.ok) {
+      setLeads(data.leads || []);
+      const drafts: Record<string, string> = {};
+      for (const lead of data.leads || []) {
+        drafts[lead.id] = lead.notes || '';
+      }
+      setNotesDraft(drafts);
+    }
+  }, [search, statusFilter, moduleFilter]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function updateStatus(id: string, status: LeadStatus) {
     await fetch('/api/admin/quotation/leads', {
@@ -31,38 +67,111 @@ export default function QuotationLeadsPanel() {
     load();
   }
 
+  async function saveNotes(id: string) {
+    await fetch('/api/admin/quotation/leads', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, notes: notesDraft[id] || '' }),
+    });
+    load();
+  }
+
   return (
-    <div className="space-y-4">
-      {leads.map((lead) => (
-        <Card key={lead.id} className="border-slate-100">
-          <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto]">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-black">{lead.customer?.name || 'Unknown'}</p>
-                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">{lead.quoteNumber}</Badge>
-                <Badge variant="outline">{lead.moduleId}</Badge>
-                {lead.propertyPurpose && (
-                  <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">{lead.propertyPurpose}</Badge>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <Input
+          placeholder="Search name, phone, city, quote ID..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          value={moduleFilter}
+          onChange={(e) => setModuleFilter(e.target.value)}
+          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">All modules</option>
+          {MODULES.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <Button variant="outline" onClick={load}>Refresh</Button>
+      </div>
+
+      <div className="space-y-4">
+        {leads.map((lead) => (
+          <Card key={lead.id} className="border-slate-100">
+            <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_280px]">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-black">{lead.customer?.name || 'Unknown'}</p>
+                  <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">{lead.quoteNumber}</Badge>
+                  <Badge variant="outline">{lead.moduleId}</Badge>
+                  <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">{statusLabel(lead.status)}</Badge>
+                  {lead.propertyPurpose && (
+                    <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">{lead.propertyPurpose}</Badge>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-slate-600">
+                  {lead.customer?.phone}
+                  {lead.customer?.email ? ` · ${lead.customer.email}` : ''}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {lead.pricing?.formattedRange} · {String(lead.answers?.city || '—')} · {lead.area || 0} sq.ft
+                </p>
+                {lead.aiSummary?.customerRequirementSummary && (
+                  <p className="mt-2 text-sm text-slate-600">{lead.aiSummary.customerRequirementSummary}</p>
                 )}
+                <p className="mt-1 text-xs text-slate-500">
+                  ID: {lead.id} · Source: {lead.leadSource} · {new Date(lead.createdAt).toLocaleString('en-IN')}
+                </p>
+                <div className="mt-3">
+                  <Textarea
+                    placeholder="Admin notes..."
+                    value={notesDraft[lead.id] ?? ''}
+                    onChange={(e) => setNotesDraft((d) => ({ ...d, [lead.id]: e.target.value }))}
+                    className="min-h-[72px] text-sm"
+                  />
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => saveNotes(lead.id)}>
+                    Save Notes
+                  </Button>
+                </div>
               </div>
-              <p className="mt-2 text-sm text-slate-600">{lead.customer?.phone} · {lead.customer?.email}</p>
-              <p className="mt-1 text-sm text-slate-600">{lead.pricing.formattedRange} · {lead.landingPage}</p>
-              <p className="mt-1 text-xs text-slate-500">Source: {lead.leadSource} · {new Date(lead.createdAt).toLocaleString('en-IN')}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {STATUSES.map((status) => (
-                <Button key={status} size="sm" variant={lead.status === status ? 'default' : 'outline'} className={lead.status === status ? 'bg-orange-600 text-white' : ''} onClick={() => updateStatus(lead.id, status)}>
-                  {status}
-                </Button>
-              ))}
-              <a href={`/api/estimate/quote/${lead.id}/pdf`} target="_blank" rel="noreferrer">
-                <Button size="sm" variant="outline">PDF</Button>
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      {!leads.length && <p className="text-slate-500">No AI quotation leads yet.</p>}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Update Status</p>
+                <div className="flex flex-wrap gap-2">
+                  {STATUSES.map((s) => (
+                    <Button
+                      key={s.id}
+                      size="sm"
+                      variant={lead.status === s.id ? 'default' : 'outline'}
+                      className={lead.status === s.id ? 'bg-orange-600 text-white' : ''}
+                      onClick={() => updateStatus(lead.id, s.id)}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
+                <a href={`/api/estimate/quote/${lead.id}/pdf`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" className="w-full">Download PDF</Button>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {!leads.length && <p className="text-slate-500">No AI consultation enquiries found.</p>}
+      </div>
     </div>
   );
 }

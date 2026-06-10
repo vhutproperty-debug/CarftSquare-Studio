@@ -22,6 +22,9 @@ export async function ensureQuotationIndexes(db: Db): Promise<void> {
   await db.collection('quotation_quotes').createIndex({ moduleId: 1 });
   await db.collection('quotation_quotes').createIndex({ status: 1 });
   await db.collection('quotation_quotes').createIndex({ leadSource: 1 });
+  await db.collection('quotation_quotes').createIndex({ 'customer.phone': 1 });
+  await db.collection('quotation_quotes').createIndex({ 'customer.name': 1 });
+  await db.collection('quotation_quotes').createIndex({ 'answers.city': 1 });
   await db.collection('quotation_settings').createIndex({ key: 1 }, { unique: true });
 }
 
@@ -69,6 +72,7 @@ export async function createQuoteRecord(
     quoteNumber: generateQuoteNumber(),
     pdfStored: false,
     status: 'new',
+    notes: payload.notes || '',
     createdAt: now,
     updatedAt: now,
   };
@@ -84,6 +88,29 @@ export async function updateQuote(db: Db, id: string, patch: Partial<QuotationQu
   const updatedAt = new Date().toISOString();
   await db.collection('quotation_quotes').updateOne({ id }, { $set: { ...patch, updatedAt } });
   return getQuoteById(db, id);
+}
+
+export async function findRecentQuoteByPhone(
+  db: Db,
+  phone: string,
+  withinMinutes = 30,
+): Promise<QuotationQuote | null> {
+  const digits = phone.replace(/\D/g, '').slice(-10);
+  if (!digits) return null;
+  const since = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString();
+  const quotes = (await db
+    .collection('quotation_quotes')
+    .find(
+      {
+        createdAt: { $gte: since },
+        'customer.phone': { $regex: digits },
+      },
+      { projection: { _id: 0 } },
+    )
+    .sort({ createdAt: -1 })
+    .limit(1)
+    .toArray()) as QuotationQuote[];
+  return quotes[0] || null;
 }
 
 export function toQuotationLead(quote: QuotationQuote): QuotationLead {

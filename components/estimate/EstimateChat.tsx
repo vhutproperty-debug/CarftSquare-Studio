@@ -5,26 +5,15 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { ConversationMessage, EstimateAnswers, EstimateModuleId, ProjectSummary, PropertyPurpose } from '@/lib/estimate/types';
+import type { ConversationMessage, EstimateAnswers, EstimateModuleId, PropertyPurpose } from '@/lib/estimate/types';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
 import EstimateMessageBubble from './EstimateMessageBubble';
 import EstimateProgress, { getEstimateProgress } from './EstimateProgress';
 import EstimateSelectionCards from './EstimateSelectionCards';
-import EstimateSummaryPreview from './EstimateSummaryPreview';
 import EstimateTypingIndicator from './EstimateTypingIndicator';
 
-type Phase = 'discovery' | 'summary' | 'lead_prompt' | 'lead' | 'followup' | 'complete';
-
-type PricingPreview = {
-  formattedRange: string;
-  estimateLow: number;
-  estimateHigh: number;
-  recommendedPackage: string;
-  styleRecommendation: string;
-  timelineWeeks: string;
-  recommendedAddons: string[];
-};
+type Phase = 'discovery' | 'lead' | 'followup' | 'complete';
 
 export default function EstimateChat({
   moduleId,
@@ -43,8 +32,6 @@ export default function EstimateChat({
   const [answers, setAnswers] = useState<EstimateAnswers>({});
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [nextQuestion, setNextQuestion] = useState<{ id: string; text: string; options?: string[]; type: string } | null>(null);
-  const [summary, setSummary] = useState<ProjectSummary | null>(null);
-  const [pricing, setPricing] = useState<PricingPreview | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<EstimateModuleId>(moduleId);
   const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose | null>(null);
   const [input, setInput] = useState('');
@@ -56,6 +43,7 @@ export default function EstimateChat({
   const [showQuestion, setShowQuestion] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [questionKey, setQuestionKey] = useState(0);
+  const submittedRef = useRef(false);
 
   const answeredCount = Object.keys(answers).filter((k) => {
     if (k === 'propertyPurposeRaw') return false;
@@ -98,24 +86,23 @@ export default function EstimateChat({
       setConversation(data.conversation);
       setNextQuestion(data.nextQuestion);
       if (data.answers) setAnswers(data.answers);
-      if (data.summary) setSummary(data.summary);
-      if (data.pricing) setPricing(data.pricing);
       if (data.activeModuleId) setActiveModuleId(data.activeModuleId);
       if (data.propertyPurpose) setPropertyPurpose(data.propertyPurpose);
 
-      if (data.phase === 'summary') {
-        setPhase('lead_prompt');
+      if (data.phase === 'lead') {
+        setPhase('lead');
         setShowQuestion(false);
       } else if (data.phase === 'followup') {
         setPhase('followup');
         setShowQuestion(false);
       } else {
+        setPhase('discovery');
         setQuestionKey((k) => k + 1);
         setShowQuestion(true);
         setSelectedOption(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setShowTyping(false);
       setShowQuestion(true);
     } finally {
@@ -159,7 +146,9 @@ export default function EstimateChat({
     submitAnswer(value, nextQuestion.id);
   }
 
-  async function generateQuote(lead: { name: string; phone: string }) {
+  async function generateQuote(lead: { name: string; phone: string; email: string }) {
+    if (submittedRef.current || submitting) return;
+    submittedRef.current = true;
     setSubmitting(true);
     setError('');
     try {
@@ -173,7 +162,7 @@ export default function EstimateChat({
           name: lead.name,
           phone: lead.phone,
           whatsapp: lead.phone,
-          email: '',
+          email: lead.email || '',
           leadSource,
           campaignName,
           landingPage,
@@ -181,8 +170,11 @@ export default function EstimateChat({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Quote failed');
-      router.push(`/estimate/result/${data.quote.id}`);
+      if (data.quote?.id) {
+        router.push(`/estimate/result/${data.quote.id}`);
+      }
     } catch (err) {
+      submittedRef.current = false;
       setError(err instanceof Error ? err.message : 'Could not generate quotation');
     } finally {
       setSubmitting(false);
@@ -270,39 +262,9 @@ export default function EstimateChat({
               </div>
             )}
 
-            {(phase === 'lead_prompt' || phase === 'summary') && summary && (
-              <div className="mt-8 space-y-6 border-t border-slate-100/80 pt-8">
-                <EstimateSummaryPreview
-                  summary={summary}
-                  propertyPurpose={propertyPurpose}
-                  budgetRange={pricing?.formattedRange}
-                />
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button
-                    className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 font-black text-white shadow-lg shadow-orange-600/25 transition hover:from-orange-700 hover:to-orange-600"
-                    onClick={() => setPhase('lead')}
-                  >
-                    Yes, Contact Me
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-14 flex-1 rounded-2xl border-slate-200 font-bold text-slate-700"
-                    onClick={() => {
-                      setPhase('followup');
-                      setShowQuestion(false);
-                      setConversation((prev) => [
-                        ...prev,
-                        {
-                          role: 'assistant',
-                          content: "Of course — feel free to ask me anything about your interior project. What would you like to explore?",
-                          timestamp: new Date().toISOString(),
-                        },
-                      ]);
-                    }}
-                  >
-                    Continue with AI
-                  </Button>
-                </div>
+            {phase === 'lead' && (
+              <div className="mt-8 border-t border-slate-100/80 pt-8">
+                <EstimateLeadCapture onSubmit={generateQuote} loading={submitting} />
               </div>
             )}
 
@@ -332,25 +294,12 @@ export default function EstimateChat({
                     Ask <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
-                <Button
-                  variant="outline"
-                  className="h-12 w-full rounded-2xl border-slate-200 font-bold text-slate-700"
-                  onClick={() => setPhase('lead')}
-                >
-                  Yes, Contact Me
-                </Button>
               </div>
             )}
 
             {error && <p className="mt-4 text-center text-sm font-semibold text-red-600">{error}</p>}
           </div>
         </div>
-
-        {phase === 'lead' && (
-          <div className="estimate-fade-in-up mt-8">
-            <EstimateLeadCapture onSubmit={generateQuote} loading={submitting} />
-          </div>
-        )}
       </div>
     </>
   );

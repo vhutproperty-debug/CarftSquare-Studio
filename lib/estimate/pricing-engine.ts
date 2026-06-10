@@ -72,6 +72,23 @@ function addonCost(answers: EstimateAnswers, config: ModulePricingConfig, area: 
   return { total, names };
 }
 
+function buildRequirementSummary(answers: EstimateAnswers, propertyPurpose: ProjectSummary['propertyPurpose']): string {
+  const type = String(answers.bedrooms || answers.propertyType || answers.projectType || 'Property');
+  const city = String(answers.city || 'Mumbai');
+  const area = answers.carpetArea ? `${answers.carpetArea} sq.ft` : 'TBC';
+  const style = String(answers.designStyle || answers.furnishingLevel || 'Contemporary');
+  const timeline = String(answers.possession || answers.possessionDate || 'Flexible');
+  const purpose = propertyPurpose || 'Interior';
+  return `${purpose} · ${type} in ${city} (${area}) · ${style} style · Timeline: ${timeline}`;
+}
+
+function buildSuggestedNextStep(propertyPurpose: ProjectSummary['propertyPurpose']): string {
+  if (propertyPurpose === 'Rental Furnishing') {
+    return 'Schedule a site visit to finalise furnishing scope and tenant-ready handover timeline.';
+  }
+  return 'Book a free design consultation with a Craft Square Studio senior designer to refine layouts and materials.';
+}
+
 export function buildProjectSummary(
   answers: EstimateAnswers,
   pkgName: string,
@@ -80,6 +97,7 @@ export function buildProjectSummary(
   timeline: string,
   propertyPurpose: ProjectSummary['propertyPurpose'] = null,
 ): ProjectSummary {
+  const requirementSummary = buildRequirementSummary(answers, propertyPurpose);
   return {
     projectType: String(answers.projectType || answers.propertyType || answers.rentalType || 'Interior Project'),
     area: answers.carpetArea ? `${answers.carpetArea} sq.ft` : 'To be confirmed',
@@ -91,6 +109,8 @@ export function buildProjectSummary(
     materialRecommendation: material,
     timeline,
     propertyPurpose,
+    customerRequirementSummary: requirementSummary,
+    suggestedNextStep: buildSuggestedNextStep(propertyPurpose),
   };
 }
 

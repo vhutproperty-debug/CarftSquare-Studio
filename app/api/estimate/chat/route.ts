@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import {
   generateConsultantReply,
   generateFollowUpReply,
-  generateRecommendationsNarrative,
   getWelcomeMessage,
 } from '@/lib/estimate/ai-consultant';
 import {
@@ -12,10 +11,12 @@ import {
   isConsultComplete,
 } from '@/lib/estimate/consultant';
 import { resolveActiveModule, resolvePropertyPurpose } from '@/lib/estimate/modules/registry';
-import { calculateQuotation } from '@/lib/estimate/pricing-engine';
 import { estimateChatSchema } from '@/lib/estimate/schemas';
-import { getDatabase, getModulePricing, ensureQuotationIndexes, seedDefaultPricing } from '@/lib/estimate/store';
+import { getDatabase, ensureQuotationIndexes, seedDefaultPricing } from '@/lib/estimate/store';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId } from '@/lib/estimate/types';
+
+const LEAD_TRANSITION_MESSAGE =
+  "Wonderful — I have a clear picture of your project. Please share your contact details below and I'll generate your personalised interior estimate and design recommendations.";
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     const db = await getDatabase();
     await ensureQuotationIndexes(db);
     await seedDefaultPricing(db);
-    const config = await getModulePricing(db, activeModuleId);
+
     const now = new Date().toISOString();
     const history: ConversationMessage[] = [...conversation];
 
@@ -82,29 +83,15 @@ export async function POST(request: Request) {
     const complete = isConsultComplete(entryModuleId as EstimateModuleId, answers);
     const nextQuestion = getNextConsultQuestion(entryModuleId as EstimateModuleId, answers);
 
-    if (phase === 'summary' || phase === 'lead_prompt' || complete) {
-      const enrichedAnswers = applyPricingDefaults(answers, activeModuleId);
-      const pricing = calculateQuotation(activeModuleId, enrichedAnswers, config);
-      if (propertyPurpose) pricing.aiSummary.propertyPurpose = propertyPurpose;
-
-      const recommendationsText = await generateRecommendationsNarrative(pricing, enrichedAnswers);
-      history.push({ role: 'assistant', content: recommendationsText, timestamp: new Date().toISOString() });
-
+    if (complete) {
+      history.push({ role: 'assistant', content: LEAD_TRANSITION_MESSAGE, timestamp: new Date().toISOString() });
       return NextResponse.json({
-        phase: 'summary',
+        phase: 'lead',
         complete: true,
         conversation: history,
-        summary: pricing.aiSummary,
-        pricing: {
-          formattedRange: pricing.formattedRange,
-          estimateLow: pricing.estimateLow,
-          estimateHigh: pricing.estimateHigh,
-          recommendedPackage: pricing.packageName,
-          styleRecommendation: pricing.styleRecommendation,
-          timelineWeeks: pricing.timelineWeeks,
-          recommendedAddons: pricing.recommendedAddons,
-        },
-        answers: enrichedAnswers,
+        summary: null,
+        pricing: null,
+        answers,
         nextQuestion: null,
         activeModuleId,
         propertyPurpose,
@@ -138,6 +125,9 @@ export async function POST(request: Request) {
       landingPage,
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Chat failed' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Chat failed. Please try again.' },
+      { status: 500 },
+    );
   }
 }
