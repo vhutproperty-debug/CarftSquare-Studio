@@ -4,8 +4,12 @@ import type { Db } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import { DEFAULT_MODULE_PRICING } from './defaults';
 import type {
+  ConsultationDraft,
+  ConversationMessage,
+  EstimateAnswers,
   EstimateModuleId,
   ModulePricingConfig,
+  ProjectSummary,
   QuotationLead,
   QuotationQuote,
 } from './types';
@@ -26,6 +30,11 @@ export async function ensureQuotationIndexes(db: Db): Promise<void> {
   await db.collection('quotation_quotes').createIndex({ 'customer.name': 1 });
   await db.collection('quotation_quotes').createIndex({ 'answers.city': 1 });
   await db.collection('quotation_settings').createIndex({ key: 1 }, { unique: true });
+  await db.collection('quotation_consultations').createIndex({ id: 1 }, { unique: true });
+  await db.collection('quotation_consultations').createIndex({ createdAt: -1 });
+  await db.collection('quotation_consultations').createIndex({ convertedQuoteId: 1 });
+  await db.collection('quotation_quotes').createIndex({ leadScore: -1 });
+  await db.collection('quotation_quotes').createIndex({ projectCategory: 1 });
 }
 
 export async function getModulePricing(db: Db, moduleId: EstimateModuleId): Promise<ModulePricingConfig> {
@@ -73,11 +82,51 @@ export async function createQuoteRecord(
     pdfStored: false,
     status: 'new',
     notes: payload.notes || '',
+    leadScore: payload.leadScore ?? 0,
+    projectCategory: payload.projectCategory || '',
+    timeline: payload.timeline || '',
+    consultationId: payload.consultationId,
     createdAt: now,
     updatedAt: now,
   };
   await db.collection('quotation_quotes').insertOne(quote);
+  if (payload.consultationId) {
+    await db.collection('quotation_consultations').updateOne(
+      { id: payload.consultationId },
+      { $set: { convertedQuoteId: quote.id, updatedAt: now } },
+    );
+  }
   return quote;
+}
+
+export async function saveConsultationDraft(
+  db: Db,
+  payload: Omit<ConsultationDraft, 'id' | 'createdAt' | 'updatedAt' | 'convertedQuoteId'>,
+): Promise<ConsultationDraft> {
+  const now = new Date().toISOString();
+  const draft: ConsultationDraft = {
+    ...payload,
+    id: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.collection('quotation_consultations').insertOne(draft);
+  return draft;
+}
+
+export async function getConsultationById(db: Db, id: string): Promise<ConsultationDraft | null> {
+  return db
+    .collection('quotation_consultations')
+    .findOne({ id }, { projection: { _id: 0 } }) as Promise<ConsultationDraft | null>;
+}
+
+export async function listConsultationDrafts(db: Db, limit = 200): Promise<ConsultationDraft[]> {
+  return db
+    .collection('quotation_consultations')
+    .find({}, { projection: { _id: 0 } })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray() as Promise<ConsultationDraft[]>;
 }
 
 export async function getQuoteById(db: Db, id: string): Promise<QuotationQuote | null> {
@@ -116,7 +165,10 @@ export async function findRecentQuoteByPhone(
 export function toQuotationLead(quote: QuotationQuote): QuotationLead {
   return {
     ...quote,
-    projectType: quote.aiSummary.projectType,
+    leadScore: quote.leadScore ?? 0,
+    projectCategory: quote.projectCategory || quote.aiSummary?.projectType || '',
+    timeline: quote.timeline || '',
+    projectType: quote.projectCategory || quote.aiSummary.projectType,
     area: Number(quote.answers.carpetArea) || 0,
     budget: quote.aiSummary.budget,
   };

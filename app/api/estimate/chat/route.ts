@@ -4,15 +4,24 @@ import {
   generateFollowUpReply,
   getWelcomeMessage,
 } from '@/lib/estimate/ai-consultant';
+import { getProjectCategory } from '@/lib/estimate/consultant/categories';
 import {
   applyPricingDefaults,
   extractAnswersFromMessage,
   getNextConsultQuestion,
   isConsultComplete,
 } from '@/lib/estimate/consultant';
+import { calculateLeadScore, extractTimeline } from '@/lib/estimate/lead-score';
 import { resolveActiveModule, resolvePropertyPurpose } from '@/lib/estimate/modules/registry';
+import { calculateQuotation } from '@/lib/estimate/pricing-engine';
 import { estimateChatSchema } from '@/lib/estimate/schemas';
-import { getDatabase, ensureQuotationIndexes, seedDefaultPricing } from '@/lib/estimate/store';
+import {
+  getDatabase,
+  ensureQuotationIndexes,
+  getModulePricing,
+  saveConsultationDraft,
+  seedDefaultPricing,
+} from '@/lib/estimate/store';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId } from '@/lib/estimate/types';
 
 const LEAD_TRANSITION_MESSAGE =
@@ -85,16 +94,44 @@ export async function POST(request: Request) {
 
     if (complete) {
       history.push({ role: 'assistant', content: LEAD_TRANSITION_MESSAGE, timestamp: new Date().toISOString() });
+
+      const enrichedAnswers = applyPricingDefaults(answers, activeModuleId);
+      const config = await getModulePricing(db, activeModuleId);
+      const pricing = calculateQuotation(activeModuleId, enrichedAnswers, config);
+      if (propertyPurpose) pricing.aiSummary.propertyPurpose = propertyPurpose;
+
+      const projectCategory = getProjectCategory(enrichedAnswers, entryModuleId as EstimateModuleId);
+      const timeline = extractTimeline(enrichedAnswers);
+      const leadScore = calculateLeadScore(enrichedAnswers, history);
+
+      const consultation = await saveConsultationDraft(db, {
+        moduleId: activeModuleId,
+        entryModuleId: entryModuleId as EstimateModuleId,
+        projectCategory,
+        answers: enrichedAnswers,
+        conversation: history,
+        aiSummary: pricing.aiSummary,
+        leadScore,
+        timeline,
+        leadSource: leadSource || 'ai-estimate',
+        campaignName: campaignName || '',
+        landingPage: landingPage || '/estimate',
+      });
+
       return NextResponse.json({
         phase: 'lead',
         complete: true,
         conversation: history,
-        summary: null,
+        summary: pricing.aiSummary,
         pricing: null,
-        answers,
+        answers: enrichedAnswers,
         nextQuestion: null,
         activeModuleId,
         propertyPurpose,
+        projectCategory,
+        timeline,
+        leadScore,
+        consultationId: consultation.id,
         leadSource,
         campaignName,
         landingPage,

@@ -1,5 +1,6 @@
 import Script from 'next/script';
 import DesignerCallbackRoot from '@/components/DesignerCallbackRoot';
+import RateUsRoot from '@/components/RateUsRoot';
 import MetaPixelRoot from '@/components/MetaPixelRoot';
 import { getRootMetadata } from '@/lib/seo/metadata';
 import './globals.css';
@@ -25,6 +26,7 @@ const RootLayout = ({ children }) => {
       <body>
         {children}
         <DesignerCallbackRoot />
+        <RateUsRoot />
         <MetaPixelRoot />
         {metaPixelId && (
           <>

@@ -150,6 +150,28 @@ export interface QuotationQuote {
   pdfPath?: string;
   status: LeadStatus;
   notes: string;
+  leadScore: number;
+  projectCategory: string;
+  timeline: string;
+  consultationId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConsultationDraft {
+  id: string;
+  moduleId: EstimateModuleId;
+  entryModuleId: EstimateModuleId;
+  projectCategory: string;
+  answers: EstimateAnswers;
+  conversation: ConversationMessage[];
+  aiSummary: ProjectSummary;
+  leadScore: number;
+  timeline: string;
+  leadSource: string;
+  campaignName: string;
+  landingPage: string;
+  convertedQuoteId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -158,6 +180,9 @@ export interface QuotationLead extends QuotationQuote {
   projectType: string;
   area: number;
   budget: string;
+  leadScore: number;
+  projectCategory: string;
+  timeline: string;
 }
 
 export type QuickAdjustmentAction =

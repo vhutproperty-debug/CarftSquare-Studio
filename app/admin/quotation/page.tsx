@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import DesignerLeadsPanel from '@/components/admin/quotation/DesignerLeadsPanel';
+import ReviewsPanel from '@/components/admin/quotation/ReviewsPanel';
 import QuotationAnalyticsPanel from '@/components/admin/quotation/QuotationAnalyticsPanel';
 import QuotationLeadsPanel from '@/components/admin/quotation/QuotationLeadsPanel';
 import QuotationPricingPanel from '@/components/admin/quotation/QuotationPricingPanel';
 
-type Tab = 'pricing' | 'leads' | 'designer-leads' | 'analytics';
+type Tab = 'pricing' | 'leads' | 'designer-leads' | 'reviews' | 'analytics';
 
 export default function QuotationAdminPage() {
   const [tab, setTab] = useState<Tab>('pricing');
@@ -65,6 +66,7 @@ export default function QuotationAdminPage() {
             { id: 'pricing' as Tab, label: 'Pricing' },
             { id: 'leads' as Tab, label: 'AI Leads' },
             { id: 'designer-leads' as Tab, label: 'Human Designer Leads' },
+            { id: 'reviews' as Tab, label: 'Customer Reviews' },
             { id: 'analytics' as Tab, label: 'Analytics' },
           ]).map((item) => (
             <Button key={item.id} onClick={() => setTab(item.id)} className={tab === item.id ? 'bg-orange-600 text-white' : 'bg-white/10 text-white'}>
@@ -77,6 +79,7 @@ export default function QuotationAdminPage() {
           {tab === 'pricing' && <QuotationPricingPanel />}
           {tab === 'leads' && <QuotationLeadsPanel />}
           {tab === 'designer-leads' && <DesignerLeadsPanel />}
+          {tab === 'reviews' && <ReviewsPanel />}
           {tab === 'analytics' && <QuotationAnalyticsPanel />}
         </div>
       </div>

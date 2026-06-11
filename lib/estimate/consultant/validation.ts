@@ -1,6 +1,6 @@
 import type { EstimateAnswers, EstimateModuleId } from '../types';
-import { getFieldsForModule, isFieldAnswered, QUALIFICATION_FIELD } from './fields';
-import { needsQualification } from '../modules/qualification';
+import { needsCategorySelection } from './categories';
+import { getFieldsForModule, isFieldAnswered, PROJECT_CATEGORY_FIELD } from './fields';
 
 export interface ConsultationValidation {
   ready: boolean;
@@ -8,14 +8,19 @@ export interface ConsultationValidation {
 }
 
 const FIELD_LABELS: Record<string, string> = {
-  propertyPurpose: 'Property Purpose',
+  projectCategory: 'Project Type',
   city: 'City',
-  bedrooms: 'Property Type',
+  bedrooms: 'BHK',
   propertyType: 'Property Type',
   carpetArea: 'Property Size',
   budget: 'Budget Range',
-  possession: 'Possession Timeline',
-  possessionDate: 'Possession Timeline',
+  possession: 'Timeline',
+  possessionDate: 'Timeline',
+  furnishingScope: 'Furnishing Scope',
+  tenantType: 'Target Tenant',
+  furnishingLevel: 'Furnishing Level',
+  employeeCount: 'Employee Count',
+  businessType: 'Business Type',
 };
 
 export function getMissingConsultationFields(
@@ -24,8 +29,8 @@ export function getMissingConsultationFields(
 ): string[] {
   const missing: string[] = [];
 
-  if (needsQualification(entryModuleId, answers)) {
-    missing.push(FIELD_LABELS.propertyPurpose);
+  if (needsCategorySelection(entryModuleId, answers)) {
+    missing.push(FIELD_LABELS.projectCategory);
     return missing;
   }
 
@@ -35,12 +40,6 @@ export function getMissingConsultationFields(
     if (field.when && !field.when(answers)) continue;
     if (!isFieldAnswered(answers, field.id)) {
       missing.push(FIELD_LABELS[field.id] || field.text);
-    }
-  }
-
-  if (!isFieldAnswered(answers, QUALIFICATION_FIELD.id) && entryModuleId === 'home-interior') {
-    if (!missing.includes(FIELD_LABELS.propertyPurpose)) {
-      missing.push(FIELD_LABELS.propertyPurpose);
     }
   }
 

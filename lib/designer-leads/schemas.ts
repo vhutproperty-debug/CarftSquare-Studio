@@ -11,7 +11,20 @@ export const designerCallbackSchema = z.object({
     .optional()
     .default(''),
   message: z.string().trim().max(1000).optional().default(''),
+  preferredCallTime: z.string().trim().max(120).optional().default(''),
   landingPage: z.string().trim().max(200).optional().default('/'),
+  fromAiChat: z.boolean().optional().default(false),
+  aiContext: z
+    .object({
+      moduleId: z.string().optional(),
+      projectCategory: z.string().optional(),
+      phase: z.string().optional(),
+      consultationId: z.string().optional(),
+      answers: z.record(z.unknown()).optional(),
+      conversation: z.array(z.object({ role: z.string(), content: z.string(), timestamp: z.string() })).optional(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const designerLeadUpdateSchema = z.object({

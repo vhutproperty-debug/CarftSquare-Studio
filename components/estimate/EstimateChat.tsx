@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId, PropertyPurpose } from '@/lib/estimate/types';
+import { openDesignerCallbackModal, saveConsultationContext } from '@/lib/estimate/consultation-context';
 import { trackLeadFromSource } from '@/lib/meta-pixel';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
@@ -45,6 +46,8 @@ export default function EstimateChat({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [questionKey, setQuestionKey] = useState(0);
   const submittedRef = useRef(false);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [projectCategory, setProjectCategory] = useState<string | null>(null);
 
   const answeredCount = Object.keys(answers).filter((k) => {
     if (k === 'propertyPurposeRaw') return false;
@@ -89,6 +92,8 @@ export default function EstimateChat({
       if (data.answers) setAnswers(data.answers);
       if (data.activeModuleId) setActiveModuleId(data.activeModuleId);
       if (data.propertyPurpose) setPropertyPurpose(data.propertyPurpose);
+      if (data.consultationId) setConsultationId(data.consultationId);
+      if (data.projectCategory) setProjectCategory(data.projectCategory);
 
       if (data.phase === 'lead') {
         setPhase('lead');
@@ -121,6 +126,18 @@ export default function EstimateChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, phase, loading, analyzing, showTyping, showQuestion]);
+
+  useEffect(() => {
+    saveConsultationContext({
+      moduleId,
+      activeModuleId,
+      answers,
+      conversation,
+      phase,
+      projectCategory: projectCategory || String(answers.projectCategory || ''),
+      consultationId: consultationId || undefined,
+    });
+  }, [moduleId, activeModuleId, answers, conversation, phase, projectCategory, consultationId]);
 
   function submitAnswer(value: string, fieldId?: string) {
     if (!value.trim() || analyzing || loading) return;
@@ -167,6 +184,7 @@ export default function EstimateChat({
           leadSource,
           campaignName,
           landingPage,
+          consultationId: consultationId || undefined,
         }),
       });
       const data = await res.json();
@@ -302,6 +320,19 @@ export default function EstimateChat({
                   </Button>
                 </form>
               </div>
+            )}
+
+            {(phase === 'discovery' || phase === 'lead' || phase === 'followup') && (
+              <p className="mt-6 text-center text-xs text-slate-500">
+                Prefer a real designer?{' '}
+                <button
+                  type="button"
+                  onClick={openDesignerCallbackModal}
+                  className="font-semibold text-orange-600 hover:text-orange-700"
+                >
+                  Request a callback
+                </button>
+              </p>
             )}
 
             {error && <p className="mt-4 text-center text-sm font-semibold text-red-600">{error}</p>}

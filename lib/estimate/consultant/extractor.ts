@@ -1,5 +1,6 @@
 import type { EstimateAnswers, EstimateModuleId } from '../types';
 import { applyPropertyPurposeAnswer, normalizePropertyPurpose } from '../modules/qualification';
+import { normalizeProjectCategory, PROJECT_CATEGORY_OPTIONS } from './categories';
 import { getFieldsForModule, isFieldAnswered } from './fields';
 
 const STYLE_MAP: Record<string, string> = {
@@ -160,6 +161,18 @@ export function extractFromMessageRegex(
   const text = message.trim();
   if (!text) return extracted;
 
+  const category = normalizeProjectCategory(text);
+  if (category && !isFieldAnswered(currentAnswers, 'projectCategory')) {
+    extracted.projectCategory = category;
+  }
+
+  for (const opt of PROJECT_CATEGORY_OPTIONS) {
+    if (text.toLowerCase().includes(opt.toLowerCase()) && !isFieldAnswered(currentAnswers, 'projectCategory')) {
+      extracted.projectCategory = opt;
+      break;
+    }
+  }
+
   const purpose = extractPropertyPurpose(text);
   if (purpose && !isFieldAnswered(currentAnswers, 'propertyPurpose')) {
     extracted.propertyPurpose = purpose;
@@ -227,7 +240,7 @@ export async function extractFromMessageAI(
   if (!apiKey) return {};
 
   const fields = getFieldsForModule(entryModuleId, currentAnswers);
-  const fieldIds = ['propertyPurpose', ...fields.map((f) => f.id)];
+  const fieldIds = ['projectCategory', 'propertyPurpose', ...fields.map((f) => f.id)];
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -244,7 +257,7 @@ export async function extractFromMessageAI(
         messages: [
           {
             role: 'system',
-            content: `Extract interior consultation fields from the user message. Return JSON with only fields clearly stated. Valid field IDs: ${fieldIds.join(', ')}. For propertyPurpose use "Own Residence" or "Rental Income". For bedrooms use "1 BHK","2 BHK","3 BHK","4 BHK+". For city use Mumbai, Navi Mumbai, Thane, Pune, or Other. carpetArea must be a number. Do not guess — omit uncertain fields.`,
+            content: `Extract interior consultation fields from the user message. Return JSON with only fields clearly stated. Valid field IDs: ${fieldIds.join(', ')}. For projectCategory use: ${PROJECT_CATEGORY_OPTIONS.join(', ')}. For bedrooms use "1 BHK","2 BHK","3 BHK","4 BHK+". For city use Mumbai, Navi Mumbai, Thane, Pune, or Other. carpetArea must be a number. Do not guess — omit uncertain fields.`,
           },
           {
             role: 'user',
@@ -286,8 +299,10 @@ export async function extractAnswersFromMessage(
     const matched = matchOptionValue(message, fieldOptions);
     if (matched) {
       merged = { ...merged, [activeFieldId]: matched };
-    } else if (activeFieldId === 'propertyPurpose') {
+    } else if (activeFieldId === 'projectCategory' || activeFieldId === 'propertyPurpose') {
       merged = applyPropertyPurposeAnswer(merged, message);
+      const cat = normalizeProjectCategory(message);
+      if (cat) merged = { ...merged, projectCategory: cat };
     } else if (activeFieldId === 'carpetArea') {
       const area = extractArea(message) ?? Number(message.replace(/\D/g, ''));
       if (Number.isFinite(area) && area > 0) merged = { ...merged, carpetArea: area };
@@ -303,6 +318,10 @@ export async function extractAnswersFromMessage(
   const aiExtracted = await extractFromMessageAI(message, entryModuleId, merged);
   merged = { ...merged, ...aiExtracted };
 
+  if (merged.projectCategory) {
+    const cat = normalizeProjectCategory(String(merged.projectCategory));
+    if (cat) merged = { ...merged, projectCategory: cat };
+  }
   if (merged.propertyPurpose) {
     merged = applyPropertyPurposeAnswer(merged, String(merged.propertyPurpose));
   }

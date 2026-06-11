@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, CheckCircle2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  OPEN_DESIGNER_CALLBACK_EVENT,
+  readConsultationContext,
+} from '@/lib/estimate/consultation-context';
 import { trackLeadFromSource } from '@/lib/meta-pixel';
 
 const PROJECT_TYPES = ['Home', 'Office', 'Commercial', 'Rental Property', 'Other'] as const;
@@ -29,13 +33,32 @@ export default function DesignerCallbackWidget() {
     city: '',
     projectType: '',
     message: '',
+    preferredCallTime: '',
   });
+  const [fromAiChat, setFromAiChat] = useState(false);
   const submittedRef = useRef(false);
+
+  useEffect(() => {
+    const openFromChat = () => {
+      resetForm();
+      const ctx = readConsultationContext();
+      if (ctx) {
+        setFromAiChat(true);
+        if (ctx.projectCategory) {
+          setForm((f) => ({ ...f, projectType: ctx.projectCategory || f.projectType }));
+        }
+      }
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_DESIGNER_CALLBACK_EVENT, openFromChat);
+    return () => window.removeEventListener(OPEN_DESIGNER_CALLBACK_EVENT, openFromChat);
+  }, []);
 
   if (pathname.startsWith('/admin')) return null;
 
   function resetForm() {
-    setForm({ name: '', phone: '', city: '', projectType: '', message: '' });
+    setForm({ name: '', phone: '', city: '', projectType: '', message: '', preferredCallTime: '' });
+    setFromAiChat(false);
     setError('');
     setSuccess(false);
     submittedRef.current = false;
@@ -64,12 +87,24 @@ export default function DesignerCallbackWidget() {
     setError('');
 
     try {
+      const aiContext = fromAiChat || pathname.startsWith('/estimate') ? readConsultationContext() : null;
       const res = await fetch('/api/designer-callback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           landingPage: pathname,
+          fromAiChat: Boolean(aiContext),
+          aiContext: aiContext
+            ? {
+                moduleId: aiContext.moduleId,
+                projectCategory: aiContext.projectCategory,
+                phase: aiContext.phase,
+                consultationId: aiContext.consultationId,
+                answers: aiContext.answers,
+                conversation: aiContext.conversation,
+              }
+            : null,
         }),
       });
       const data = await res.json();
@@ -169,6 +204,17 @@ export default function DesignerCallbackWidget() {
                   inputMode="tel"
                   className="h-12 rounded-2xl border-slate-200 px-4"
                 />
+                <select
+                  value={form.preferredCallTime}
+                  onChange={(e) => setForm((f) => ({ ...f, preferredCallTime: e.target.value }))}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800"
+                >
+                  <option value="">Preferred call time (optional)</option>
+                  <option value="Morning (9am–12pm)">Morning (9am–12pm)</option>
+                  <option value="Afternoon (12pm–4pm)">Afternoon (12pm–4pm)</option>
+                  <option value="Evening (4pm–8pm)">Evening (4pm–8pm)</option>
+                  <option value="Anytime">Anytime</option>
+                </select>
                 <Input
                   placeholder="City (optional)"
                   value={form.city}

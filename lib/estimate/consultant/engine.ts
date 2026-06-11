@@ -1,13 +1,12 @@
 import type { EstimateAnswers, EstimateModuleId } from '../types';
-import { needsQualification } from '../modules/qualification';
 import type { QuestionDef } from '../modules/interior';
+import { needsCategorySelection, PROJECT_CATEGORY_FIELD } from './categories';
 import {
   countAnsweredFields,
   fieldToQuestion,
   getFieldsForModule,
   isFieldAnswered,
   MAX_CONSULT_QUESTIONS,
-  QUALIFICATION_FIELD,
   type ConsultField,
 } from './fields';
 
@@ -15,22 +14,25 @@ export function applyPricingDefaults(answers: EstimateAnswers, activeModuleId: E
   const result = { ...answers };
 
   if (!isFieldAnswered(result, 'city')) result.city = 'Mumbai';
-  if (!isFieldAnswered(result, 'projectType') && activeModuleId === 'home-interior') {
-    result.projectType = 'Home Interior';
+  if (!isFieldAnswered(result, 'projectType')) {
+    result.projectType = String(result.projectCategory || 'Interior Project');
   }
-  if (!isFieldAnswered(result, 'ownership')) result.ownership = 'Owned';
   if (!isFieldAnswered(result, 'designStyle') && !isFieldAnswered(result, 'furnishingLevel')) {
     result.designStyle = 'Contemporary';
   }
   if (!isFieldAnswered(result, 'storagePriority')) result.storagePriority = 'Important';
-  if (!isFieldAnswered(result, 'familySize')) result.familySize = '3-4';
+  if (!isFieldAnswered(result, 'familySize') && isFieldAnswered(result, 'employeeCount')) {
+    result.familySize = String(result.employeeCount);
+  }
   if (!isFieldAnswered(result, 'possession') && !isFieldAnswered(result, 'possessionDate')) {
     result.possession = 'Flexible';
   }
   if (activeModuleId === 'rental-furnishing') {
     if (!isFieldAnswered(result, 'furnishingLevel')) result.furnishingLevel = 'Premium';
     if (!isFieldAnswered(result, 'furnitureRequired')) result.furnitureRequired = 'Yes';
-    if (!isFieldAnswered(result, 'rentalType')) result.rentalType = 'Long-term Rental';
+  }
+  if (result.projectCategory && !result.businessType && activeModuleId === 'commercial-interior') {
+    result.businessType = String(result.projectCategory);
   }
 
   return result;
@@ -50,7 +52,7 @@ function getMissingFields(fields: ConsultField[], answers: EstimateAnswers): Con
 export function getConsultQuestionCount(answers: EstimateAnswers): number {
   return Object.keys(answers).filter((k) => {
     const v = answers[k];
-    return v !== undefined && v !== null && String(v).trim() !== '' && k !== 'propertyPurposeRaw';
+    return v !== undefined && v !== null && String(v).trim() !== '' && !k.endsWith('Raw');
   }).length;
 }
 
@@ -58,8 +60,8 @@ export function getNextConsultQuestion(
   entryModuleId: EstimateModuleId,
   answers: EstimateAnswers,
 ): QuestionDef | null {
-  if (needsQualification(entryModuleId, answers)) {
-    return fieldToQuestion(QUALIFICATION_FIELD);
+  if (needsCategorySelection(entryModuleId, answers)) {
+    return fieldToQuestion(PROJECT_CATEGORY_FIELD);
   }
 
   const fields = getFieldsForModule(entryModuleId, answers);
@@ -71,7 +73,6 @@ export function getNextConsultQuestion(
   if (allRequiredMet && (missing.length === 0 || questionCount >= MAX_CONSULT_QUESTIONS)) {
     return null;
   }
-
   if (allRequiredMet && questionCount >= MAX_CONSULT_QUESTIONS) {
     return null;
   }
@@ -88,10 +89,9 @@ export function getConsultProgress(answers: EstimateAnswers, entryModuleId: Esti
   answered: number;
   total: number;
 } {
-  if (needsQualification(entryModuleId, answers)) {
+  if (needsCategorySelection(entryModuleId, answers)) {
     return { answered: 0, total: MAX_CONSULT_QUESTIONS };
   }
   const fields = getFieldsForModule(entryModuleId, answers);
-  const answered = countAnsweredFields(fields, answers);
-  return { answered, total: MAX_CONSULT_QUESTIONS };
+  return { answered: countAnsweredFields(fields, answers), total: MAX_CONSULT_QUESTIONS };
 }

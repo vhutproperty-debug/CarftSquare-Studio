@@ -757,6 +757,7 @@ export default function HomePageClient() {
       <Hero onLeadCreated={handleLeadCreated} onQuote={() => setPopupOpen(true)} />
       <Services services={services} />
       <AboutSection about={about} />
+      <Testimonials />
       <RentalInteriorsSection rental={rental} />
       <InteriorSolutions />
       <ModularKitchen />
@@ -765,7 +766,6 @@ export default function HomePageClient() {
       <WhyChoose />
       <HowItWorks />
       <Portfolio projects={projects} />
-      <Testimonials />
       <TrustSection />
       <AIFeaturesSection />
       <DashboardPreview />

@@ -54,6 +54,7 @@ export const estimateLeadSchema = z.object({
   leadSource: z.string().trim().max(80).default('ai-estimate'),
   campaignName: z.string().trim().max(80).default(''),
   landingPage: z.string().trim().max(200).default('/estimate'),
+  consultationId: z.string().uuid().optional(),
 });
 
 export const estimateAdjustSchema = z.object({

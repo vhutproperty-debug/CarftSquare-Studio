@@ -132,8 +132,31 @@ export default function DesignerLeadsPanel() {
                     <Badge variant="outline">{lead.projectType}</Badge>
                   )}
                 </div>
-                <p className="mt-2 text-sm text-slate-600">{lead.phone}{lead.city ? ` · ${lead.city}` : ''}</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  {lead.phone}
+                  {lead.city ? ` · ${lead.city}` : ''}
+                  {lead.preferredCallTime ? ` · Call: ${lead.preferredCallTime}` : ''}
+                </p>
                 {lead.message && <p className="mt-2 text-sm text-slate-600">{lead.message}</p>}
+                {lead.aiContext?.projectCategory && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    AI context: {lead.aiContext.projectCategory}
+                    {lead.aiContext.phase ? ` · Phase: ${lead.aiContext.phase}` : ''}
+                    {lead.aiContext.consultationId ? ` · Consultation: ${lead.aiContext.consultationId}` : ''}
+                  </p>
+                )}
+                {lead.aiContext?.conversation && lead.aiContext.conversation.length > 0 && (
+                  <details className="mt-2 text-sm text-slate-600">
+                    <summary className="cursor-pointer font-semibold text-slate-700">View AI conversation</summary>
+                    <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md bg-slate-50 p-3 text-xs">
+                      {lead.aiContext.conversation.map((msg, i) => (
+                        <p key={i}>
+                          <span className="font-bold capitalize">{msg.role}:</span> {msg.content}
+                        </p>
+                      ))}
+                    </div>
+                  </details>
+                )}
                 <p className="mt-1 text-xs text-slate-500">
                   ID: {lead.id} · Page: {lead.landingPage} · {new Date(lead.createdAt).toLocaleString('en-IN')}
                 </p>

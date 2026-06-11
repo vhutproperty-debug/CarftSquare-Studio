@@ -48,13 +48,17 @@ export async function findRecentDesignerLeadByPhone(
 
 export async function createDesignerCallbackLead(
   db: Db,
-  payload: Omit<DesignerCallbackLead, 'id' | 'source' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>,
+  payload: Omit<DesignerCallbackLead, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'> & {
+    source?: DesignerCallbackLead['source'];
+  },
 ): Promise<DesignerCallbackLead> {
   const now = new Date().toISOString();
   const lead: DesignerCallbackLead = {
     ...payload,
     id: uuidv4(),
-    source: 'Human Designer Request',
+    source: payload.source || 'Human Designer Request',
+    preferredCallTime: payload.preferredCallTime || '',
+    aiContext: payload.aiContext || null,
     status: 'new',
     notes: '',
     createdAt: now,

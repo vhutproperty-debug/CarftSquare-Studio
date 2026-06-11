@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getProjectCategory } from '@/lib/estimate/consultant/categories';
 import { applyPricingDefaults, validateConsultationAnswers, isValidIndianPhone } from '@/lib/estimate/consultant';
 import { notifyEnquiryCreated } from '@/lib/estimate/integrations';
+import { calculateLeadScore, extractTimeline } from '@/lib/estimate/lead-score';
 import { calculateQuotation } from '@/lib/estimate/pricing-engine';
 import { resolveActiveModule, resolvePropertyPurpose } from '@/lib/estimate/modules/registry';
 import { estimateLeadSchema } from '@/lib/estimate/schemas';
@@ -56,6 +58,16 @@ export async function POST(request: Request) {
     const pricing = calculateQuotation(activeModuleId, enrichedAnswers, config);
     if (propertyPurpose) pricing.aiSummary.propertyPurpose = propertyPurpose;
 
+    const customer = {
+      name: data.name,
+      phone: data.phone,
+      whatsapp: data.whatsapp || data.phone,
+      email: data.email || '',
+    };
+    const projectCategory = getProjectCategory(enrichedAnswers, entryModuleId);
+    const timeline = extractTimeline(enrichedAnswers);
+    const leadScore = calculateLeadScore(enrichedAnswers, data.conversation, customer);
+
     const quote = await createQuoteRecord(db, {
       moduleId: activeModuleId,
       propertyPurpose,
@@ -68,12 +80,11 @@ export async function POST(request: Request) {
       pricing,
       adjustmentHistory: [],
       notes: '',
-      customer: {
-        name: data.name,
-        phone: data.phone,
-        whatsapp: data.whatsapp || data.phone,
-        email: data.email || '',
-      },
+      leadScore,
+      projectCategory,
+      timeline,
+      consultationId: data.consultationId,
+      customer,
     });
 
     await notifyEnquiryCreated(quote);

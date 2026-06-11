@@ -41,7 +41,10 @@ export async function POST(request: Request) {
       city: data.city || '',
       projectType: data.projectType || '',
       message: data.message || '',
+      preferredCallTime: data.preferredCallTime || '',
       landingPage: data.landingPage || '/',
+      source: data.fromAiChat ? 'AI Chat Callback' : 'Human Designer Request',
+      aiContext: data.aiContext || null,
     });
 
     return NextResponse.json(

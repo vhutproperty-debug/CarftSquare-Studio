@@ -1,11 +1,20 @@
 export {
   MAX_CONSULT_QUESTIONS,
-  QUALIFICATION_FIELD,
-  OWN_RESIDENCE_FIELDS,
+  PROJECT_CATEGORY_FIELD,
+  RESIDENTIAL_FIELDS,
   RENTAL_FIELDS,
+  OFFICE_FIELDS,
+  COMMERCIAL_FIELDS,
   getFieldsForModule,
   fieldToQuestion,
 } from './fields';
+export {
+  PROJECT_CATEGORY_OPTIONS,
+  getProjectCategory,
+  needsCategorySelection,
+  resolveModuleFromCategory,
+  normalizeProjectCategory,
+} from './categories';
 export { extractAnswersFromMessage } from './extractor';
 export {
   applyPricingDefaults,
