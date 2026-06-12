@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId, PropertyPurpose } from '@/lib/estimate/types';
 import { openDesignerCallbackModal, saveConsultationContext } from '@/lib/estimate/consultation-context';
-import { trackLeadFromSource } from '@/lib/meta-pixel';
+import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
 import EstimateMessageBubble from './EstimateMessageBubble';
@@ -191,10 +191,20 @@ export default function EstimateChat({
       if (!res.ok) throw new Error(data.error || 'Quote failed');
       if (data.quote?.id) {
         if (!data.duplicate) {
-          trackLeadFromSource('ai_interior_consultant', {
-            module_id: moduleId,
-            landing_page: landingPage,
-          });
+          const { firstName, lastName } = splitFullName(lead.name);
+          trackLeadFromSource(
+            'ai_interior_consultant',
+            {
+              module_id: moduleId,
+              landing_page: landingPage,
+            },
+            {
+              email: lead.email,
+              phone: lead.phone,
+              firstName,
+              lastName,
+            },
+          );
         }
         router.push(`/estimate/result/${data.quote.id}`);
       }

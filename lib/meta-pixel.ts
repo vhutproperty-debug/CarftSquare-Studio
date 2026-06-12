@@ -1,14 +1,13 @@
 /**
- * Meta Pixel (Facebook) tracking utilities.
+ * Meta Pixel (browser) + Conversions API (server) tracking utilities.
  *
- * Enabled only when NODE_ENV === 'production' AND NEXT_PUBLIC_META_PIXEL_ID is set.
- * All functions fail gracefully in development or when the pixel is unavailable.
+ * Browser Pixel fires in production. Matching CAPI events are sent server-side
+ * with the same event_id for Meta deduplication.
  *
- * Future event hooks — call these from the relevant UI after a successful action:
- *   trackContact()             → WhatsApp clicks, phone taps, email links
- *   trackCompleteRegistration()  → Account signup, newsletter, vendor onboarding
- *   trackLead({ content_name })  → Any new lead / quote / callback conversion
+ * Server secrets (META_ACCESS_TOKEN) never leave /api/meta/capi.
  */
+
+import type { MetaCapiEventName, MetaRawUserData } from '@/lib/meta-capi/types';
 
 declare global {
   interface Window {
@@ -22,17 +21,35 @@ export type MetaLeadSource =
   | 'contact_consultation_form'
   | 'designer_callback';
 
-/** True only in production with a configured pixel ID. */
+const DEFAULT_META_PIXEL_ID = '1340743388120075';
+
 export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
 }
 
-const DEFAULT_META_PIXEL_ID = '1340743388120075';
-
-/** Returns the pixel ID or null when disabled / missing. */
 export function getMetaPixelId(): string | null {
   if (process.env.NODE_ENV !== 'production') return null;
   return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || DEFAULT_META_PIXEL_ID;
+}
+
+export function generateMetaEventId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+function getMetaCookies(): Pick<MetaRawUserData, 'fbp' | 'fbc'> {
+  return {
+    fbp: readCookie('_fbp'),
+    fbc: readCookie('_fbc'),
+  };
 }
 
 function safeFbq(...args: unknown[]): void {
@@ -46,30 +63,101 @@ function safeFbq(...args: unknown[]): void {
   }
 }
 
-/** Standard PageView — used on SPA route changes (initial load handled by layout script). */
-export function trackPageView(): void {
-  safeFbq('track', 'PageView');
+function sendMetaCapiEvent(
+  eventName: MetaCapiEventName,
+  eventId: string,
+  customData?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): void {
+  if (typeof window === 'undefined' || !isMetaPixelEnabled()) return;
+
+  const payload = {
+    eventName,
+    eventId,
+    eventSourceUrl: window.location.href,
+    customData: customData || {},
+    userData: {
+      ...getMetaCookies(),
+      ...userData,
+    },
+  };
+
+  fetch('/api/meta/capi', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {
+    // Fire-and-forget — never block UX
+  });
 }
 
-/**
- * Lead conversion — AI estimate, consultation form, designer callback, etc.
- * Pass content_name to identify the source in Meta Events Manager.
- */
-export function trackLead(params?: Record<string, unknown>): void {
-  safeFbq('track', 'Lead', params ?? {});
+function trackMetaEvent(
+  eventName: MetaCapiEventName,
+  customData?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): string {
+  const eventId = generateMetaEventId();
+
+  safeFbq('track', eventName, customData ?? {}, { eventID: eventId });
+  sendMetaCapiEvent(eventName, eventId, customData, userData);
+
+  return eventId;
 }
 
-/** Contact intent — e.g. WhatsApp button, click-to-call, contact page submission. */
-export function trackContact(params?: Record<string, unknown>): void {
-  safeFbq('track', 'Contact', params ?? {});
+export function trackPageView(customData?: Record<string, unknown>): string {
+  return trackMetaEvent('PageView', customData);
 }
 
-/** Registration complete — e.g. user account, vendor signup, newsletter (future). */
-export function trackCompleteRegistration(params?: Record<string, unknown>): void {
-  safeFbq('track', 'CompleteRegistration', params ?? {});
+export function trackViewContent(customData?: Record<string, unknown>): string {
+  return trackMetaEvent('ViewContent', customData);
 }
 
-/** Convenience wrapper with a typed lead source label. */
-export function trackLeadFromSource(source: MetaLeadSource, extra?: Record<string, unknown>): void {
-  trackLead({ content_name: source, ...extra });
+export function trackLead(
+  params?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): string {
+  return trackMetaEvent('Lead', params ?? {}, userData);
+}
+
+export function trackContact(
+  params?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): string {
+  return trackMetaEvent('Contact', params ?? {}, userData);
+}
+
+export function trackSchedule(
+  params?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): string {
+  return trackMetaEvent('Schedule', params ?? {}, userData);
+}
+
+export function trackCompleteRegistration(params?: Record<string, unknown>): string {
+  return trackMetaEvent('Lead', { ...params, registration: true });
+}
+
+export function trackLeadFromSource(
+  source: MetaLeadSource,
+  extra?: Record<string, unknown>,
+  userData?: MetaRawUserData,
+): string {
+  return trackLead({ content_name: source, ...extra }, userData);
+}
+
+export function splitFullName(fullName: string): { firstName?: string; lastName?: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return {};
+  if (parts.length === 1) return { firstName: parts[0] };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+export function shouldTrackViewContent(pathname: string): boolean {
+  return (
+    pathname === '/estimate' ||
+    pathname.startsWith('/estimate/') ||
+    pathname.startsWith('/services/') ||
+    pathname === '/rental-interiors'
+  );
 }

@@ -17,7 +17,7 @@ import {
   OPEN_DESIGNER_CALLBACK_EVENT,
   readConsultationContext,
 } from '@/lib/estimate/consultation-context';
-import { trackLeadFromSource } from '@/lib/meta-pixel';
+import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
 
 const PROJECT_TYPES = ['Home', 'Office', 'Commercial', 'Rental Property', 'Other'] as const;
 
@@ -111,10 +111,19 @@ export default function DesignerCallbackWidget() {
       if (!res.ok) throw new Error(data.error || 'Submission failed');
 
       if (!data.duplicate) {
-        trackLeadFromSource('designer_callback', {
-          project_type: form.projectType || undefined,
-          landing_page: pathname,
-        });
+        const { firstName, lastName } = splitFullName(form.name);
+        trackLeadFromSource(
+          'designer_callback',
+          {
+            project_type: form.projectType || undefined,
+            landing_page: pathname,
+          },
+          {
+            phone: form.phone,
+            firstName,
+            lastName,
+          },
+        );
       }
       setSuccess(true);
     } catch (err) {

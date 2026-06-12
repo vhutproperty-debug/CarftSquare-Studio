@@ -23,7 +23,7 @@ const defaultLead = {
   website: '',
 };
 
-import { trackLeadFromSource } from '@/lib/meta-pixel';
+import { splitFullName, trackSchedule } from '@/lib/meta-pixel';
 
 function trackAnalyticsEvent(eventName, parameters = {}) {
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
@@ -105,10 +105,19 @@ export default function LeadForm({ compact = false, onLeadCreated }) {
         service: form.service,
         source: compact ? 'sticky_popup' : 'homepage',
       });
-      trackLeadFromSource('contact_consultation_form', {
-        service: form.service,
-        form_source: compact ? 'sticky_popup' : 'homepage',
-      });
+      const { firstName, lastName } = splitFullName(form.name);
+      trackSchedule(
+        {
+          content_name: 'contact_consultation_form',
+          service: form.service,
+          form_source: compact ? 'sticky_popup' : 'homepage',
+        },
+        {
+          phone: form.phone,
+          firstName,
+          lastName,
+        },
+      );
       setForm((current) => ({ ...defaultLead, phone: current.phone }));
       setEstimate(data.lead?.estimate || currentEstimate);
       onLeadCreated?.(data.lead);

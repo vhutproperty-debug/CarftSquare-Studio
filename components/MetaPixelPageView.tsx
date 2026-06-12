@@ -1,28 +1,28 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useRef } from 'react';
-import { isMetaPixelEnabled, trackPageView } from '@/lib/meta-pixel';
+import { useEffect } from 'react';
+import { isMetaPixelEnabled, shouldTrackViewContent, trackPageView, trackViewContent } from '@/lib/meta-pixel';
 
 /**
- * Fires PageView on client-side route changes only.
- * The initial PageView is sent by the inline pixel script in app/layout.js
- * to avoid duplicate events on first load.
+ * Fires PageView (+ ViewContent on key pages) with shared event_id for Pixel + CAPI.
+ * Initial PageView is handled here (layout script only runs fbq init).
  */
 export default function MetaPixelPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isFirstRender = useRef(true);
 
   useEffect(() => {
     if (!isMetaPixelEnabled()) return;
 
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    trackPageView({ page_path: pathname });
 
-    trackPageView();
+    if (shouldTrackViewContent(pathname)) {
+      trackViewContent({
+        content_name: pathname,
+        page_path: pathname,
+      });
+    }
   }, [pathname, searchParams]);
 
   return null;
