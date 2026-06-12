@@ -8,6 +8,7 @@
  */
 
 import type { MetaCapiEventName, MetaRawUserData } from '@/lib/meta-capi/types';
+import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
 
 declare global {
   interface Window {
@@ -21,15 +22,13 @@ export type MetaLeadSource =
   | 'contact_consultation_form'
   | 'designer_callback';
 
-const DEFAULT_META_PIXEL_ID = '1340743388120075';
-
 export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
 }
 
 export function getMetaPixelId(): string | null {
   if (process.env.NODE_ENV !== 'production') return null;
-  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || DEFAULT_META_PIXEL_ID;
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || META_PIXEL_ID;
 }
 
 export function generateMetaEventId(): string {
@@ -52,14 +51,28 @@ function getMetaCookies(): Pick<MetaRawUserData, 'fbp' | 'fbc'> {
   };
 }
 
-function safeFbq(...args: unknown[]): void {
-  if (typeof window === 'undefined') return;
-  if (!isMetaPixelEnabled()) return;
+function invokeFbq(...args: unknown[]): void {
   if (typeof window.fbq !== 'function') return;
   try {
     window.fbq(...args);
   } catch {
     // Never block app flow if Meta Pixel errors
+  }
+}
+
+function safeFbq(...args: unknown[]): void {
+  if (typeof window === 'undefined') return;
+  if (!isMetaPixelEnabled()) return;
+
+  if (typeof window.fbq === 'function') {
+    invokeFbq(...args);
+    return;
+  }
+
+  // Layout pixel script loads afterInteractive — retry so first PageView is not missed.
+  const delays = [300, 800, 1500];
+  for (const delay of delays) {
+    window.setTimeout(() => invokeFbq(...args), delay);
   }
 }
 

@@ -1,8 +1,9 @@
-const DEFAULT_PIXEL_ID = '1340743388120075';
+import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
+
 const GRAPH_API_VERSION = 'v21.0';
 
 export function getMetaPixelIdServer(): string | null {
-  return process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || DEFAULT_PIXEL_ID;
+  return process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || META_PIXEL_ID;
 }
 
 export function getMetaAccessToken(): string | null {
