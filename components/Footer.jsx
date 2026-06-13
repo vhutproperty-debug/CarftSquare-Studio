@@ -1,5 +1,6 @@
 import { BRAND, whatsappUrl } from '@/lib/brand';
 import BrandLogo from '@/components/BrandLogo';
+import SocialLinks from '@/components/SocialLinks';
 
 const brand = BRAND.name;
 
@@ -13,6 +14,7 @@ export default function Footer() {
               <BrandLogo variant="footer" />
             </div>
             <p className="text-sm text-slate-500">Premium interior design and complete interior solutions. Mumbai&apos;s trusted design-to-execution partner.</p>
+            <SocialLinks className="mt-4" />
           </div>
           <div>
             <h4 className="font-black text-slate-950 mb-3">Services</h4>
