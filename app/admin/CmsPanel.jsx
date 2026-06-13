@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { canAccess } from '@/lib/auth/rbac/client';
 
 function Field({ label, children }) {
   return (
@@ -40,7 +41,7 @@ function TextArea({ value, onChange, placeholder, rows = 3 }) {
   );
 }
 
-export default function CmsPanel({ onMessage }) {
+export default function CmsPanel({ onMessage, user }) {
   const [tab, setTab] = useState('about');
   const [loading, setLoading] = useState(false);
   const [about, setAbout] = useState(null);
@@ -143,12 +144,12 @@ export default function CmsPanel({ onMessage }) {
   }
 
   const tabs = [
-    { id: 'about', label: 'About Us', icon: Home },
-    { id: 'services', label: 'Services', icon: FolderOpen },
-    { id: 'rental', label: 'Rental Interiors', icon: Home },
-    { id: 'gallery', label: 'Gallery', icon: ImagePlus },
-    { id: 'seo', label: 'SEO', icon: FileText },
-  ];
+    { id: 'about', label: 'About Us', icon: Home, module: 'projects' },
+    { id: 'services', label: 'Services', icon: FolderOpen, module: 'projects' },
+    { id: 'rental', label: 'Rental Interiors', icon: Home, module: 'projects' },
+    { id: 'gallery', label: 'Gallery', icon: ImagePlus, module: 'gallery' },
+    { id: 'seo', label: 'SEO', icon: FileText, module: 'marketing' },
+  ].filter((item) => canAccess(user, item.module, 'view'));
 
   return (
     <Card className="border-white/10 bg-white text-slate-950">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,22 +11,72 @@ import ReviewsPanel from '@/components/admin/quotation/ReviewsPanel';
 import QuotationAnalyticsPanel from '@/components/admin/quotation/QuotationAnalyticsPanel';
 import QuotationLeadsPanel from '@/components/admin/quotation/QuotationLeadsPanel';
 import QuotationPricingPanel from '@/components/admin/quotation/QuotationPricingPanel';
+import { canAccess } from '@/lib/auth/rbac/client';
 
 type Tab = 'pricing' | 'leads' | 'designer-leads' | 'reviews' | 'analytics';
 
+const TAB_PERMISSIONS: Record<Tab, { module: string; action?: string }> = {
+  pricing: { module: 'ai_quotes', action: 'view' },
+  leads: { module: 'ai_quotes', action: 'view' },
+  'designer-leads': { module: 'customers', action: 'view' },
+  reviews: { module: 'reviews', action: 'view' },
+  analytics: { module: 'analytics', action: 'view' },
+};
+
 export default function QuotationAdminPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('pricing');
   const [authed, setAuthed] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [accessDenied, setAccessDenied] = useState('');
 
   useEffect(() => {
-    fetch('/api/auth/status', { credentials: 'include' })
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
+    fetch('/api/auth/status', { credentials: 'include', signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setAuthed(Boolean(d.authenticated));
+        setUser(d.user || null);
+        setChecked(true);
+
+        const allowedTabs = (Object.keys(TAB_PERMISSIONS) as Tab[]).filter((id) =>
+          canAccess(d.user, TAB_PERMISSIONS[id].module, TAB_PERMISSIONS[id].action || 'view'),
+        );
+
+        if (d.authenticated && !allowedTabs.length) {
+          router.replace('/admin?denied=ai_quotes');
+          return;
+        }
+
+        if (allowedTabs.length && !allowedTabs.includes(tab)) {
+          setTab(allowedTabs[0]);
+        }
+      })
+      .catch(() => {
+        setChecked(true);
+        setAuthed(false);
+      })
+      .finally(() => {
+        clearTimeout(timer);
         setChecked(true);
       });
-  }, []);
+  }, [router]);
+
+  const visibleTabs = (Object.keys(TAB_PERMISSIONS) as Tab[]).filter((id) =>
+    canAccess(user, TAB_PERMISSIONS[id].module, TAB_PERMISSIONS[id].action || 'view'),
+  );
+
+  function selectTab(nextTab: Tab) {
+    if (!canAccess(user, TAB_PERMISSIONS[nextTab].module, TAB_PERMISSIONS[nextTab].action || 'view')) {
+      setAccessDenied('Access denied. You do not have permission to view that section.');
+      return;
+    }
+    setAccessDenied('');
+    setTab(nextTab);
+  }
 
   if (!checked) {
     return <div className="min-h-screen grid place-items-center bg-slate-950 text-white">Checking admin session...</div>;
@@ -68,19 +119,23 @@ export default function QuotationAdminPage() {
             { id: 'designer-leads' as Tab, label: 'Human Designer Leads' },
             { id: 'reviews' as Tab, label: 'Customer Reviews' },
             { id: 'analytics' as Tab, label: 'Analytics' },
-          ]).map((item) => (
-            <Button key={item.id} onClick={() => setTab(item.id)} className={tab === item.id ? 'bg-orange-600 text-white' : 'bg-white/10 text-white'}>
+          ]).filter((item) => visibleTabs.includes(item.id)).map((item) => (
+            <Button key={item.id} onClick={() => selectTab(item.id)} className={tab === item.id ? 'bg-orange-600 text-white' : 'bg-white/10 text-white'}>
               {item.label}
             </Button>
           ))}
         </div>
 
+        {accessDenied && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{accessDenied}</div>
+        )}
+
         <div className="rounded-3xl border border-white/10 bg-white p-6 text-slate-950">
-          {tab === 'pricing' && <QuotationPricingPanel />}
-          {tab === 'leads' && <QuotationLeadsPanel />}
-          {tab === 'designer-leads' && <DesignerLeadsPanel />}
-          {tab === 'reviews' && <ReviewsPanel />}
-          {tab === 'analytics' && <QuotationAnalyticsPanel />}
+          {tab === 'pricing' && visibleTabs.includes('pricing') && <QuotationPricingPanel />}
+          {tab === 'leads' && visibleTabs.includes('leads') && <QuotationLeadsPanel />}
+          {tab === 'designer-leads' && visibleTabs.includes('designer-leads') && <DesignerLeadsPanel />}
+          {tab === 'reviews' && visibleTabs.includes('reviews') && <ReviewsPanel />}
+          {tab === 'analytics' && visibleTabs.includes('analytics') && <QuotationAnalyticsPanel />}
         </div>
       </div>
     </main>

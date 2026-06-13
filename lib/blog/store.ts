@@ -1,0 +1,190 @@
+import { v4 as uuidv4 } from 'uuid';
+import type { Db } from 'mongodb';
+import { getDb } from '@/lib/mongodb';
+import { DEFAULT_BLOG_POSTS } from '@/lib/blog/defaults';
+import { normalizeBlogPost, publicBlogCard, publicBlogPost } from '@/lib/blog/normalize';
+import type { BlogListResult, BlogPost, BlogPostCard } from '@/lib/blog/types';
+import { revalidatePublishedBlogRoutes } from '@/lib/seo/revalidate';
+
+const COLLECTION = 'blog_posts';
+const DEFAULT_LIMIT = 12;
+const MAX_LIMIT = 48;
+const MAX_PAGE = 500;
+
+const LIST_PROJECTION = {
+  _id: 0,
+  slug: 1,
+  title: 1,
+  excerpt: 1,
+  category: 1,
+  featuredImage: 1,
+  author: 1,
+  publishedAt: 1,
+  readingTimeMinutes: 1,
+};
+
+export async function getDatabase(): Promise<Db> {
+  return getDb();
+}
+
+export async function ensureBlogIndexes(db: Db): Promise<void> {
+  await db.collection(COLLECTION).createIndex({ id: 1 }, { unique: true });
+  await db.collection(COLLECTION).createIndex({ slug: 1 }, { unique: true });
+  await db.collection(COLLECTION).createIndex({ status: 1, publishedAt: -1 });
+  await db.collection(COLLECTION).createIndex({ status: 1, category: 1, publishedAt: -1 });
+  await db.collection(COLLECTION).createIndex({ status: 1, tags: 1, publishedAt: -1 });
+}
+
+export async function seedBlogDefaults(db: Db): Promise<void> {
+  const count = await db.collection(COLLECTION).countDocuments();
+  if (count > 0) return;
+
+  const now = new Date().toISOString();
+  const docs = DEFAULT_BLOG_POSTS.map((post) => {
+    const normalized = normalizeBlogPost({ ...post, updatedAt: now });
+    return normalized;
+  }).filter(Boolean);
+
+  if (docs.length) {
+    await db.collection(COLLECTION).insertMany(docs);
+    revalidatePublishedBlogRoutes();
+  }
+}
+
+function publishedQuery(category?: string) {
+  const query: Record<string, unknown> = { status: 'published' };
+  if (category?.trim()) query.category = category.trim();
+  return query;
+}
+
+function clampLimit(limit?: number) {
+  const value = Number(limit) || DEFAULT_LIMIT;
+  return Math.min(MAX_LIMIT, Math.max(1, value));
+}
+
+function clampPage(page?: number) {
+  const value = Number(page) || 1;
+  return Math.min(MAX_PAGE, Math.max(1, value));
+}
+
+export async function listPublishedCategories(db: Db): Promise<string[]> {
+  await seedBlogDefaults(db);
+  const categories = await db.collection(COLLECTION).distinct('category', { status: 'published' });
+  return categories.map(String).filter(Boolean).sort();
+}
+
+export async function listPublishedPosts(
+  db: Db,
+  options: { page?: number; limit?: number; category?: string } = {},
+): Promise<BlogListResult> {
+  await ensureBlogIndexes(db);
+  await seedBlogDefaults(db);
+
+  const limit = clampLimit(options.limit);
+  const page = clampPage(options.page);
+  const query = publishedQuery(options.category);
+
+  const [total, posts, categories] = await Promise.all([
+    db.collection(COLLECTION).countDocuments(query),
+    db.collection(COLLECTION)
+      .find(query, { projection: LIST_PROJECTION })
+      .sort({ publishedAt: -1, slug: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .toArray(),
+    listPublishedCategories(db),
+  ]);
+
+  return {
+    posts: posts.map((post) => publicBlogCard(post) as BlogPostCard),
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+    categories,
+  };
+}
+
+export async function getPublishedPostBySlug(db: Db, slug: string) {
+  await ensureBlogIndexes(db);
+  await seedBlogDefaults(db);
+
+  const post = await db.collection(COLLECTION).findOne(
+    { slug, status: 'published' },
+    { projection: { _id: 0 } },
+  );
+  return publicBlogPost(post);
+}
+
+export async function listRelatedPosts(
+  db: Db,
+  options: { slug: string; category?: string; limit?: number } ,
+): Promise<BlogPostCard[]> {
+  await ensureBlogIndexes(db);
+  const limit = Math.min(6, Math.max(1, Number(options.limit) || 3));
+  const query: Record<string, unknown> = {
+    status: 'published',
+    slug: { $ne: options.slug },
+  };
+  if (options.category?.trim()) query.category = options.category.trim();
+
+  const posts = await db.collection(COLLECTION)
+    .find(query, { projection: LIST_PROJECTION })
+    .sort({ publishedAt: -1 })
+    .limit(limit)
+    .toArray();
+
+  return posts.map((post) => publicBlogCard(post) as BlogPostCard);
+}
+
+export async function listPublishedSlugs(
+  db: Db,
+  options: { limit?: number; skip?: number } = {},
+): Promise<Array<{ slug: string; updatedAt: string }>> {
+  await ensureBlogIndexes(db);
+  await seedBlogDefaults(db);
+
+  const limit = Math.min(50000, Math.max(1, Number(options.limit) || 50000));
+  const skip = Math.max(0, Number(options.skip) || 0);
+
+  const rows = await db.collection(COLLECTION)
+    .find({ status: 'published' }, { projection: { _id: 0, slug: 1, updatedAt: 1, publishedAt: 1 } })
+    .sort({ publishedAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+
+  return rows.map((row) => ({
+    slug: String(row.slug),
+    updatedAt: String(row.updatedAt || row.publishedAt || new Date().toISOString()),
+  }));
+}
+
+export async function saveBlogPost(db: Db, input: Partial<BlogPost>) {
+  await ensureBlogIndexes(db);
+  const normalized = normalizeBlogPost({ ...input, id: input.id || uuidv4(), updatedAt: new Date().toISOString() });
+  if (!normalized) return null;
+
+  await db.collection(COLLECTION).updateOne(
+    { id: normalized.id },
+    { $set: normalized },
+    { upsert: true },
+  );
+
+  if (normalized.status === 'published') {
+    revalidatePublishedBlogRoutes(normalized.slug);
+  }
+
+  return normalized;
+}
+
+export async function deleteBlogPost(db: Db, id: string): Promise<boolean> {
+  const result = await db.collection(COLLECTION).deleteOne({ id });
+  return result.deletedCount > 0;
+}
+
+export async function getBlogPostBySlug(db: Db, slug: string): Promise<BlogPost | null> {
+  await ensureBlogIndexes(db);
+  const post = await db.collection(COLLECTION).findOne({ slug }, { projection: { _id: 0 } });
+  return post as BlogPost | null;
+}

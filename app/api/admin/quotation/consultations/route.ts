@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requireAdminFromRequest } from '@/lib/auth/require-admin-api';
+import { authorizeRequest } from '@/lib/auth/require-admin-api';
+import { authResultToResponse } from '@/lib/auth/rbac/guard';
+import { PERMISSIONS } from '@/lib/auth/rbac/permissions';
 import { getDatabase, listConsultationDrafts } from '@/lib/estimate/store';
-import type { ConsultationDraft } from '@/lib/estimate/types';
 
 export async function GET(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.CUSTOMERS });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q')?.trim().toLowerCase() || '';

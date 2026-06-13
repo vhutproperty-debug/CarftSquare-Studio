@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
-import { requireAdminFromRequest } from '@/lib/auth/require-admin-api';
+import { authorizeRequest } from '@/lib/auth/require-admin-api';
+import { authResultToResponse } from '@/lib/auth/rbac/guard';
+import { PERMISSIONS } from '@/lib/auth/rbac/permissions';
 import { mergeModulePricing } from '@/lib/estimate/pricing-engine';
 import { quotationPricingSaveSchema } from '@/lib/estimate/schemas';
 import { getDatabase, getModulePricing, saveModulePricing, seedDefaultPricing } from '@/lib/estimate/store';
 import type { EstimateModuleId } from '@/lib/estimate/types';
 
 export async function GET(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.AI_QUOTES });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const moduleId = (searchParams.get('moduleId') || 'home-interior') as EstimateModuleId;
@@ -18,8 +21,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.AI_QUOTES });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const body = await request.json();
   const parsed = quotationPricingSaveSchema.safeParse(body);

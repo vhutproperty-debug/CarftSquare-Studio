@@ -1,11 +1,9 @@
 const { MongoClient } = require('mongodb');
-const { randomBytes, scryptSync } = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-function hashPassword(password, salt = randomBytes(16).toString('hex')) {
-  const hash = scryptSync(String(password), salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+async function loadPasswordModule() {
+  return import('../lib/auth/password.ts');
 }
 
 const email = process.argv[2];
@@ -37,10 +35,11 @@ if (!uri) {
 }
 
 MongoClient.connect(uri).then(async (client) => {
+  const { hashPassword } = await loadPasswordModule();
   const dbName = envContent.match(/^DB_NAME=(.+)$/m)?.[1]?.trim() || 'brushandbloom';
   const db = client.db(dbName);
   const result = await db.collection('admins').updateOne(
-    { email: email.trim().toLowerCase(), role: 'admin' },
+    { email: email.trim().toLowerCase(), role: { $in: ['admin', 'super_admin'] } },
     { $set: { passwordHash: hashPassword(password), updatedAt: new Date().toISOString() } },
   );
   console.log(`Password reset for ${email}: ${result.modifiedCount ? 'success' : 'no admin found'}`);

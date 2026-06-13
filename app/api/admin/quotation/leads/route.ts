@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAdminFromRequest } from '@/lib/auth/require-admin-api';
+import { authorizeRequest } from '@/lib/auth/require-admin-api';
+import { authResultToResponse } from '@/lib/auth/rbac/guard';
+import { PERMISSIONS } from '@/lib/auth/rbac/permissions';
 import { notifyStatusChanged } from '@/lib/estimate/integrations';
 import { getDatabase, getQuoteById, toQuotationLead } from '@/lib/estimate/store';
 import type { LeadStatus, QuotationQuote } from '@/lib/estimate/types';
@@ -7,8 +9,9 @@ import type { LeadStatus, QuotationQuote } from '@/lib/estimate/types';
 const VALID_STATUSES: LeadStatus[] = ['new', 'contacted', 'meeting_scheduled', 'won', 'lost', 'site_visit', 'negotiation'];
 
 export async function GET(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.AI_QUOTES });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q')?.trim().toLowerCase() || '';
@@ -32,56 +35,63 @@ export async function GET(request: Request) {
     .toArray()) as QuotationQuote[];
 
   if (q) {
-    quotes = quotes.filter((quote) => {
-      const haystack = [
+    quotes = quotes.filter((quote) =>
+      [
         quote.quoteNumber,
-        quote.customer?.name,
-        quote.customer?.phone,
-        quote.customer?.email,
+        quote.id,
+        quote.answers.name,
+        quote.answers.phone,
+        quote.answers.email,
         quote.answers.city,
-        quote.leadSource,
-        quote.landingPage,
-        quote.aiSummary?.projectType,
+        quote.moduleId,
+        quote.status,
       ]
         .filter(Boolean)
         .join(' ')
-        .toLowerCase();
-      return haystack.includes(q);
-    });
+        .toLowerCase()
+        .includes(q),
+    );
   }
 
   return NextResponse.json({ leads: quotes.map(toQuotationLead) });
 }
 
 export async function PUT(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.AI_QUOTES });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const body = await request.json();
-  const { id, status, notes } = body;
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const quoteId = String(body.id || '').trim();
+  const status = body.status as LeadStatus | undefined;
+  const adminNotes = body.adminNotes as string | undefined;
+
+  if (!quoteId) {
+    return NextResponse.json({ error: 'Quote id is required.' }, { status: 400 });
+  }
+  if (status && !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Invalid status.' }, { status: 400 });
+  }
 
   const db = await getDatabase();
-  const existing = await getQuoteById(db, id);
-  if (!existing) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+  const existing = await getQuoteById(db, quoteId);
+  if (!existing) {
+    return NextResponse.json({ error: 'Quote not found.' }, { status: 404 });
+  }
 
   const patch: Partial<QuotationQuote> = { updatedAt: new Date().toISOString() };
-  if (status) {
-    if (!VALID_STATUSES.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-    }
-    patch.status = status;
-  }
-  if (typeof notes === 'string') {
-    patch.notes = notes.slice(0, 2000);
-  }
+  if (status) patch.status = status;
+  if (adminNotes !== undefined) patch.adminNotes = adminNotes;
 
-  await db.collection('quotation_quotes').updateOne({ id }, { $set: patch });
-  const updated = await getQuoteById(db, id);
-
-  if (updated && status && status !== existing.status) {
-    await notifyStatusChanged(updated, existing.status);
+  await db.collection('quotation_quotes').updateOne({ id: quoteId }, { $set: patch });
+  const updated = await getQuoteById(db, quoteId);
+  if (!updated) {
+    return NextResponse.json({ error: 'Quote not found.' }, { status: 404 });
   }
 
-  return NextResponse.json({ message: 'Lead updated.', lead: updated ? toQuotationLead(updated) : null });
+  if (status && status !== existing.status) {
+    await notifyStatusChanged(updated, existing.status, status);
+  }
+
+  return NextResponse.json({ lead: toQuotationLead(updated) });
 }

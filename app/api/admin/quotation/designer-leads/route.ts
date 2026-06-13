@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAdminFromRequest } from '@/lib/auth/require-admin-api';
+import { authorizeRequest } from '@/lib/auth/require-admin-api';
+import { authResultToResponse } from '@/lib/auth/rbac/guard';
+import { PERMISSIONS } from '@/lib/auth/rbac/permissions';
 import { designerLeadUpdateSchema } from '@/lib/designer-leads/schemas';
 import {
   designerLeadsToCsv,
@@ -11,8 +13,9 @@ import {
 import type { DesignerLeadStatus } from '@/lib/designer-leads/types';
 
 export async function GET(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.CUSTOMERS });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q') || '';
@@ -43,8 +46,9 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+  const auth = await authorizeRequest(request, { permission: PERMISSIONS.CUSTOMERS });
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const body = await request.json();
   const parsed = designerLeadUpdateSchema.safeParse(body);

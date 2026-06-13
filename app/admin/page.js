@@ -35,6 +35,18 @@ import { Badge } from '@/components/ui/badge';
 import { BRAND } from '@/lib/brand';
 import BrandLogo from '@/components/BrandLogo';
 import CmsPanel from './CmsPanel';
+import dynamic from 'next/dynamic';
+
+const RbacManagementPanel = dynamic(() => import('./RbacManagementPanel'), {
+  ssr: false,
+  loading: () => null,
+});
+const ActivityLogsPanel = dynamic(() => import('./ActivityLogsPanel'), {
+  ssr: false,
+  loading: () => null,
+});
+import PermissionGate, { SuperAdminGate } from './PermissionGate';
+import { canAccess, canAccessAny, isSuperAdmin } from '@/lib/auth/rbac/client';
 
 function formatCurrency(value = 0) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -66,48 +78,94 @@ const AdminPage = () => {
   const [testimonialForm, setTestimonialForm] = useState({ name: '', area: '', text: '', rating: 5 });
   const [testimonials, setTestimonials] = useState([]);
   const [testimonialMessage, setTestimonialMessage] = useState('');
+  const [accessDenied, setAccessDenied] = useState('');
 
-  async function loadAdminData() {
+  async function loadAdminData(user) {
     try {
-      const [leadsRes, vendorsRes, dashboardRes, pricingRes] = await Promise.all([
-        fetch('/api/admin/leads', { credentials: 'include' }),
-        fetch('/api/admin/vendors', { credentials: 'include' }),
-        fetch('/api/admin/dashboard', { credentials: 'include' }),
-        fetch('/api/admin/pricing', { credentials: 'include' }),
-      ]);
-      if (!leadsRes.ok || !dashboardRes.ok) return;
-      const leadsData = await leadsRes.json();
-      const vendorsData = vendorsRes.ok ? await vendorsRes.json() : {};
-      const dashboardData = await dashboardRes.json();
-      const pricingData = pricingRes.ok ? await pricingRes.json() : {};
-      setAdminLeads(leadsData.leads || []);
-      setAdminVendors(vendorsData.vendors || []);
-      setAdminDashboard(dashboardData || null);
-      setPricing(pricingData.pricing || null);
+      const requests = [];
+      const keys = [];
+
+      if (canAccess(user, 'leads', 'view')) {
+        requests.push(fetch('/api/admin/leads', { credentials: 'include' }));
+        keys.push('leads');
+      }
+      if (canAccess(user, 'leads', 'view')) {
+        requests.push(fetch('/api/admin/vendors', { credentials: 'include' }));
+        keys.push('vendors');
+      }
+      if (canAccess(user, 'dashboard', 'view') || canAccess(user, 'analytics', 'view')) {
+        requests.push(fetch('/api/admin/dashboard', { credentials: 'include' }));
+        keys.push('dashboard');
+      }
+      if (canAccess(user, 'ai_quotes', 'view')) {
+        requests.push(fetch('/api/admin/pricing', { credentials: 'include' }));
+        keys.push('pricing');
+      }
+
+      if (!requests.length) return;
+
+      const responses = await Promise.all(requests);
+      const forbidden = responses.some((response) => response.status === 403);
+      if (forbidden) {
+        setAccessDenied('Access denied. You do not have permission to view one or more admin sections.');
+        return;
+      }
+
+      const payload = await Promise.all(responses.map((response) => response.json().catch(() => ({}))));
+      const dataByKey = Object.fromEntries(keys.map((key, index) => [key, payload[index]]));
+
+      if (dataByKey.leads) setAdminLeads(dataByKey.leads.leads || []);
+      if (dataByKey.vendors) setAdminVendors(dataByKey.vendors.vendors || []);
+      if (dataByKey.dashboard) setAdminDashboard(dataByKey.dashboard || null);
+      if (dataByKey.pricing) setPricing(dataByKey.pricing.pricing || null);
     } catch (error) {
       setMessage('Could not load admin data.');
     }
   }
 
   async function loadAuth() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch('/api/auth/status', { credentials: 'include' });
+      const response = await fetch('/api/auth/status', {
+        credentials: 'include',
+        signal: controller.signal,
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setAuth((current) => ({ ...current, checked: true }));
         setMessage(data.error || 'Could not connect to the admin API. Check MongoDB in .env.local and restart the dev server.');
         return;
       }
-      setAuth({ checked: true, hasAdmin: Boolean(data.hasAdmin), authenticated: Boolean(data.authenticated), user: data.user || null });
-      if (data.authenticated) loadAdminData();
+      const user = data.user
+        ? {
+            ...data.user,
+            role: data.role || data.user.role,
+            isSuperAdmin: Boolean(data.isSuperAdmin ?? data.user.isSuperAdmin),
+          }
+        : null;
+      setAuth({ checked: true, hasAdmin: Boolean(data.hasAdmin), authenticated: Boolean(data.authenticated), user });
+      if (data.authenticated) loadAdminData(user);
     } catch (error) {
+      const timedOut = error?.name === 'AbortError';
+      setMessage(timedOut
+        ? 'Admin auth check timed out. Reload the page or continue using the public site.'
+        : 'Could not reach the admin API. Make sure npm run dev is running.');
+    } finally {
+      clearTimeout(timer);
       setAuth((current) => ({ ...current, checked: true }));
-      setMessage('Could not reach the admin API. Make sure npm run dev is running.');
     }
   }
 
   useEffect(() => {
     loadAuth();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('denied')) {
+      setAccessDenied('Access denied. You do not have permission to view that section.');
+    }
   }, []);
 
   async function submitAuth(event) {
@@ -361,9 +419,11 @@ const AdminPage = () => {
             <span className="text-sm font-black tracking-tight sm:text-lg">Admin</span>
           </a>
           <div className="flex items-center gap-2">
-            <a href="/admin/quotation">
-              <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><WalletCards className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">AI Quotations</span></Button>
-            </a>
+            {auth.authenticated && canAccess(auth.user, 'ai_quotes', 'view') && (
+              <a href="/admin/quotation">
+                <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><WalletCards className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">AI Quotations</span></Button>
+              </a>
+            )}
             <a href="/">
               <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Home className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Public Site</span></Button>
             </a>
@@ -396,31 +456,44 @@ const AdminPage = () => {
             </CardContent>
           </Card>
         ) : (
+          <div className="space-y-6">
+            <Card className="border-white/10 bg-white/10 text-white backdrop-blur">
+              <CardContent className="space-y-4 p-6">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="text-sm text-slate-300">Logged in as</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-2xl font-black">{auth.user?.name || auth.user?.email}</h2>
+                      <Badge className={isSuperAdmin(auth.user) ? 'bg-purple-500 text-white hover:bg-purple-500' : 'bg-orange-500 text-white hover:bg-orange-500'}>
+                        {isSuperAdmin(auth.user) ? 'Super Admin' : 'Admin'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-400">{auth.user?.email}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => setResetOpen((current) => !current)} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><LockKeyhole className="mr-2 h-4 w-4" /> Reset Password</Button>
+                    <Button onClick={logout} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
+                  </div>
+                </div>
+                {resetOpen && (
+                  <form onSubmit={resetPassword} className="grid gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 sm:grid-cols-[1fr_auto]">
+                    <Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Enter new password" minLength={8} required className="bg-white text-slate-950" />
+                    <Button disabled={loading} className="bg-orange-600 font-black text-white hover:bg-orange-700">Save Password</Button>
+                  </form>
+                )}
+                {accessDenied && <p className="rounded-2xl bg-red-500/15 p-4 text-sm font-semibold text-red-200">{accessDenied}</p>}
+                {message && <p className="rounded-2xl bg-orange-50 p-4 text-sm font-semibold text-orange-700">{message}</p>}
+              </CardContent>
+            </Card>
+
+            <SuperAdminGate user={auth.user}>
+              <RbacManagementPanel currentUser={auth.user} onMessage={setMessage} />
+              <ActivityLogsPanel currentUser={auth.user} onMessage={setMessage} />
+            </SuperAdminGate>
+
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-6">
-              <Card className="border-white/10 bg-white/10 text-white backdrop-blur">
-                <CardContent className="space-y-4 p-6">
-                  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                    <div>
-                      <p className="text-sm text-slate-300">Logged in as</p>
-                      <h2 className="text-2xl font-black">{auth.user?.name || auth.user?.email}</h2>
-                      <p className="text-sm text-slate-400">{auth.user?.email}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button onClick={() => setResetOpen((current) => !current)} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><LockKeyhole className="mr-2 h-4 w-4" /> Reset Password</Button>
-                      <Button onClick={logout} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
-                    </div>
-                  </div>
-                  {resetOpen && (
-                    <form onSubmit={resetPassword} className="grid gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 sm:grid-cols-[1fr_auto]">
-                      <Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Enter new password" minLength={8} required className="bg-white text-slate-950" />
-                      <Button disabled={loading} className="bg-orange-600 font-black text-white hover:bg-orange-700">Save Password</Button>
-                    </form>
-                  )}
-                  {message && <p className="rounded-2xl bg-orange-50 p-4 text-sm font-semibold text-orange-700">{message}</p>}
-                </CardContent>
-              </Card>
-
+              <PermissionGate user={auth.user} module="dashboard" action="view">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {[
                   ['Leads', stats.totalLeads || adminLeads.length, Users],
@@ -434,7 +507,9 @@ const AdminPage = () => {
                   </Card>
                 ))}
               </div>
+              </PermissionGate>
 
+              <PermissionGate user={auth.user} module="ai_quotes" action="view">
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader>
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -487,10 +562,14 @@ const AdminPage = () => {
                   </CardContent>
                 )}
               </Card>
+              </PermissionGate>
 
 
-              <CmsPanel onMessage={setMessage} />
+              {canAccessAny(auth.user, ['projects', 'gallery', 'marketing'], 'view') && (
+                <CmsPanel onMessage={setMessage} user={auth.user} />
+              )}
 
+              <PermissionGate user={auth.user} module="leads" action="view">
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader><CardTitle>Secure lead management</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -520,7 +599,9 @@ const AdminPage = () => {
                   )) : <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No leads yet. Submit a quote form on the public site to manage it here.</p>}
                 </CardContent>
               </Card>
+              </PermissionGate>
 
+              <PermissionGate user={auth.user} module="leads" action="view">
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader><CardTitle>Vendor association requests</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -543,7 +624,9 @@ const AdminPage = () => {
                   )) : <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No vendor requests yet. Contractors can submit from the public website section.</p>}
                 </CardContent>
               </Card>
+              </PermissionGate>
 
+              <PermissionGate user={auth.user} module="gallery" action="view">
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -913,7 +996,9 @@ const AdminPage = () => {
                   )}
                 </CardContent>
               </Card>
+              </PermissionGate>
 
+              <PermissionGate user={auth.user} module="marketing" action="view">
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader><CardTitle>Paint Shade Import</CardTitle></CardHeader>
                 <CardContent>
@@ -931,10 +1016,12 @@ const AdminPage = () => {
                   </form>
                 </CardContent>
               </Card>
+              </PermissionGate>
 
             </div>
 
             <div className="space-y-6">
+              <PermissionGate user={auth.user} module="marketing" action="view">
               <Card className="border-white/10 bg-white/10 text-white backdrop-blur">
                 <CardHeader><CardTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-orange-300" /> Room color visualizer</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
@@ -960,6 +1047,8 @@ const AdminPage = () => {
                   <p className="text-xs leading-5 text-slate-400">Real AI transformation will activate after adding STABILITY_API_KEY or CLARIFAI_API_KEY. Current preview is a local overlay, not an AI-generated render.</p>
                 </CardContent>
               </Card>
+              </PermissionGate>
+              <PermissionGate user={auth.user} module="marketing" action="view">
               <Card className="border-white/10 bg-orange-500 text-white">
                 <CardContent className="p-6">
                   <MessageCircle className="h-8 w-8" />
@@ -967,7 +1056,9 @@ const AdminPage = () => {
                   <p className="mt-2 text-sm text-orange-50">The admin action will send real estimate messages through Meta Cloud API once WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN are configured.</p>
                 </CardContent>
               </Card>
+              </PermissionGate>
             </div>
+          </div>
           </div>
         )}
       </section>

@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { BRAND, absoluteLogoUrl } from '@/lib/brand';
 import { getDb as connectDb } from '@/lib/mongodb';
+import { hashPassword, verifyPassword, needsPasswordRehash } from '@/lib/auth/password';
+import { guardAdmin, authFailureJson } from '@/lib/auth/rbac/api-helper';
+import { createFullMatrix, PERMISSIONS } from '@/lib/auth/rbac/permissions';
+import { ADMIN_STATUSES, ROLES, isSuperAdmin as checkSuperAdmin } from '@/lib/auth/rbac/roles';
+import { logAuditEvent } from '@/lib/auth/rbac/audit';
+import {
+  countActiveAdmins,
+  findAdminByEmail,
+  findAdminById,
+  migrateLegacyAdmins,
+  recordAdminLogin,
+  toPublicAdmin,
+} from '@/lib/auth/rbac/store';
 import {
   getSessionCookieOptions,
   readSessionToken,
@@ -110,17 +122,12 @@ const defaultPaintShades = [
 const shadeBrands = ['Asian Paints', 'Nerolac', 'Berger', 'Dulux'];
 const shadeCategories = ['Whites', 'Beige', 'Grey', 'Blue', 'Luxury', 'Exterior', 'Texture-inspired'];
 
-function hashPassword(password, salt = randomBytes(16).toString('hex')) {
-  const hash = scryptSync(String(password), salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+async function requireAdmin(request, permission) {
+  return guardAdmin(request, permission);
 }
 
-function verifyPassword(password, storedHash = '') {
-  const [salt, hash] = storedHash.split(':');
-  if (!salt || !hash) return false;
-  const candidate = scryptSync(String(password), salt, 64);
-  const expected = Buffer.from(hash, 'hex');
-  return expected.length === candidate.length && timingSafeEqual(expected, candidate);
+function denyAdminAuth(request, auth) {
+  return authFailureJson(json, request, auth);
 }
 
 function readSession(request) {
@@ -137,18 +144,10 @@ function clearSessionCookie(response) {
   return response;
 }
 
-async function requireAdmin(request) {
-  const session = readSession(request);
-  if (!session) return null;
-  const db = await getDb();
-  const admin = await db.collection('admins').findOne({ id: session.id, role: 'admin' }, { projection: { _id: 0, passwordHash: 0 } });
-  return admin || null;
-}
-
 function safeAdmin(admin) {
-  if (!admin) return null;
-  const { passwordHash, _id, ...safe } = admin;
-  return safe;
+  const publicAdmin = toPublicAdmin(admin);
+  if (!publicAdmin) return null;
+  return { ...publicAdmin, isSuperAdmin: checkSuperAdmin(publicAdmin) };
 }
 
 function escapePdfText(value = '') {
@@ -443,8 +442,8 @@ async function getShades(request) {
 }
 
 async function adminImportShades(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+  if (!auth.ok) return denyAdminAuth(request, auth);
 
   const body = await request.json();
   const mode = body.mode === 'replace' ? 'replace' : 'upsert';
@@ -580,8 +579,8 @@ async function createLead(request) {
 }
 
 async function getLeads(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -590,7 +589,7 @@ async function getLeads(request) {
   return json({ leads });
 }
 
-async function updateLead(request, id) {
+async function updateLead(request, id, admin) {
   if (!id) {
     return json({ error: 'Lead id is required.' }, 400);
   }
@@ -618,6 +617,14 @@ async function updateLead(request, id) {
 
   if (!result) {
     return json({ error: 'Lead not found.' }, 404);
+  }
+
+  if (admin) {
+    await logAuditEvent(db, 'edit', {
+      request,
+      actorId: admin.id,
+      actorEmail: admin.email,
+    }, 'lead', { module: 'leads', resourceId: id });
   }
 
   return json({ lead: result, message: 'Lead updated.' });
@@ -691,8 +698,8 @@ async function createVendorRequest(request) {
 }
 
 async function adminVendors(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -725,16 +732,16 @@ async function createEnquiryEvent(request) {
 }
 
 async function retryEmailNotificationsAdmin(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const retried = await retryFailedEmailNotifications(db, 25);
   return json({ retried, message: `${retried} failed email notifications retried.` });
 }
 
 async function updateVendorAdmin(request, id) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   if (!id) return json({ error: 'Vendor id is required.' }, 400);
 
   const db = await getDb();
@@ -764,8 +771,8 @@ async function updateVendorAdmin(request, id) {
 }
 
 async function dashboard(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.ANALYTICS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const leads = await db.collection('leads').find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(100).toArray();
   const statusCounts = leads.reduce((acc, lead) => {
@@ -791,15 +798,50 @@ async function dashboard(request) {
 }
 
 async function authStatus(request) {
-  const db = await getDb();
-  const hasAdmin = await db.collection('admins').countDocuments({ role: 'admin' }) > 0;
-  const sessionAdmin = await requireAdmin(request);
-  return json({ hasAdmin, authenticated: Boolean(sessionAdmin), user: safeAdmin(sessionAdmin) });
+  try {
+    const db = await connectDb();
+    await migrateLegacyAdmins(db);
+    const hasAdmin = await countActiveAdmins(db) > 0;
+    const auth = await requireAdmin(request);
+
+    let user = null;
+    if (auth.ok && auth.admin?.id) {
+      const freshAdmin = await findAdminById(db, auth.admin.id);
+      user = safeAdmin(freshAdmin);
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[rbac] auth_status', JSON.stringify({
+          email: user?.email,
+          role: user?.role,
+          isSuperAdmin: user?.isSuperAdmin,
+          status: user?.status,
+        }));
+      }
+    }
+
+    return json({
+      hasAdmin,
+      authenticated: auth.ok,
+      role: user?.role || null,
+      isSuperAdmin: Boolean(user?.isSuperAdmin),
+      user,
+    });
+  } catch (error) {
+    console.error('[rbac] auth_status_failed', error instanceof Error ? error.message : error);
+    return json({
+      hasAdmin: false,
+      authenticated: false,
+      role: null,
+      isSuperAdmin: false,
+      user: null,
+      error: 'Auth service temporarily unavailable.',
+    });
+  }
 }
 
 async function setupAdmin(request) {
   const db = await getDb();
-  const existingAdmins = await db.collection('admins').countDocuments({ role: 'admin' });
+  await migrateLegacyAdmins(db);
+  const existingAdmins = await countActiveAdmins(db);
   if (existingAdmins > 0) {
     return json({ error: 'Admin already exists. Please login.' }, 409, request);
   }
@@ -815,38 +857,79 @@ async function setupAdmin(request) {
     id: uuidv4(),
     email: email.toLowerCase(),
     name,
-    role: 'admin',
+    role: ROLES.SUPER_ADMIN,
+    permissions: createFullMatrix(true),
+    status: ADMIN_STATUSES.ACTIVE,
     passwordHash: hashPassword(password),
     createdAt: now,
     updatedAt: now,
   };
 
   await db.collection('admins').insertOne(admin);
-  const response = NextResponse.json({ user: safeAdmin(admin), message: 'First admin created and logged in.' }, { status: 201 });
+  await logAuditEvent(db, 'create', {
+    request,
+    actorId: admin.id,
+    actorEmail: admin.email,
+  }, 'admin', { module: 'admin', resourceId: admin.id, details: { bootstrap: true } });
+  await logAuditEvent(db, 'login', {
+    request,
+    actorId: admin.id,
+    actorEmail: admin.email,
+  }, 'auth', { module: 'auth', resourceId: admin.id });
+
+  const response = NextResponse.json({ user: safeAdmin(admin), message: 'First Super Admin created and logged in.' }, { status: 201 });
   applyCorsHeaders(response, request);
   return setSessionCookie(response, admin);
 }
 
 async function loginAdmin(request) {
   const db = await getDb();
+  await migrateLegacyAdmins(db);
   const rawBody = await request.json();
   const parsed = parseRequestBody(authLoginSchema, rawBody);
   if (parsed.error) return json({ error: parsed.error }, 400, request);
   const { email, password } = parsed.data;
-  const admin = await db.collection('admins').findOne({ email: email.toLowerCase(), role: 'admin' });
+  const admin = await findAdminByEmail(db, email.toLowerCase());
 
   if (!admin || !verifyPassword(password, admin.passwordHash)) {
     return json({ error: 'Invalid admin credentials.' }, 401);
   }
 
-  const response = NextResponse.json({ user: safeAdmin(admin), message: 'Admin logged in.' });
+  if (admin.status === ADMIN_STATUSES.SUSPENDED) {
+    return json({ error: 'This admin account is suspended.' }, 403);
+  }
+
+  if (needsPasswordRehash(admin.passwordHash)) {
+    await db.collection('admins').updateOne(
+      { id: admin.id },
+      { $set: { passwordHash: hashPassword(password), updatedAt: new Date().toISOString() } },
+    );
+  }
+
+  await recordAdminLogin(db, admin.id);
+  const freshAdmin = (await findAdminById(db, admin.id)) || admin;
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[rbac] login_success', JSON.stringify({
+      email: freshAdmin.email,
+      role: freshAdmin.role,
+      isSuperAdmin: checkSuperAdmin(freshAdmin),
+      status: freshAdmin.status,
+    }));
+  }
+  await logAuditEvent(db, 'login', {
+    request,
+    actorId: freshAdmin.id,
+    actorEmail: freshAdmin.email,
+  }, 'auth', { module: 'auth', resourceId: freshAdmin.id });
+
+  const response = NextResponse.json({ user: safeAdmin(freshAdmin), message: 'Admin logged in.' });
   applyCorsHeaders(response, request);
-  return setSessionCookie(response, admin);
+  return setSessionCookie(response, freshAdmin);
 }
 
 async function resetAdminPassword(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request);
+  if (!auth.ok) return denyAdminAuth(request, auth);
 
   const rawBody = await request.json();
   const parsed = parseRequestBody(authResetPasswordSchema, rawBody);
@@ -856,15 +939,22 @@ async function resetAdminPassword(request) {
   const db = await getDb();
   const updatedAt = new Date().toISOString();
   await db.collection('admins').updateOne(
-    { id: admin.id, role: 'admin' },
+    { id: auth.admin.id },
     { $set: { passwordHash: hashPassword(password), updatedAt, passwordResetAt: updatedAt } },
   );
+
+  await logAuditEvent(db, 'reset_password', {
+    request,
+    actorId: auth.admin.id,
+    actorEmail: auth.admin.email,
+  }, 'auth', { module: 'auth', resourceId: auth.admin.id, details: { selfService: true } });
+
   return json({ message: 'Password reset successfully.' });
 }
 
 async function adminPricing(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.AI_QUOTES);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const pricing = await getPricingSettings(db);
   return json({ pricing });
@@ -903,8 +993,8 @@ function sanitizePricingPayload(body = {}) {
 }
 
 async function saveAdminPricing(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.AI_QUOTES);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const body = await request.json();
   const db = await getDb();
   const pricing = sanitizePricingPayload(body.pricing || body);
@@ -913,8 +1003,8 @@ async function saveAdminPricing(request) {
 }
 
 async function resetAdminPricing(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.AI_QUOTES);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const pricing = { ...defaultPricingSettings, updatedAt: new Date().toISOString() };
   await db.collection('settings').updateOne({ key: 'pricing' }, { $set: pricing }, { upsert: true });
@@ -922,34 +1012,43 @@ async function resetAdminPricing(request) {
 }
 
 async function logoutAdmin(request) {
+  const auth = await requireAdmin(request);
+  if (auth.ok) {
+    const db = await getDb();
+    await logAuditEvent(db, 'logout', {
+      request,
+      actorId: auth.admin.id,
+      actorEmail: auth.admin.email,
+    }, 'auth', { module: 'auth', resourceId: auth.admin.id });
+  }
   const response = NextResponse.json({ message: 'Logged out.' });
   applyCorsHeaders(response, request);
   return clearSessionCookie(response);
 }
 
 async function adminLeads(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const leads = await db.collection('leads').find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(250).toArray();
-  return json({ leads, admin });
+  return json({ leads, admin: safeAdmin(auth.admin) });
 }
 
 async function adminDashboard(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
-  return dashboard();
+  const auth = await requireAdmin(request, PERMISSIONS.ANALYTICS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
+  return dashboard(request);
 }
 
 async function updateLeadAdmin(request, id) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
-  return updateLead(request, id);
+  const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+  if (!auth.ok) return denyAdminAuth(request, auth);
+  return updateLead(request, id, auth.admin);
 }
 
 async function quotePdf(request, leadId) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.AI_QUOTES);
+  if (!auth.ok) return denyAdminAuth(request, auth);
   const db = await getDb();
   const lead = await db.collection('leads').findOne({ id: leadId }, { projection: { _id: 0 } });
   if (!lead) return json({ error: 'Lead not found.' }, 404);
@@ -957,7 +1056,7 @@ async function quotePdf(request, leadId) {
     id: uuidv4(),
     leadId,
     quoteNumber: `Q-${String(leadId).slice(0, 8).toUpperCase()}`,
-    generatedBy: admin.id,
+    generatedBy: auth.admin.id,
     lines: buildQuoteLines(lead),
     createdAt: new Date().toISOString(),
   };
@@ -975,8 +1074,8 @@ async function quotePdf(request, leadId) {
 }
 
 async function sendWhatsAppQuote(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+  if (!auth.ok) return denyAdminAuth(request, auth);
 
   if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
     return json({
@@ -1013,8 +1112,8 @@ async function sendWhatsAppQuote(request) {
 }
 
 async function visualizerTransform(request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+  const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+  if (!auth.ok) return denyAdminAuth(request, auth);
 
   if (!process.env.STABILITY_API_KEY && !process.env.CLARIFAI_API_KEY) {
     return json({
@@ -1108,32 +1207,32 @@ export async function GET(request, context) {
     }
 
     if (route === 'admin' && path[1] === 'about') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminGetAbout(db));
     }
 
     if (route === 'admin' && path[1] === 'services') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminGetServices(db));
     }
 
     if (route === 'admin' && path[1] === 'rental-interiors') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminGetRentalInteriors(db));
     }
 
     if (route === 'admin' && path[1] === 'gallery') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.GALLERY);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminGetGallery(db));
     }
 
     if (route === 'admin' && path[1] === 'seo') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminGetSeo(db));
     }
 
@@ -1245,23 +1344,23 @@ export async function POST(request, context) {
     const db = await getDb();
 
     if (route === 'admin' && path[1] === 'about') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       const result = await adminSaveAbout(db, body);
       return json(result);
     }
 
     if (route === 'admin' && path[1] === 'services' && path[2] === 'reorder') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       return json(await adminReorderServices(db, body));
     }
 
     if (route === 'admin' && path[1] === 'services') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       const result = await adminSaveService(db, body);
       if (result.error) return json({ error: result.error }, result.status || 400);
@@ -1269,8 +1368,8 @@ export async function POST(request, context) {
     }
 
     if (route === 'admin' && path[1] === 'rental-interiors') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       const result = await adminSaveRentalInteriors(db, body);
       if (result.error) return json({ error: result.error }, result.status || 400);
@@ -1278,15 +1377,15 @@ export async function POST(request, context) {
     }
 
     if (route === 'admin' && path[1] === 'gallery' && path[2] === 'reorder') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.GALLERY);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       return json(await adminReorderGallery(db, body));
     }
 
     if (route === 'admin' && path[1] === 'gallery' && path[2] === 'categories') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.GALLERY);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       const result = await adminSaveGalleryCategory(db, body);
       if (result.error) return json({ error: result.error }, result.status || 400);
@@ -1294,8 +1393,8 @@ export async function POST(request, context) {
     }
 
     if (route === 'admin' && path[1] === 'gallery') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.GALLERY);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       const result = await adminSaveGalleryItem(db, body);
       if (result.error) return json({ error: result.error }, result.status || 400);
@@ -1303,15 +1402,15 @@ export async function POST(request, context) {
     }
 
     if (route === 'admin' && path[1] === 'seo') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const body = await request.json();
       return json(await adminSaveSeo(db, body));
     }
 
     if (route === 'admin' && path[1] === 'media' && path[2] === 'upload') {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       const result = await adminUploadMedia(request);
       if (result.error) return json({ error: result.error }, result.status || 400);
       return json(result);
@@ -1331,7 +1430,9 @@ export async function PUT(request, context) {
     const path = getPathSegments(context);
 
     if (path[0] === 'leads') {
-      return updateLead(request, path[1]);
+      const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
+      return updateLead(request, path[1], auth.admin);
     }
 
     if (path[0] === 'admin' && path[1] === 'leads') {
@@ -1357,23 +1458,36 @@ export async function DELETE(request, context) {
     const db = await getDb();
 
     if (path[0] === 'admin' && path[1] === 'services' && path[2]) {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.PROJECTS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminDeleteService(db, path[2]));
     }
 
     if (path[0] === 'admin' && path[1] === 'gallery' && path[2]) {
-      const admin = await requireAdmin(request);
-      if (!admin) return json({ error: 'Admin authentication required.' }, 401);
+      const auth = await requireAdmin(request, PERMISSIONS.GALLERY);
+      if (!auth.ok) return denyAdminAuth(request, auth);
       return json(await adminDeleteGalleryItem(db, path[2]));
+    }
+
+    if (path[0] === 'leads' && path[1]) {
+      const auth = await requireAdmin(request, PERMISSIONS.LEADS);
+      if (!auth.ok) return denyAdminAuth(request, auth);
+      const result = await db.collection('leads').deleteOne({ id: path[1] });
+      if (result.deletedCount === 1) {
+        await logAuditEvent(db, 'delete', {
+          request,
+          actorId: auth.admin.id,
+          actorEmail: auth.admin.email,
+        }, 'lead', { module: 'leads', resourceId: path[1] });
+      }
+      return json({ deleted: result.deletedCount === 1 }, 200, request);
     }
 
     if (path[0] !== 'leads' || !path[1]) {
       return json({ error: 'Resource id is required.' }, 400);
     }
 
-    const result = await db.collection('leads').deleteOne({ id: path[1] });
-    return json({ deleted: result.deletedCount === 1 }, 200, request);
+    return json({ error: 'API route not found.' }, 404, request);
   } catch (error) {
     return json({ error: error.message || 'Unexpected server error.' }, 500, request);
   }

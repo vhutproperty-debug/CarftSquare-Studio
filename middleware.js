@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/auth/session-constants';
 import { getSessionFromRequest } from '@/lib/auth/session-edge';
+import { shouldNormalizePath, normalizeDynamicPath, cleanPathname } from '@/lib/seo/urls';
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/login',
@@ -23,6 +24,18 @@ function isProtectedDataApi(pathname) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  if (
+    !pathname.startsWith('/api/')
+    && !pathname.startsWith('/_next/')
+    && !pathname.startsWith('/admin')
+    && shouldNormalizePath(pathname)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = normalizeDynamicPath(cleanPathname(pathname));
+    return NextResponse.redirect(url, 308);
+  }
+
   let session = null;
   try {
     session = await getSessionFromRequest(request);
@@ -58,5 +71,13 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*', '/api/admin/:path*', '/api/leads', '/api/dashboard', '/api/auth/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/admin',
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/api/leads',
+    '/api/dashboard',
+    '/api/auth/:path*',
+  ],
 };
