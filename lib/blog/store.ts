@@ -160,10 +160,102 @@ export async function listPublishedSlugs(
   }));
 }
 
+export type AdminBlogListOptions = {
+  page?: number;
+  limit?: number;
+  q?: string;
+  status?: BlogPost['status'] | 'all';
+  category?: string;
+};
+
+export type AdminBlogListResult = {
+  posts: BlogPost[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  categories: string[];
+};
+
+function buildAdminSearchQuery(options: AdminBlogListOptions) {
+  const query: Record<string, unknown> = {};
+  if (options.status && options.status !== 'all') {
+    query.status = options.status;
+  }
+  if (options.category?.trim()) {
+    query.category = options.category.trim();
+  }
+  const q = String(options.q || '').trim();
+  if (q) {
+    query.$or = [
+      { title: { $regex: q, $options: 'i' } },
+      { excerpt: { $regex: q, $options: 'i' } },
+      { slug: { $regex: q, $options: 'i' } },
+      { category: { $regex: q, $options: 'i' } },
+      { tags: { $regex: q, $options: 'i' } },
+    ];
+  }
+  return query;
+}
+
+export async function listAdminCategories(db: Db): Promise<string[]> {
+  await ensureBlogIndexes(db);
+  const categories = await db.collection(COLLECTION).distinct('category');
+  return categories.map(String).filter(Boolean).sort();
+}
+
+export async function listAdminBlogPosts(
+  db: Db,
+  options: AdminBlogListOptions = {},
+): Promise<AdminBlogListResult> {
+  await ensureBlogIndexes(db);
+
+  const limit = clampLimit(options.limit);
+  const page = clampPage(options.page);
+  const query = buildAdminSearchQuery(options);
+
+  const [total, posts, categories] = await Promise.all([
+    db.collection(COLLECTION).countDocuments(query),
+    db.collection(COLLECTION)
+      .find(query, { projection: { _id: 0 } })
+      .sort({ updatedAt: -1, publishedAt: -1, title: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .toArray(),
+    listAdminCategories(db),
+  ]);
+
+  return {
+    posts: posts as BlogPost[],
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+    categories,
+  };
+}
+
+export async function getBlogPostById(db: Db, id: string): Promise<BlogPost | null> {
+  await ensureBlogIndexes(db);
+  const post = await db.collection(COLLECTION).findOne({ id }, { projection: { _id: 0 } });
+  return post as BlogPost | null;
+}
+
+export async function isBlogSlugTaken(db: Db, slug: string, excludeId?: string): Promise<boolean> {
+  const query: Record<string, unknown> = { slug };
+  if (excludeId) query.id = { $ne: excludeId };
+  const count = await db.collection(COLLECTION).countDocuments(query);
+  return count > 0;
+}
+
 export async function saveBlogPost(db: Db, input: Partial<BlogPost>) {
   await ensureBlogIndexes(db);
   const normalized = normalizeBlogPost({ ...input, id: input.id || uuidv4(), updatedAt: new Date().toISOString() });
   if (!normalized) return null;
+
+  if (await isBlogSlugTaken(db, normalized.slug, normalized.id)) {
+    throw new Error('A blog post with this slug already exists.');
+  }
 
   await db.collection(COLLECTION).updateOne(
     { id: normalized.id },
@@ -171,16 +263,19 @@ export async function saveBlogPost(db: Db, input: Partial<BlogPost>) {
     { upsert: true },
   );
 
-  if (normalized.status === 'published') {
-    revalidatePublishedBlogRoutes(normalized.slug);
-  }
+  revalidatePublishedBlogRoutes(normalized.status === 'published' ? normalized.slug : undefined);
 
   return normalized;
 }
 
 export async function deleteBlogPost(db: Db, id: string): Promise<boolean> {
+  const existing = await getBlogPostById(db, id);
   const result = await db.collection(COLLECTION).deleteOne({ id });
-  return result.deletedCount > 0;
+  if (result.deletedCount > 0) {
+    revalidatePublishedBlogRoutes(existing?.slug);
+    return true;
+  }
+  return false;
 }
 
 export async function getBlogPostBySlug(db: Db, slug: string): Promise<BlogPost | null> {

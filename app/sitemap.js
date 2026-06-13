@@ -1,22 +1,22 @@
 import {
+  BLOG_SITEMAP_CHUNK,
   getBlogSitemapChunkEntries,
   getCoreSitemapEntries,
-  getSitemapChunkCount,
+  getPublishedBlogCount,
 } from '@/lib/seo/sitemap-data';
 
 export const revalidate = 3600;
 
-export async function generateSitemaps() {
-  const total = await getSitemapChunkCount();
-  return Array.from({ length: total }, (_, id) => ({ id }));
-}
+/** Single sitemap at /sitemap.xml — avoids conflicting with optional catch-all metadata routes. */
+export default async function sitemap() {
+  const entries = await getCoreSitemapEntries();
+  const blogCount = await getPublishedBlogCount();
+  const blogChunks = blogCount > 0 ? Math.ceil(blogCount / BLOG_SITEMAP_CHUNK) : 0;
 
-export default async function sitemap({ id = 0 }) {
-  const chunkId = Number(id);
-
-  if (chunkId === 0) {
-    return getCoreSitemapEntries();
+  for (let chunkId = 0; chunkId < blogChunks; chunkId += 1) {
+    const chunk = await getBlogSitemapChunkEntries(chunkId);
+    entries.push(...chunk);
   }
 
-  return getBlogSitemapChunkEntries(chunkId - 1);
+  return entries;
 }

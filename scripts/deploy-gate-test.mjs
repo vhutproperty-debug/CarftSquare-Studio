@@ -14,13 +14,17 @@ const PUBLIC_PAGES = [
   '/rental-interiors',
   '/shade-explorer',
   '/admin',
+  '/admin/blog',
   '/robots.txt',
+  '/sitemap.xml',
 ];
 
 const PUBLIC_APIS = [
   '/api/auth/status',
   '/api/blog',
   '/api/reviews',
+  '/api/gallery',
+  '/api/projects',
 ];
 
 const PROTECTED_APIS_EXPECT_401 = [
@@ -29,6 +33,7 @@ const PROTECTED_APIS_EXPECT_401 = [
   '/api/admin/pricing',
   '/api/admin/rbac/admins',
   '/api/admin/reviews',
+  '/api/admin/blog',
 ];
 
 async function check(name, fn) {
