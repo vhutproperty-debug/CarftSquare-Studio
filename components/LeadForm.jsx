@@ -51,7 +51,8 @@ export function SelectField({ value, onChange, children }) {
   );
 }
 
-export default function LeadForm({ compact = false, onLeadCreated }) {
+export default function LeadForm({ compact = false, onLeadCreated, source }) {
+  const formSource = source || (compact ? 'sticky_popup' : 'homepage');
   const [form, setForm] = useState(defaultLead);
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -89,22 +90,22 @@ export default function LeadForm({ compact = false, onLeadCreated }) {
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, estimate: currentEstimate, source: compact ? 'sticky_popup' : 'homepage' }),
+        body: JSON.stringify({ ...form, estimate: currentEstimate, source: formSource }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not submit lead');
       setMessage(data.message || 'Inspection booked.');
       trackGaEvent(GA_EVENTS.CONTACT_FORM_SUBMITTED, {
         service: form.service,
-        source: compact ? 'sticky_popup' : 'homepage',
-        form_location: compact ? 'sticky_popup' : 'homepage',
+        source: formSource,
+        form_location: formSource,
       });
       const { firstName, lastName } = splitFullName(form.name);
       trackLeadFromSource(
         'contact_consultation_form',
         {
           service: form.service,
-          form_source: compact ? 'sticky_popup' : 'homepage',
+          form_source: formSource,
         },
         {
           phone: form.phone,

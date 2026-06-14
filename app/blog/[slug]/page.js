@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, User } from 'lucide-react';
 import { BRAND } from '@/lib/brand';
 import BlogSiteNav from '@/components/blog/BlogSiteNav';
 import BlogRichContent from '@/components/blog/BlogRichContent';
+import BlogArticleCta from '@/components/blog/BlogArticleCta';
 import RelatedPosts from '@/components/blog/RelatedPosts';
 import { Badge } from '@/components/ui/badge';
 import { formatBlogDate } from '@/lib/blog/format';
@@ -103,6 +104,8 @@ export default async function BlogPostPage({ params }) {
           ) : null}
         </div>
       </section>
+
+      <BlogArticleCta slug={post.slug} />
 
       <RelatedPosts posts={relatedPosts} />
 
