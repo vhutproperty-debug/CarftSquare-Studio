@@ -1,8 +1,10 @@
 import Script from 'next/script';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import DesignerCallbackRoot from '@/components/DesignerCallbackRoot';
 import RateUsRoot from '@/components/RateUsRoot';
 import MetaPixelRoot from '@/components/MetaPixelRoot';
 import Ga4Root from '@/components/Ga4Root';
+import { getGaMeasurementId } from '@/lib/analytics/ga4';
 import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
 import { getRootMetadata } from '@/lib/seo/metadata';
 import './globals.css';
@@ -10,7 +12,7 @@ import './globals.css';
 export const metadata = getRootMetadata();
 
 const RootLayout = ({ children }) => {
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  const gaId = getGaMeasurementId();
   const isProduction = process.env.NODE_ENV === 'production';
   const metaPixelId = isProduction
     ? (process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || META_PIXEL_ID)
@@ -60,22 +62,7 @@ fbq('init', '${metaPixelId}');
             {/* End Meta Pixel Code */}
           </>
         )}
-        {gaId && (
-          <>
-            <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                window.gtag = window.gtag || gtag;
-                gtag('js', new Date());
-                gtag('config', '${gaId}', {
-                  send_page_view: false
-                });
-              `}
-            </Script>
-          </>
-        )}
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );
