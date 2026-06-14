@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
 import { getDatabase, listPublishedPosts } from '@/lib/blog/store';
+import { jsonWithCache } from '@/lib/blog/api-cache';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600;
 
 export async function GET(request: Request) {
   try {
@@ -14,9 +13,9 @@ export async function GET(request: Request) {
     const db = await getDatabase();
     const result = await listPublishedPosts(db, { page, limit, category });
 
-    return NextResponse.json(result);
+    return jsonWithCache(result);
   } catch (error) {
-    return NextResponse.json(
+    return jsonWithCache(
       { error: error instanceof Error ? error.message : 'Failed to load blog posts' },
       { status: 500 },
     );

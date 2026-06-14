@@ -11,6 +11,15 @@ const DEFAULT_LIMIT = 12;
 const MAX_LIMIT = 48;
 const MAX_PAGE = 500;
 
+let blogBootstrapPromise: Promise<void> | null = null;
+
+async function bootstrapBlogOnce(db: Db): Promise<void> {
+  if (!blogBootstrapPromise) {
+    blogBootstrapPromise = seedBlogDefaults(db);
+  }
+  await blogBootstrapPromise;
+}
+
 const LIST_PROJECTION = {
   _id: 0,
   slug: 1,
@@ -68,7 +77,6 @@ function clampPage(page?: number) {
 }
 
 export async function listPublishedCategories(db: Db): Promise<string[]> {
-  await seedBlogDefaults(db);
   const categories = await db.collection(COLLECTION).distinct('category', { status: 'published' });
   return categories.map(String).filter(Boolean).sort();
 }
@@ -77,8 +85,7 @@ export async function listPublishedPosts(
   db: Db,
   options: { page?: number; limit?: number; category?: string } = {},
 ): Promise<BlogListResult> {
-  await ensureBlogIndexes(db);
-  await seedBlogDefaults(db);
+  await bootstrapBlogOnce(db);
 
   const limit = clampLimit(options.limit);
   const page = clampPage(options.page);
@@ -106,9 +113,6 @@ export async function listPublishedPosts(
 }
 
 export async function getPublishedPostBySlug(db: Db, slug: string) {
-  await ensureBlogIndexes(db);
-  await seedBlogDefaults(db);
-
   const post = await db.collection(COLLECTION).findOne(
     { slug, status: 'published' },
     { projection: { _id: 0 } },
@@ -120,7 +124,6 @@ export async function listRelatedPosts(
   db: Db,
   options: { slug: string; category?: string; limit?: number } ,
 ): Promise<BlogPostCard[]> {
-  await ensureBlogIndexes(db);
   const limit = Math.min(6, Math.max(1, Number(options.limit) || 3));
   const query: Record<string, unknown> = {
     status: 'published',
@@ -141,9 +144,6 @@ export async function listPublishedSlugs(
   db: Db,
   options: { limit?: number; skip?: number } = {},
 ): Promise<Array<{ slug: string; updatedAt: string }>> {
-  await ensureBlogIndexes(db);
-  await seedBlogDefaults(db);
-
   const limit = Math.min(50000, Math.max(1, Number(options.limit) || 50000));
   const skip = Math.max(0, Number(options.skip) || 0);
 

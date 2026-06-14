@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatBlogDate } from '@/lib/blog/format';
 import SeoImage from '@/components/SeoImage';
 
-export default function BlogPostCard({ post }) {
+export default function BlogPostCard({ post, priority = false }) {
   if (!post) return null;
 
   return (
@@ -17,6 +17,8 @@ export default function BlogPostCard({ post }) {
               src={post.featuredImage}
               alt={post.title}
               fill
+              priority={priority}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </div>

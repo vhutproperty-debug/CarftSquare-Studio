@@ -1,32 +1,38 @@
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Clock, User } from 'lucide-react';
 import { BRAND } from '@/lib/brand';
 import BlogSiteNav from '@/components/blog/BlogSiteNav';
 import BlogRichContent from '@/components/blog/BlogRichContent';
-import BlogArticleCta from '@/components/blog/BlogArticleCta';
 import RelatedPosts from '@/components/blog/RelatedPosts';
 import { Badge } from '@/components/ui/badge';
 import { formatBlogDate } from '@/lib/blog/format';
-import { getDatabase, getPublishedPostBySlug, listRelatedPosts } from '@/lib/blog/store';
+import { getCachedPublishedPostBySlug, getCachedRelatedPosts, getCachedPublishedSlugs } from '@/lib/blog/cached-queries';
 import SeoImage from '@/components/SeoImage';
 import BlogViewTracker from '@/components/BlogViewTracker';
 
+const BlogArticleCta = dynamic(() => import('@/components/blog/BlogArticleCta'), { ssr: true });
+
 export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  try {
+    const slugs = await getCachedPublishedSlugs(500);
+    return slugs.map(({ slug }) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function BlogPostPage({ params }) {
   let post = null;
   let relatedPosts = [];
 
   try {
-    const db = await getDatabase();
-    post = await getPublishedPostBySlug(db, params.slug);
+    post = await getCachedPublishedPostBySlug(params.slug);
     if (post) {
-      relatedPosts = await listRelatedPosts(db, {
-        slug: post.slug,
-        category: post.category,
-        limit: 3,
-      });
+      relatedPosts = await getCachedRelatedPosts(post.slug, post.category, 3);
     }
   } catch {
     post = null;

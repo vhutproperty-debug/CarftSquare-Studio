@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
 import { getDatabase, getPublishedPostBySlug, listRelatedPosts } from '@/lib/blog/store';
+import { jsonWithCache } from '@/lib/blog/api-cache';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600;
 
 export async function GET(
   _request: Request,
@@ -13,7 +12,7 @@ export async function GET(
     const post = await getPublishedPostBySlug(db, params.slug);
 
     if (!post) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      return jsonWithCache({ error: 'Post not found' }, { status: 404 });
     }
 
     const relatedPosts = await listRelatedPosts(db, {
@@ -22,9 +21,9 @@ export async function GET(
       limit: 3,
     });
 
-    return NextResponse.json({ post, relatedPosts });
+    return jsonWithCache({ post, relatedPosts });
   } catch (error) {
-    return NextResponse.json(
+    return jsonWithCache(
       { error: error instanceof Error ? error.message : 'Failed to load blog post' },
       { status: 500 },
     );

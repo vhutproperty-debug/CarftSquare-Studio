@@ -5,7 +5,7 @@ import BlogPostCard from '@/components/blog/BlogPostCard';
 import BlogPagination from '@/components/blog/BlogPagination';
 import SectionHeader from '@/components/SectionHeader';
 import { Badge } from '@/components/ui/badge';
-import { getDatabase, listPublishedPosts } from '@/lib/blog/store';
+import { getCachedPublishedPosts } from '@/lib/blog/cached-queries';
 
 export const revalidate = 3600;
 
@@ -20,8 +20,7 @@ export default async function BlogPage({ searchParams }) {
 
   let data = { posts: [], total: 0, page: 1, limit: 12, totalPages: 1, categories: [] };
   try {
-    const db = await getDatabase();
-    data = await listPublishedPosts(db, { page, limit: 12, category });
+    data = await getCachedPublishedPosts({ page, limit: 12, category });
   } catch {
     // Render empty state when DB is unavailable in local dev.
   }
@@ -63,8 +62,8 @@ export default async function BlogPage({ searchParams }) {
           {data.posts.length > 0 ? (
             <>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {data.posts.map((post) => (
-                  <BlogPostCard key={post.slug} post={post} />
+                {data.posts.map((post, index) => (
+                  <BlogPostCard key={post.slug} post={post} priority={index < 3} />
                 ))}
               </div>
               <BlogPagination page={data.page} totalPages={data.totalPages} category={category} />

@@ -3,7 +3,7 @@ import { buildBlogPostMetadata } from '@/lib/seo/metadata';
 import { buildArticleJsonLd } from '@/lib/seo/jsonld';
 import { blogPostBreadcrumb } from '@/lib/seo/breadcrumbs';
 import JsonLd from '@/components/JsonLd';
-import { getDatabase, getPublishedPostBySlug } from '@/lib/blog/store';
+import { getCachedPublishedPostBySlug } from '@/lib/blog/cached-queries';
 
 export const revalidate = 3600;
 
@@ -11,8 +11,7 @@ export async function generateMetadata({ params }) {
   const slug = params.slug;
 
   try {
-    const db = await getDatabase();
-    const post = await getPublishedPostBySlug(db, slug);
+    const post = await getCachedPublishedPostBySlug(slug);
     if (!post) {
       return {
         title: { absolute: 'Article Not Found' },
@@ -32,8 +31,7 @@ export default async function BlogPostLayout({ children, params }) {
   let post = null;
 
   try {
-    const db = await getDatabase();
-    post = await getPublishedPostBySlug(db, params.slug);
+    post = await getCachedPublishedPostBySlug(params.slug);
   } catch {
     post = null;
   }
