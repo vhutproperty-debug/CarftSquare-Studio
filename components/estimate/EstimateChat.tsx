@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import type { ConversationMessage, EstimateAnswers, EstimateModuleId, PropertyPurpose } from '@/lib/estimate/types';
 import { openDesignerCallbackModal, saveConsultationContext } from '@/lib/estimate/consultation-context';
 import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
+import { GA_EVENTS, trackGaEvent } from '@/lib/analytics/ga4';
 import EstimateAnalyzing from './EstimateAnalyzing';
 import EstimateLeadCapture from './EstimateLeadCapture';
 import EstimateMessageBubble from './EstimateMessageBubble';
@@ -46,6 +47,7 @@ export default function EstimateChat({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [questionKey, setQuestionKey] = useState(0);
   const submittedRef = useRef(false);
+  const startedRef = useRef(false);
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [projectCategory, setProjectCategory] = useState<string | null>(null);
 
@@ -118,6 +120,13 @@ export default function EstimateChat({
   }
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackGaEvent(GA_EVENTS.AI_QUOTE_STARTED, {
+      module_id: moduleId,
+      landing_page: landingPage,
+      lead_source: leadSource,
+    });
     setShowTyping(true);
     sendChat({ answers: {}, conversation: [] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,6 +200,12 @@ export default function EstimateChat({
       if (!res.ok) throw new Error(data.error || 'Quote failed');
       if (data.quote?.id) {
         if (!data.duplicate) {
+          trackGaEvent(GA_EVENTS.AI_QUOTE_SUBMITTED, {
+            module_id: moduleId,
+            landing_page: landingPage,
+            lead_source: leadSource,
+            quote_id: data.quote.id,
+          });
           const { firstName, lastName } = splitFullName(lead.name);
           trackLeadFromSource(
             'ai_interior_consultant',

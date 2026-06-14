@@ -2,6 +2,7 @@ import Script from 'next/script';
 import DesignerCallbackRoot from '@/components/DesignerCallbackRoot';
 import RateUsRoot from '@/components/RateUsRoot';
 import MetaPixelRoot from '@/components/MetaPixelRoot';
+import Ga4Root from '@/components/Ga4Root';
 import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
 import { getRootMetadata } from '@/lib/seo/metadata';
 import './globals.css';
@@ -9,7 +10,7 @@ import './globals.css';
 export const metadata = getRootMetadata();
 
 const RootLayout = ({ children }) => {
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
   const isProduction = process.env.NODE_ENV === 'production';
   const metaPixelId = isProduction
     ? (process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || META_PIXEL_ID)
@@ -23,12 +24,14 @@ const RootLayout = ({ children }) => {
         <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
         <link rel="icon" type="image/png" href="/branding/craftsquare-studio-logo.png" />
         <link rel="apple-touch-icon" href="/branding/craftsquare-studio-logo.png" />
+        {gaId ? <link rel="preconnect" href="https://www.googletagmanager.com" /> : null}
       </head>
       <body>
         {children}
         <DesignerCallbackRoot />
         <RateUsRoot />
         <MetaPixelRoot />
+        <Ga4Root />
         {metaPixelId && (
           <>
             {/* Meta Pixel Code — Events Manager base snippet */}
@@ -67,8 +70,7 @@ fbq('init', '${metaPixelId}');
                 window.gtag = window.gtag || gtag;
                 gtag('js', new Date());
                 gtag('config', '${gaId}', {
-                  page_path: window.location.pathname,
-                  send_page_view: true
+                  send_page_view: false
                 });
               `}
             </Script>

@@ -18,12 +18,6 @@ function buildWhatsAppUrl(shade) {
   return `https://wa.me/${whatsappNumber}?text=${text}`;
 }
 
-function trackAnalyticsEvent(eventName, parameters = {}) {
-  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-    window.gtag('event', eventName, parameters);
-  }
-}
-
 function App() {
   const [shades, setShades] = useState([]);
   const [activeBrand, setActiveBrand] = useState('Asian Paints');
@@ -140,7 +134,7 @@ function App() {
                   <Badge className="bg-orange-500/20 text-orange-100 hover:bg-orange-500/20">{shade.category}</Badge>
                   <Badge className="bg-white/10 text-white hover:bg-white/10">{shade.hexColor}</Badge>
                 </div>
-                <a href={buildWhatsAppUrl(shade)} target="_blank" rel="noreferrer" onClick={() => trackAnalyticsEvent('whatsapp_click', { event_category: 'engagement', event_label: 'Shade enquiry WhatsApp', brand: shade.brand, shade_code: shade.shadeCode })}>
+                <a href={buildWhatsAppUrl(shade)} target="_blank" rel="noreferrer">
                   <Button className="mt-5 w-full bg-emerald-600 font-black text-white hover:bg-emerald-700"><MessageCircle className="mr-2 h-4 w-4" /> Enquire on WhatsApp</Button>
                 </a>
               </CardContent>

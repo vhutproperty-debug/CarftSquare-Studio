@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatBlogDate } from '@/lib/blog/format';
 import { getDatabase, getPublishedPostBySlug, listRelatedPosts } from '@/lib/blog/store';
 import SeoImage from '@/components/SeoImage';
+import BlogViewTracker from '@/components/BlogViewTracker';
 
 export const revalidate = 3600;
 
@@ -36,6 +37,7 @@ export default async function BlogPostPage({ params }) {
 
   return (
     <main className="min-h-screen bg-white text-slate-950" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <BlogViewTracker slug={post.slug} title={post.title} category={post.category} />
       <BlogSiteNav />
 
       <section className="bg-slate-950 py-16 text-white md:py-24">

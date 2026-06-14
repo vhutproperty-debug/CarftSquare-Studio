@@ -24,12 +24,7 @@ const defaultLead = {
 };
 
 import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
-
-function trackAnalyticsEvent(eventName, parameters = {}) {
-  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-    window.gtag('event', eventName, parameters);
-  }
-}
+import { GA_EVENTS, trackGaEvent } from '@/lib/analytics/ga4';
 
 function formatCurrency(value = 0) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -99,11 +94,10 @@ export default function LeadForm({ compact = false, onLeadCreated }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not submit lead');
       setMessage(data.message || 'Inspection booked.');
-      trackAnalyticsEvent('generate_lead', {
-        event_category: 'conversion',
-        event_label: 'Lead form submission',
+      trackGaEvent(GA_EVENTS.CONTACT_FORM_SUBMITTED, {
         service: form.service,
         source: compact ? 'sticky_popup' : 'homepage',
+        form_location: compact ? 'sticky_popup' : 'homepage',
       });
       const { firstName, lastName } = splitFullName(form.name);
       trackLeadFromSource(
