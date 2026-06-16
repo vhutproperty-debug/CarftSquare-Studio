@@ -1,5 +1,5 @@
 import { BRAND } from '@/lib/brand';
-import { getResendApiKey, resolveEmailFrom } from '@/lib/env/resend';
+import { assertResendConfigured, getResendApiKey, resolveEmailFrom } from '@/lib/env/resend';
 
 export type NotificationChannel = 'email' | 'whatsapp' | 'sms' | 'push' | 'admin_alert' | 'partner_alert';
 
@@ -82,16 +82,12 @@ function defaultSubject(template: string) {
 }
 
 async function sendResendEmail(to: string, subject: string, html: string) {
-  const { value: apiKey } = getResendApiKey();
-  if (!apiKey) {
-    console.info('[partner-notification] resend skipped (RESEND_API_KEY not set)', { to: maskAddress(to), subject });
-    return { delivered: false, reason: 'missing_api_key' };
-  }
+  assertResendConfigured();
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${getResendApiKey()}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

@@ -9,10 +9,9 @@ export async function GET() {
   return NextResponse.json({
     emailConfigured: validation.ok,
     missing: validation.missing,
-    warnings: validation.warnings,
     runtime: validation.runtime,
-    emailFromSource: validation.emailFromSource,
-    apiKeySource: validation.apiKeySource ? 'set' : null,
+    resendApiKeySet: Boolean(process.env.RESEND_API_KEY?.trim()),
+    emailFromSet: Boolean(process.env.EMAIL_FROM?.trim()),
   }, {
     headers: { 'Cache-Control': 'no-store' },
   });

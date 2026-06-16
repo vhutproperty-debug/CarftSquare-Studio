@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       otp,
     );
 
-    if (!delivery.email.delivered && !delivery.devLogged) {
+    if (!delivery.email.delivered) {
       return NextResponse.json({ error: 'Unable to send verification email. Please try again.' }, { status: 503 });
     }
 

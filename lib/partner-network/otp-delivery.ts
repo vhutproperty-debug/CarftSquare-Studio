@@ -1,11 +1,9 @@
 import { BRAND } from '@/lib/brand';
 import {
   assertResendConfigured,
-  formatResendConfigError,
   getOtpDeliveryConfig,
   getResendApiKey,
   resolveEmailFrom,
-  validateResendConfig,
 } from '@/lib/env/resend';
 
 export type OtpDeliveryResult = {
@@ -14,10 +12,10 @@ export type OtpDeliveryResult = {
 };
 
 export {
-  DEFAULT_EMAIL_FROM,
   getOtpDeliveryConfig,
   isResendConfigured,
   resolveEmailFrom,
+  REQUIRED_EMAIL_FROM_EXAMPLE as DEFAULT_EMAIL_FROM,
 } from '@/lib/env/resend';
 
 function maskEmail(email: string) {
@@ -47,11 +45,9 @@ function formatResendError(result: unknown, status: number) {
 }
 
 async function sendOtpEmail(to: string, otp: string, fullName: string) {
-  const { value: apiKey } = getResendApiKey();
-  if (!apiKey) {
-    return { delivered: false, reason: 'missing_RESEND_API_KEY' };
-  }
+  assertResendConfigured();
 
+  const apiKey = getResendApiKey();
   const from = resolveEmailFrom();
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
@@ -123,14 +119,12 @@ async function sendOtpWhatsApp(toMobile: string, otp: string, fullName: string) 
   return { delivered: true };
 }
 
-function isProductionRuntime() {
-  return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-}
-
 export async function dispatchPartnerOtp(
   partner: { email: string; mobile: string; whatsapp?: string; fullName: string },
   otp: string,
-): Promise<OtpDeliveryResult & { devLogged?: boolean }> {
+): Promise<OtpDeliveryResult> {
+  assertResendConfigured();
+
   const config = getOtpDeliveryConfig();
   const result: OtpDeliveryResult = {
     email: { delivered: false },
@@ -142,19 +136,7 @@ export async function dispatchPartnerOtp(
     throw new Error('Partner account has no registered email.');
   }
 
-  if (config.emailConfigured) {
-    assertResendConfigured();
-    result.email = await sendOtpEmail(email, otp, partner.fullName);
-    if (!result.email.delivered && result.email.reason === 'missing_RESEND_API_KEY') {
-      throw new Error(formatResendConfigError(validateResendConfig()));
-    }
-  } else if (!isProductionRuntime()) {
-    console.info(`[partner-otp] dev fallback OTP for ${maskEmail(email)}: ${otp} (RESEND_API_KEY not set)`);
-    result.email = { delivered: false, reason: 'dev_console_only' };
-    return { ...result, devLogged: true };
-  } else {
-    throw new Error(formatResendConfigError(config.validation));
-  }
+  result.email = await sendOtpEmail(email, otp, partner.fullName);
 
   const whatsappTarget = partner.whatsapp || partner.mobile;
   if (config.whatsappConfigured && whatsappTarget) {

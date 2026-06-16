@@ -32,6 +32,9 @@ if (isProduction) {
 }
 
 const nextConfig = {
+  env: {
+    EMAIL_FROM: process.env.EMAIL_FROM || 'CraftSquare Studio <notifications@craftsquare.co.in>',
+  },
   typescript: {
     // Mixed JS shadcn components + new TS estimate modules
     ignoreBuildErrors: true,
@@ -39,6 +42,7 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['mongodb'],
+    instrumentationHook: true,
   },
   images: {
     formats: ['image/avif', 'image/webp'],

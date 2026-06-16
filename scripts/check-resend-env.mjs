@@ -7,7 +7,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_EMAIL_FROM = 'CraftSquare Studio <notifications@craftsquare.co.in>';
 
 function loadEnv() {
   for (const name of ['.env.local', '.env']) {
@@ -22,30 +21,15 @@ function loadEnv() {
   }
 }
 
-function readFirst(names) {
-  for (const name of names) {
-    const value = process.env[name]?.trim().replace(/^["']|["']$/g, '');
-    if (value) return { value, source: name };
-  }
-  return { value: '', source: null };
-}
-
 loadEnv();
 
-const apiKey = readFirst(['RESEND_API_KEY', 'RESEND_KEY']);
-const emailFrom = readFirst(['EMAIL_FROM', 'RESEND_FROM', 'RESEND_EMAIL']);
 const missing = [];
-
-if (!apiKey.value) missing.push('RESEND_API_KEY');
-if (!emailFrom.value) {
-  console.warn(`WARN: EMAIL_FROM not set — production uses default ${DEFAULT_EMAIL_FROM}`);
-}
+if (!process.env.RESEND_API_KEY?.trim()) missing.push('RESEND_API_KEY');
+if (!process.env.EMAIL_FROM?.trim()) missing.push('EMAIL_FROM');
 
 const report = {
   ok: missing.length === 0,
   missing,
-  apiKeySource: apiKey.source,
-  emailFromSource: emailFrom.source || 'default',
   runtime: process.env.VERCEL_ENV || process.env.NODE_ENV || 'local',
 };
 

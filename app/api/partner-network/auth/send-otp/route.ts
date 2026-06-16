@@ -55,15 +55,14 @@ export async function POST(request: Request) {
       otp,
     );
 
-    if (!delivery.email.delivered && !delivery.devLogged) {
+    if (!delivery.email.delivered) {
       return NextResponse.json(
         { error: 'Unable to send OTP email right now. Please try again shortly.' },
         { status: 503 },
       );
     }
 
-    const channels = [];
-    if (delivery.email.delivered || delivery.devLogged) channels.push('email');
+    const channels = ['email'];
     if (delivery.whatsapp.delivered) channels.push('whatsapp');
 
     console.info('[partner-otp] send complete', {
