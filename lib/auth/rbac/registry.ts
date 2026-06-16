@@ -59,3 +59,8 @@ registerRoutePermissionRule({
   pathPrefix: '/api/admin/reviews',
   module: MODULES.REVIEWS,
 });
+
+registerRoutePermissionRule({
+  pathPrefix: '/api/admin/partner-network',
+  module: MODULES.PARTNER_NETWORK,
+});

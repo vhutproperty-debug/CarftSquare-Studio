@@ -14,6 +14,7 @@ export const MODULES = {
   CONTACT_ENQUIRIES: 'contact_enquiries',
   TESTIMONIALS: 'testimonials',
   SETTINGS: 'settings',
+  PARTNER_NETWORK: 'partner_network',
   FUTURE_MODULES: 'future_modules',
 } as const;
 
@@ -42,6 +43,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   contact_enquiries: 'Contact Enquiries',
   testimonials: 'Testimonials',
   settings: 'Settings',
+  partner_network: 'Partner Network',
   future_modules: 'Future Modules',
 };
 

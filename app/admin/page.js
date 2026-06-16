@@ -8,6 +8,7 @@ import {
   FileText,
   FolderOpen,
   Grid3X3,
+  Handshake,
   Home,
   ImagePlus,
   LockKeyhole,
@@ -428,6 +429,11 @@ const AdminPage = () => {
             {auth.authenticated && canAccess(auth.user, 'blog', 'view') && (
               <a href="/admin/blog">
                 <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><FileText className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Blogs</span></Button>
+              </a>
+            )}
+            {auth.authenticated && canAccess(auth.user, 'partner_network', 'view') && (
+              <a href="/admin/partner-network">
+                <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Handshake className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Partners</span></Button>
               </a>
             )}
             <a href="/">

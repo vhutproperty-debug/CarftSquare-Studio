@@ -24,6 +24,7 @@ export default function Navbar({ onQuote }) {
     { label: 'Modular Kitchen', href: '#modular-kitchen' },
     { label: 'Wardrobes', href: '#wardrobes' },
     { label: 'Projects', href: '#projects' },
+    { label: 'Partner Network', href: '/partner' },
   ];
 
   return (
@@ -70,6 +71,7 @@ export default function Navbar({ onQuote }) {
             ))}
             <a href="/gallery" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Gallery</a>
             <a href="/rental-interiors" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Rental Furnishing</a>
+            <a href="/partner" className="block py-3 text-sm font-semibold text-slate-300 hover:text-white" onClick={() => setMobileOpen(false)}>Partner Network</a>
           </div>
         )}
       </nav>

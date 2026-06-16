@@ -18,6 +18,7 @@ export default function BlogSiteNav() {
           <Link href="/about" className="hover:text-white">About</Link>
           <Link href="/gallery" className="hover:text-white">Gallery</Link>
           <Link href="/blog" className="text-white">Blog</Link>
+          <Link href="/partner" className="hover:text-white">Partner Network</Link>
           <Link href="/rental-interiors" className="hover:text-white">Rental Interiors</Link>
         </div>
         <a href={whatsappUrl} target="_blank" rel="noreferrer">
