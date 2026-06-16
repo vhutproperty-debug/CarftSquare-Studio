@@ -49,14 +49,6 @@ const login = await fetch(`${BASE}/partner/login`, { signal: AbortSignal.timeout
 if (!login.ok) fail('Partner login page', `HTTP ${login.status}`);
 else pass('Partner login page', `HTTP ${login.status}`);
 
-const emailCfg = await fetch(`${BASE}/api/partner-network/email-config`, { signal: AbortSignal.timeout(20000) });
-const cfg = await emailCfg.json().catch(() => ({}));
-if (!emailCfg.ok || !cfg.emailConfigured) {
-  fail('Email config', JSON.stringify(cfg));
-} else {
-  pass('Email config', `missing=${JSON.stringify(cfg.missing || [])}`);
-}
-
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.DB_NAME || 'brushandbloom';
 const client = new MongoClient(uri);

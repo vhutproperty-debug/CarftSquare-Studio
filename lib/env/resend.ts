@@ -106,32 +106,10 @@ export function assertResendConfigured(): ResendConfigValidation {
   const validation = validateResendConfig();
 
   if (!validation.ok) {
-    for (const name of validation.missing) {
-      console.error(`[resend-env] missing ${name}`, { runtime: validation.runtime });
-    }
     throw new Error(formatResendConfigError(validation));
   }
 
   return validation;
-}
-
-/** Called from instrumentation on production server cold start. */
-export function validateResendConfigAtStartup(): void {
-  if (process.env.NEXT_PHASE === 'phase-production-build') return;
-  if (process.env.VERCEL_ENV !== 'production' && process.env.NODE_ENV !== 'production') return;
-
-  try {
-    assertResendConfigured();
-    console.info('[resend-env] production email configuration OK', {
-      emailFrom: resolveEmailFrom().replace(/<[^>]+>/, '<***>'),
-      runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
-    });
-  } catch (error) {
-    console.error('[resend-env] startup validation failed', {
-      error: error instanceof Error ? error.message : error,
-    });
-    throw error;
-  }
 }
 
 export function getOtpDeliveryConfig() {

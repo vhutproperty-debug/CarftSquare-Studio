@@ -42,7 +42,6 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['mongodb'],
-    instrumentationHook: true,
   },
   images: {
     formats: ['image/avif', 'image/webp'],
