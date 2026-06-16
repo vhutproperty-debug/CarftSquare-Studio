@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const msg = error instanceof Error ? error.message : 'Failed to send OTP';
     let status = 500;
     if (msg.includes('Too many OTP')) status = 429;
-    else if (/EMAIL_FROM|Resend|Email provider|domain is not verified|send testing emails/i.test(msg)) status = 503;
+    else if (/Missing required environment variable|EMAIL_FROM|Resend|Email provider|domain is not verified|send testing emails/i.test(msg)) status = 503;
     console.error('[partner-otp] send failed', { error: msg });
     return NextResponse.json({ error: msg }, { status });
   }

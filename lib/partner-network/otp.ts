@@ -33,4 +33,4 @@ export async function dispatchOtpNotification(partner: PartnerOtpTarget, otp: st
   return dispatchPartnerOtp(partner, otp);
 }
 
-export { getOtpDeliveryConfig } from '@/lib/partner-network/otp-delivery';
+export { getOtpDeliveryConfig } from '@/lib/env/resend';

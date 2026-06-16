@@ -1,9 +1,24 @@
 import { BRAND } from '@/lib/brand';
+import {
+  assertResendConfigured,
+  formatResendConfigError,
+  getOtpDeliveryConfig,
+  getResendApiKey,
+  resolveEmailFrom,
+  validateResendConfig,
+} from '@/lib/env/resend';
 
 export type OtpDeliveryResult = {
   email: { delivered: boolean; reason?: string; id?: string };
   whatsapp: { delivered: boolean; reason?: string };
 };
+
+export {
+  DEFAULT_EMAIL_FROM,
+  getOtpDeliveryConfig,
+  isResendConfigured,
+  resolveEmailFrom,
+} from '@/lib/env/resend';
 
 function maskEmail(email: string) {
   if (!email || !email.includes('@')) return '***';
@@ -21,41 +36,6 @@ function normalizeWhatsAppRecipient(mobile: string) {
   return digits.length === 10 ? `91${digits}` : digits;
 }
 
-export const DEFAULT_EMAIL_FROM = 'CraftSquare Studio <notifications@craftsquare.co.in>';
-
-export function isResendConfigured() {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
-}
-
-/** Resolve sender from EMAIL_FROM env, with production default when unset. */
-export function resolveEmailFrom(): string {
-  const raw = String(process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM).trim();
-
-  if (raw.includes('@')) {
-    return raw;
-  }
-
-  const domain = raw.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  if (!domain.includes('.')) {
-    throw new Error(
-      'EMAIL_FROM must be a verified sender address (e.g. CraftSquare Studio <notifications@craftsquare.co.in>).',
-    );
-  }
-
-  return `${BRAND.name} <notifications@${domain}>`;
-}
-
-export function getOtpDeliveryConfig() {
-  const resend = isResendConfigured();
-  const whatsapp = Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN);
-  return {
-    emailProvider: resend ? 'resend' : 'none',
-    whatsappProvider: whatsapp ? 'meta_whatsapp' : 'none',
-    emailConfigured: resend,
-    whatsappConfigured: whatsapp,
-  };
-}
-
 function formatResendError(result: unknown, status: number) {
   if (result && typeof result === 'object') {
     const payload = result as { message?: string; error?: string; name?: string };
@@ -67,7 +47,7 @@ function formatResendError(result: unknown, status: number) {
 }
 
 async function sendOtpEmail(to: string, otp: string, fullName: string) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const { value: apiKey } = getResendApiKey();
   if (!apiKey) {
     return { delivered: false, reason: 'missing_RESEND_API_KEY' };
   }
@@ -143,6 +123,10 @@ async function sendOtpWhatsApp(toMobile: string, otp: string, fullName: string) 
   return { delivered: true };
 }
 
+function isProductionRuntime() {
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
 export async function dispatchPartnerOtp(
   partner: { email: string; mobile: string; whatsapp?: string; fullName: string },
   otp: string,
@@ -159,13 +143,17 @@ export async function dispatchPartnerOtp(
   }
 
   if (config.emailConfigured) {
+    assertResendConfigured();
     result.email = await sendOtpEmail(email, otp, partner.fullName);
-  } else if (process.env.NODE_ENV !== 'production') {
+    if (!result.email.delivered && result.email.reason === 'missing_RESEND_API_KEY') {
+      throw new Error(formatResendConfigError(validateResendConfig()));
+    }
+  } else if (!isProductionRuntime()) {
     console.info(`[partner-otp] dev fallback OTP for ${maskEmail(email)}: ${otp} (RESEND_API_KEY not set)`);
     result.email = { delivered: false, reason: 'dev_console_only' };
     return { ...result, devLogged: true };
   } else {
-    throw new Error('Email provider is not configured. Set RESEND_API_KEY and EMAIL_FROM.');
+    throw new Error(formatResendConfigError(config.validation));
   }
 
   const whatsappTarget = partner.whatsapp || partner.mobile;

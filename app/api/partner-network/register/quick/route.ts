@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     if (process.env.NODE_ENV === 'development') {
       console.error('[partner-network] POST /register/quick error', error);
     }
-    const status = /EMAIL_FROM|Resend|Email provider|domain is not verified|send testing emails/i.test(message)
+    const status = /Missing required environment variable|EMAIL_FROM|Resend|Email provider|domain is not verified|send testing emails/i.test(message)
       ? 503
       : 400;
     return NextResponse.json({ error: message }, { status });
