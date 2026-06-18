@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import BrandLogo from '@/components/BrandLogo';
+import PartnerCallbackModal from '@/components/partner-network/PartnerCallbackModal';
 import { TRUST_COUNTER_LABELS, DEFAULT_TRUST_COUNTERS } from '@/lib/partner-network/constants';
 
 const WHY_PARTNER = [
@@ -72,6 +73,7 @@ function AnimatedCounter({ value, suffix = '' }) {
 export default function PartnerPageClient() {
   const [counters, setCounters] = useState(DEFAULT_TRUST_COUNTERS);
   const [openFaq, setOpenFaq] = useState(null);
+  const [callbackOpen, setCallbackOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/partner-network/trust-stats')
@@ -110,6 +112,7 @@ export default function PartnerPageClient() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a href="#register"><Button size="lg" className="h-14 rounded-full bg-orange-600 px-8 text-base font-black hover:bg-orange-700">Become a Partner <ArrowRight className="ml-2 h-5 w-5" /></Button></a>
+            <Button size="lg" variant="outline" type="button" onClick={() => setCallbackOpen(true)} className="h-14 rounded-full border-white/20 bg-white/5 px-8 text-white hover:bg-white/10">Request a Callback</Button>
             <a href="#how-it-works"><Button size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-white/5 px-8 text-white hover:bg-white/10">How It Works</Button></a>
           </div>
         </div>
@@ -233,6 +236,14 @@ export default function PartnerPageClient() {
                 Create Partner Account
               </Button>
             </Link>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCallbackOpen(true)}
+              className="mt-4 h-12 rounded-full border-white/20 bg-white/5 px-8 text-sm font-bold text-white hover:bg-white/10"
+            >
+              Request a Callback
+            </Button>
             <p className="mt-4 text-sm text-[#9CA3AF]">
               Already registered? <Link href="/partner/login" className="font-semibold text-orange-400 hover:underline">Partner Login</Link>
             </p>
@@ -265,6 +276,8 @@ export default function PartnerPageClient() {
         <p>© 2025 CraftSquare Studio — AI-Powered Interior & Property Enablement Platform</p>
         <Link href="/" className="mt-2 inline-block font-bold text-orange-600">Back to homepage</Link>
       </footer>
+
+      <PartnerCallbackModal open={callbackOpen} onOpenChange={setCallbackOpen} />
     </main>
   );
 }

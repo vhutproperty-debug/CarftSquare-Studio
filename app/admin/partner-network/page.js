@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Activity, BarChart3, Check, Download, Handshake, Home, Settings, Users, Wallet,
+  Activity, BarChart3, Check, Download, Handshake, Home, Phone, Settings, Users, Wallet,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { canAccess } from '@/lib/auth/rbac/client';
 import { TRUST_COUNTER_LABELS, DEFAULT_TRUST_COUNTERS } from '@/lib/partner-network/constants';
 import { LEAD_PIPELINE } from '@/lib/partner-network/pipeline';
+import PartnerCallbackRequestsPanel from '@/components/admin/partner-network/PartnerCallbackRequestsPanel';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'partners', label: 'Partners', icon: Users },
   { id: 'leads', label: 'Partner Leads', icon: Handshake },
+  { id: 'callbacks', label: 'Partner Callback Requests', icon: Phone },
   { id: 'commission', label: 'Commission', icon: Wallet },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'activity', label: 'Activity Logs', icon: Activity },
@@ -734,6 +736,10 @@ export default function PartnerNetworkAdminPage() {
               onPageChange={setLeadPage}
             />
           </div>
+        )}
+
+        {tab === 'callbacks' && (
+          <PartnerCallbackRequestsPanel canEdit={canAccess(user, 'partner_network', 'edit')} />
         )}
 
         {tab === 'activity' && (
