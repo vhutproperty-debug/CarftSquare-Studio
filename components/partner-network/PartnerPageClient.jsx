@@ -14,27 +14,46 @@ import PartnerCallbackModal from '@/components/partner-network/PartnerCallbackMo
 import { TRUST_COUNTER_LABELS, DEFAULT_TRUST_COUNTERS } from '@/lib/partner-network/constants';
 
 const WHY_PARTNER = [
-  'AI Assisted Consultation', 'Technology Driven', 'Rental Interior Specialists',
-  'Dedicated Interior Team', 'Turnkey Execution', 'Transparent Lead Tracking',
-  'Faster Client Support', 'Long Term Business Growth',
+  'Earn referral rewards on successful interior projects',
+  'No execution responsibility',
+  'No investment required',
+  'Dedicated support from CraftSquare',
+  'Transparent lead and payout tracking',
+  'Convert your existing network into recurring income',
 ];
 
 const WHO_CAN_JOIN = [
-  'Property Consultant', 'Real Estate Broker', 'Channel Partner', 'Rental Specialist',
-  'Investor Advisor', 'Independent Realtor', 'Corporate Leasing Consultant', 'Real Estate Agency',
+  'Property Brokers',
+  'Estate Consultants',
+  'Channel Partners',
+  'Rental Brokers',
+  'Property Advisors',
+  'Society Network Members',
 ];
 
 const TIMELINE = [
-  'Register', 'Approval', 'Submit Client', 'Consultation', 'Quotation',
-  'Execution', 'Completion', 'Referral Reward',
+  'Register as a Referral Partner',
+  'Refer a Homeowner',
+  'CraftSquare Designs & Executes',
+  'Project Gets Completed',
+  'Receive Your Referral Reward',
+];
+
+const PARTNER_BENEFITS = [
+  'Earn referral rewards on successful interior projects',
+  'No execution responsibility',
+  'No investment required',
+  'Dedicated support from CraftSquare',
+  'Transparent lead and payout tracking',
+  'Convert your existing network into recurring income',
 ];
 
 const FAQ = [
-  { q: 'Who can join?', a: 'Property consultants, brokers, channel partners, rental specialists, investor advisors, and independent realtors across Mumbai, Thane, and Navi Mumbai.' },
-  { q: 'Is registration free?', a: 'Yes. Partner registration is completely free. Approval is subject to verification.' },
-  { q: 'How do referrals work?', a: 'Submit client details through your partner dashboard. Our team handles consultation, quotation, and execution while you track progress transparently.' },
-  { q: 'Can I submit multiple clients?', a: 'Yes. Approved partners can submit unlimited qualified leads through the partner portal.' },
-  { q: 'How do I track referrals?', a: 'Your partner dashboard shows lead status, project pipeline, commission pending, and activity timeline in real time.' },
+  { q: 'Who can join?', a: 'Local real estate brokers, channel partners, estate consultants, rental agents, and property advisors who already work with homeowners and landlords across Mumbai, Thane, and Navi Mumbai.' },
+  { q: 'Is registration free?', a: 'Yes. Referral partner registration is completely free. Approval is subject to verification.' },
+  { q: 'How do referrals work?', a: 'Refer clients who need interiors, renovation, modular kitchens, or rental furnishing. CraftSquare handles design and execution while you earn referral rewards on successful projects.' },
+  { q: 'Can I submit multiple clients?', a: 'Yes. Approved referral partners can refer unlimited qualified clients through the partner portal.' },
+  { q: 'How do I track referrals?', a: 'Your partner dashboard shows lead status, project pipeline, referral rewards pending, and activity timeline in real time.' },
   { q: 'When are rewards released?', a: 'Referral rewards are released after project completion and quality verification, as per partner agreement terms.' },
 ];
 
@@ -94,7 +113,7 @@ export default function PartnerPageClient() {
           </div>
           <div className="flex gap-2">
             <Link href="/partner/login"><Button variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">Partner Login</Button></Link>
-            <a href="#register"><Button className="bg-orange-600 font-bold text-white hover:bg-orange-700">Become a Partner</Button></a>
+            <a href="#register"><Button className="bg-orange-600 font-bold text-white hover:bg-orange-700">Become a Referral Partner</Button></a>
           </div>
         </div>
       </nav>
@@ -103,15 +122,21 @@ export default function PartnerPageClient() {
       <section className="relative overflow-hidden bg-slate-950 pb-24 pt-32 text-white md:pb-32 md:pt-40">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(249,115,22,0.15),_transparent_50%)]" />
         <div className="container relative max-w-5xl text-center">
-          <Badge className="mb-6 bg-orange-500/20 text-orange-300 hover:bg-orange-500/20">AI-Powered Interior & Property Enablement Platform</Badge>
+          <Badge className="mb-6 bg-orange-500/20 text-orange-300 hover:bg-orange-500/20">Broker Referral Program</Badge>
           <h1 className="text-4xl font-black leading-tight md:text-6xl lg:text-7xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Turn Every Property Deal Into a Long-Term Business Opportunity
+            Turn Your Existing Property Clients into Extra Monthly Income
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-300 md:text-xl">
-            Join the CraftSquare Partner Network and help homeowners, landlords and investors create beautiful interiors while expanding your professional value through a trusted execution partner powered by AI and technology.
+            Refer homeowners who need interiors, renovation, modular kitchens, or rental furnishing. CraftSquare handles the design and execution while you earn referral rewards.
+          </p>
+          <Badge className="mb-2 mt-6 bg-orange-500/20 text-base font-black text-orange-200 hover:bg-orange-500/20 md:text-lg">
+            Earn ₹50,000 to ₹2,00,000+ Per Month Through Referrals*
+          </Badge>
+          <p className="mx-auto max-w-xl text-xs text-slate-400">
+            *Income depends on successful referrals and project value.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a href="#register"><Button size="lg" className="h-14 rounded-full bg-orange-600 px-8 text-base font-black hover:bg-orange-700">Become a Partner <ArrowRight className="ml-2 h-5 w-5" /></Button></a>
+            <a href="#register"><Button size="lg" className="h-14 rounded-full bg-orange-600 px-8 text-base font-black hover:bg-orange-700">Become a Referral Partner <ArrowRight className="ml-2 h-5 w-5" /></Button></a>
             <Button size="lg" variant="outline" type="button" onClick={() => setCallbackOpen(true)} className="h-14 rounded-full border-white/20 bg-white/5 px-8 text-white hover:bg-white/10">Request a Callback</Button>
             <a href="#how-it-works"><Button size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-white/5 px-8 text-white hover:bg-white/10">How It Works</Button></a>
           </div>
@@ -137,8 +162,8 @@ export default function PartnerPageClient() {
       {/* Why partner */}
       <section className="py-20 md:py-28">
         <div className="container">
-          <h2 className="text-center text-3xl font-black md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Why Partner With CraftSquare</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-center text-slate-600">An AI-powered Interior & Property Enablement Platform — not just another interior firm.</p>
+          <h2 className="text-center text-3xl font-black md:text-5xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Why Refer With CraftSquare</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-slate-600">You already have clients. Refer them to CraftSquare for interiors and earn additional income — without execution responsibility.</p>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WHY_PARTNER.map((item) => (
               <Card key={item} className="border-slate-100 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -193,15 +218,15 @@ export default function PartnerPageClient() {
           <div>
             <h2 className="text-3xl font-black md:text-4xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Partner Benefits</h2>
             <ul className="mt-6 space-y-3 text-slate-700">
-              {['Build additional revenue opportunities', 'Increase client retention', 'Offer complete interior solutions', 'Rental furnishing expertise', 'Dedicated execution team', 'AI assisted consultation', 'Transparent lead tracking', 'Professional support', 'Long-term partnership ecosystem'].map((b) => (
+              {PARTNER_BENEFITS.map((b) => (
                 <li key={b} className="flex items-start gap-2"><Sparkles className="mt-1 h-4 w-4 shrink-0 text-orange-600" /><span>{b}</span></li>
               ))}
             </ul>
           </div>
           <div>
-            <h2 className="text-3xl font-black md:text-4xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>About The Partner Network</h2>
-            <p className="mt-6 leading-8 text-slate-700">Every property possession creates an interior opportunity. CraftSquare enables brokers and consultants to provide additional value to homeowners, investors and landlords through technology-driven interior solutions and rental furnishing expertise.</p>
-            <p className="mt-4 leading-8 text-slate-600">We position CraftSquare Studio as an AI-powered Interior & Property Enablement Platform connecting property consultants, homeowners, landlords, and investors through scalable technology and turnkey execution.</p>
+            <h2 className="text-3xl font-black md:text-4xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>About The Referral Program</h2>
+            <p className="mt-6 leading-8 text-slate-700">Every property client is a potential interior opportunity. CraftSquare helps brokers and consultants earn referral rewards by connecting homeowners to professional interior design, renovation, modular kitchens, and rental furnishing — without taking on execution work.</p>
+            <p className="mt-4 leading-8 text-slate-600">Real estate brokers can earn an additional ₹50,000–₹2,00,000+ per month by referring interior projects to CraftSquare. We handle design, execution, and client delivery while you focus on your core business.</p>
           </div>
         </div>
       </section>
@@ -227,13 +252,13 @@ export default function PartnerPageClient() {
       {/* Registration — solid section bg; glass effect only on card shell */}
       <section id="register" className="relative isolate bg-slate-950 py-16 md:py-20">
         <div className="container relative z-10 mx-auto max-w-3xl px-4">
-          <h2 className="text-center text-3xl font-black text-white md:text-4xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Become a CraftSquare Partner</h2>
-          <p className="mx-auto mt-2 max-w-xl text-center text-sm font-medium text-[#9CA3AF] md:text-base">Register today and receive your unique Partner ID upon approval.</p>
+          <h2 className="text-center text-3xl font-black text-white md:text-4xl" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Your Network Can Earn More.</h2>
+          <p className="mx-auto mt-2 max-w-xl text-center text-sm font-medium text-[#9CA3AF] md:text-base">If you already help clients buy, sell, or rent homes, you can also earn by referring them for interior solutions through CraftSquare.</p>
           <div className="partner-reg-card mx-auto mt-6 max-w-2xl p-6 text-center md:p-8">
             <p className="text-sm text-[#E5E7EB]">Create your partner account with email OTP verification in one secure flow.</p>
             <Link href="/partner/login?mode=register" className="mt-6 inline-block">
               <Button className="h-12 rounded-full bg-orange-600 px-8 text-sm font-bold text-white hover:bg-orange-500">
-                Create Partner Account
+                Join the CraftSquare Referral Program
               </Button>
             </Link>
             <Button
