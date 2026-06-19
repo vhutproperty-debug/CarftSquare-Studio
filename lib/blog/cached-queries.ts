@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import type { BlogType } from '@/lib/blog/types';
 import {
   getDatabase,
   getPublishedPostBySlug,
@@ -13,9 +14,9 @@ export const getCachedPublishedPostBySlug = cache(async (slug: string) => {
   return getPublishedPostBySlug(db, slug);
 });
 
-export const getCachedRelatedPosts = cache(async (slug: string, category?: string, limit = 3) => {
+export const getCachedRelatedPosts = cache(async (slug: string, category?: string, blogType: BlogType = 'owner', limit = 3) => {
   const db = await getDatabase();
-  return listRelatedPosts(db, { slug, category, limit });
+  return listRelatedPosts(db, { slug, category, blogType, limit });
 });
 
 export const getCachedPublishedPosts = cache(async (options: {

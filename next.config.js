@@ -52,6 +52,8 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.craftsquare.studio' },
       { protocol: 'https', hostname: 'craftsquare.studio' },
       { protocol: 'https', hostname: 'www.craftsquare.studio' },
+      { protocol: 'https', hostname: 'craftsquare.co.in' },
+      { protocol: 'https', hostname: 'www.craftsquare.co.in' },
     ],
   },
   webpack(config, { dev }) {

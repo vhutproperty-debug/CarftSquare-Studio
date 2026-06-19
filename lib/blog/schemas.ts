@@ -16,6 +16,8 @@ const blogAuthorSchema = z.object({
 
 export const blogStatusSchema = z.enum(['draft', 'published', 'archived']);
 
+export const blogTypeSchema = z.enum(['owner', 'partner']);
+
 export const blogCreateSchema = z.object({
   title: z.string().min(1).max(240),
   slug: z.string().max(240).optional(),
@@ -23,6 +25,7 @@ export const blogCreateSchema = z.object({
   content: z.string().max(200000).optional(),
   contentFormat: z.enum(['html', 'text']).optional(),
   category: z.string().max(120).optional(),
+  blogType: blogTypeSchema.optional(),
   tags: z.array(z.string().max(80)).optional(),
   status: blogStatusSchema.optional(),
   featuredImage: z.string().max(2000).optional(),

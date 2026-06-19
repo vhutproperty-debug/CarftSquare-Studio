@@ -13,6 +13,7 @@ import SeoImage from '@/components/SeoImage';
 import BlogViewTracker from '@/components/BlogViewTracker';
 
 const BlogArticleCta = dynamic(() => import('@/components/blog/BlogArticleCta'), { ssr: true });
+const BlogPartnerArticleCta = dynamic(() => import('@/components/blog/BlogPartnerArticleCta'), { ssr: true });
 
 export const revalidate = 3600;
 
@@ -32,7 +33,7 @@ export default async function BlogPostPage({ params }) {
   try {
     post = await getCachedPublishedPostBySlug(params.slug);
     if (post) {
-      relatedPosts = await getCachedRelatedPosts(post.slug, post.category, 3);
+      relatedPosts = await getCachedRelatedPosts(post.slug, post.category, post.blogType || 'owner', 3);
     }
   } catch {
     post = null;
@@ -111,7 +112,11 @@ export default async function BlogPostPage({ params }) {
         </div>
       </section>
 
-      <BlogArticleCta slug={post.slug} />
+      {post.blogType === 'partner' ? (
+        <BlogPartnerArticleCta slug={post.slug} />
+      ) : (
+        <BlogArticleCta slug={post.slug} />
+      )}
 
       <RelatedPosts posts={relatedPosts} />
 

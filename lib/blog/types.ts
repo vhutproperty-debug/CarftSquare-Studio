@@ -1,5 +1,8 @@
 export type BlogPostStatus = 'draft' | 'published' | 'archived';
 
+/** Owner blogs show homeowner lead CTAs; partner blogs show the referral program CTA. */
+export type BlogType = 'owner' | 'partner';
+
 export type BlogAuthor = {
   name: string;
   role?: string;
@@ -22,6 +25,8 @@ export type BlogPost = {
   content: string;
   contentFormat: 'html' | 'text';
   category: string;
+  /** Defaults to `owner` when missing (existing posts). */
+  blogType: BlogType;
   featuredImage: string;
   author: BlogAuthor;
   publishedAt: string;

@@ -29,6 +29,7 @@ const EMPTY_FORM = {
   excerpt: '',
   content: '',
   category: 'Interior Design',
+  blogType: 'owner',
   tags: '',
   status: 'draft',
   featuredImage: '',
@@ -136,6 +137,7 @@ export default function BlogManagementPanel({ user, onMessage }) {
       excerpt: loaded.excerpt || '',
       content: loaded.content || '',
       category: loaded.category || 'Interior Design',
+      blogType: loaded.blogType === 'partner' ? 'partner' : 'owner',
       tags: (loaded.tags || []).join(', '),
       status: loaded.status || 'draft',
       featuredImage: loaded.featuredImage || '',
@@ -205,6 +207,7 @@ export default function BlogManagementPanel({ user, onMessage }) {
       content: form.content,
       contentFormat: 'html',
       category: form.category.trim(),
+      blogType: form.blogType === 'partner' ? 'partner' : 'owner',
       tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       status,
       featuredImage: form.featuredImage.trim(),
@@ -356,6 +359,9 @@ export default function BlogManagementPanel({ user, onMessage }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-slate-900">{post.title}</p>
                       <Badge className={statusBadgeClass(post.status)}>{post.status}</Badge>
+                      {post.blogType === 'partner' ? (
+                        <Badge className="bg-violet-600 text-white hover:bg-violet-600">Partner</Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm text-slate-500">/{post.slug} · {post.category} · {formatDateTime(post.updatedAt || post.publishedAt)}</p>
                     {post.excerpt && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{post.excerpt}</p>}
@@ -418,6 +424,13 @@ export default function BlogManagementPanel({ user, onMessage }) {
                   <option value="draft">Draft</option>
                   <option value="published" disabled={!permissions.publish}>Published</option>
                   <option value="archived" disabled={!permissions.archive}>Archived</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm font-bold">
+                Blog type
+                <select value={form.blogType} onChange={(event) => updateField('blogType', event.target.value)} className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-bold">
+                  <option value="owner">Owner blog (homeowner lead CTAs)</option>
+                  <option value="partner">Partner blog (referral program CTA)</option>
                 </select>
               </label>
               <label className="space-y-2 text-sm font-bold">

@@ -3,7 +3,7 @@ import type { Db } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import { DEFAULT_BLOG_POSTS } from '@/lib/blog/defaults';
 import { normalizeBlogPost, publicBlogCard, publicBlogPost } from '@/lib/blog/normalize';
-import type { BlogListResult, BlogPost, BlogPostCard } from '@/lib/blog/types';
+import type { BlogListResult, BlogPost, BlogPostCard, BlogType } from '@/lib/blog/types';
 import { revalidatePublishedBlogRoutes } from '@/lib/seo/revalidate';
 
 const COLLECTION = 'blog_posts';
@@ -122,7 +122,7 @@ export async function getPublishedPostBySlug(db: Db, slug: string) {
 
 export async function listRelatedPosts(
   db: Db,
-  options: { slug: string; category?: string; limit?: number } ,
+  options: { slug: string; category?: string; blogType?: BlogType; limit?: number } ,
 ): Promise<BlogPostCard[]> {
   const limit = Math.min(6, Math.max(1, Number(options.limit) || 3));
   const query: Record<string, unknown> = {
@@ -130,6 +130,13 @@ export async function listRelatedPosts(
     slug: { $ne: options.slug },
   };
   if (options.category?.trim()) query.category = options.category.trim();
+
+  const blogType = options.blogType || 'owner';
+  if (blogType === 'partner') {
+    query.blogType = 'partner';
+  } else {
+    query.$or = [{ blogType: 'owner' }, { blogType: { $exists: false } }];
+  }
 
   const posts = await db.collection(COLLECTION)
     .find(query, { projection: LIST_PROJECTION })
