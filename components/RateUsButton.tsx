@@ -12,6 +12,7 @@ export default function RateUsButton() {
   const pathname = usePathname() || '/';
 
   if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/free-interior-consultation')) return null;
 
   function handleRateUsClick() {
     // Future: open ReviewAssistantModal({ onComplete: openGoogleReviewPage })

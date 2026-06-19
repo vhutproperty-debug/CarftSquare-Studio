@@ -1,0 +1,118 @@
+.meta-landing-page {
+  scroll-behavior: smooth;
+  background: #0a0a0b;
+}
+
+.meta-hero-overlay {
+  background:
+    linear-gradient(135deg, rgba(212, 165, 90, 0.1) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(15, 15, 16, 0.72) 0%, rgba(15, 15, 16, 0.92) 100%);
+}
+
+.meta-hero-content {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(15, 15, 16, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+.meta-cta-primary {
+  box-shadow:
+    0 0 22px rgba(234, 88, 12, 0.42),
+    0 8px 24px rgba(0, 0, 0, 0.28);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+}
+
+.meta-cta-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 32px rgba(234, 88, 12, 0.55),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+.meta-cta-secondary {
+  transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.meta-cta-secondary:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.meta-chat-panel {
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.meta-glass-panel {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.meta-premium-card {
+  background: linear-gradient(145deg, rgba(26, 26, 28, 0.95) 0%, rgba(15, 15, 16, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+
+.meta-premium-card:hover {
+  border-color: rgba(234, 88, 12, 0.25);
+  transform: translateY(-2px);
+}
+
+.meta-msg-in {
+  animation: metaMsgIn 0.35s ease-out both;
+}
+
+@keyframes metaMsgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.meta-dot {
+  animation: metaDot 1.2s infinite ease-in-out;
+}
+
+.meta-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.meta-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes metaDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.meta-option-btn.selected {
+  border-color: rgb(234 88 12);
+  background: rgb(255 247 237);
+  box-shadow: 0 0 0 1px rgb(234 88 12 / 0.2);
+}
+
+.meta-gallery-card {
+  contain: layout style paint;
+}

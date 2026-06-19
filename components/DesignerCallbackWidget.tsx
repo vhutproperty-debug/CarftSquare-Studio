@@ -55,6 +55,7 @@ export default function DesignerCallbackWidget() {
   }, []);
 
   if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/free-interior-consultation')) return null;
 
   function resetForm() {
     setForm({ name: '', phone: '', city: '', projectType: '', message: '', preferredCallTime: '' });
