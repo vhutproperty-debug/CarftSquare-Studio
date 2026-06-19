@@ -13,6 +13,7 @@ export default function RateUsButton() {
 
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/free-interior-consultation')) return null;
+  if (pathname.startsWith('/oberoi-elysian-rental-interiors')) return null;
 
   function handleRateUsClick() {
     // Future: open ReviewAssistantModal({ onComplete: openGoogleReviewPage })
