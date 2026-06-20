@@ -8,7 +8,7 @@ const baseUrl = (process.argv[2] || 'https://craftsquare.co.in').replace(/\/$/, 
 async function main() {
   console.log(`\nMeta CAPI verification — ${baseUrl}\n`);
 
-  const healthRes = await fetch(`${baseUrl}/api/meta/health`);
+  const healthRes = await fetch(`${baseUrl}/api/meta/capi`);
   const health = await healthRes.json().catch(() => ({}));
   console.log('Health:', JSON.stringify(health, null, 2));
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMetaPixelIdServer, validateMetaCapiConfig } from '@/lib/meta-capi/config';
 import { metaCapiRequestSchema } from '@/lib/meta-capi/schemas';
 import { sendMetaConversionEvent } from '@/lib/meta-capi/server';
 
@@ -9,6 +10,26 @@ function getClientIp(request: Request): string | undefined {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0]?.trim();
   return request.headers.get('x-real-ip')?.trim() || undefined;
+}
+
+/** Read-only config status — GET /api/meta/capi */
+export async function GET() {
+  const config = validateMetaCapiConfig();
+  const pixelId = getMetaPixelIdServer();
+
+  return NextResponse.json({
+    ok: true,
+    capi: {
+      enabled: config.enabled,
+      pixelId: pixelId ? `${pixelId.slice(0, 4)}…${pixelId.slice(-4)}` : null,
+      pixelIdConfigured: config.pixelId,
+      accessTokenConfigured: config.accessToken,
+      testEventCodeConfigured: config.testEventCode,
+      missing: config.missing,
+    },
+    deduplication: 'Browser Pixel + CAPI share event_id via trackLeadFromSource()',
+    leadOnly: true,
+  });
 }
 
 export async function POST(request: Request) {
