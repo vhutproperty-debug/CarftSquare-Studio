@@ -19,6 +19,7 @@ import {
 } from '@/lib/meta-landing/content';
 import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
 import { GA_EVENTS, trackGaEvent } from '@/lib/analytics/ga4';
+import { INDIAN_MOBILE_ERROR, isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
 
 function nowIso() {
   return new Date().toISOString();
@@ -268,15 +269,18 @@ export default function MetaConsultationChat({ active, onStarted }) {
     event.preventDefault();
     if (!step || typing || complete || submitting) return;
 
-    const name = contact.name.trim();
-    const phone = contact.phone.trim();
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get('contactName') ?? contact.name).trim();
+    const phoneRaw = String(formData.get('contactPhone') ?? contact.phone).trim();
+
     if (name.length < 2) {
       setError('Please enter your full name.');
       return;
     }
-    const digits = phone.replace(/\D/g, '').slice(-10);
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      setError('Please enter a valid 10-digit mobile number.');
+
+    const digits = normalizeIndianMobile(phoneRaw);
+    if (!isValidIndianMobile(digits)) {
+      setError(INDIAN_MOBILE_ERROR);
       return;
     }
 
@@ -358,17 +362,29 @@ export default function MetaConsultationChat({ active, onStarted }) {
           {step.type === 'contact' && (
             <form onSubmit={handleContactSubmit} className="grid gap-4">
               <Input
+                name="contactName"
                 value={contact.name}
-                onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) => {
+                  setContact((current) => ({ ...current, name: event.target.value }));
+                  if (error) setError('');
+                }}
                 placeholder="Full name *"
+                autoComplete="name"
                 className="meta-chat-input h-14 rounded-2xl border-slate-200 bg-white px-5 text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] caret-[#F97316] md:text-base"
                 autoFocus
               />
               <Input
+                name="contactPhone"
+                type="tel"
                 value={contact.phone}
-                onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))}
+                onChange={(event) => {
+                  setContact((current) => ({ ...current, phone: event.target.value }));
+                  if (error) setError('');
+                }}
                 placeholder="Mobile number *"
                 inputMode="tel"
+                autoComplete="tel"
+                maxLength={15}
                 className="meta-chat-input h-14 rounded-2xl border-slate-200 bg-white px-5 text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] caret-[#F97316] md:text-base"
               />
               {error && <p className="text-sm font-semibold text-red-600">{error}</p>}

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
 // @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
+import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
 import type { DesignerCallbackLead, DesignerLeadStatus } from './types';
 
 const COLLECTION = 'designer_callback_leads';
@@ -21,12 +22,11 @@ export async function ensureDesignerLeadIndexes(db: Db): Promise<void> {
 }
 
 export function normalizeDesignerPhone(phone: string): string {
-  return phone.replace(/\D/g, '').slice(-10);
+  return normalizeIndianMobile(phone);
 }
 
 export function isValidDesignerPhone(phone: string): boolean {
-  const digits = normalizeDesignerPhone(phone);
-  return /^[6-9]\d{9}$/.test(digits);
+  return isValidIndianMobile(phone);
 }
 
 export async function findRecentDesignerLeadByPhone(

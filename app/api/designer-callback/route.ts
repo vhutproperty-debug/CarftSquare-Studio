@@ -6,7 +6,9 @@ import {
   findRecentDesignerLeadByPhone,
   getDatabase,
   isValidDesignerPhone,
+  normalizeDesignerPhone,
 } from '@/lib/designer-leads/store';
+import { INDIAN_MOBILE_ERROR } from '@/lib/phone/indian-mobile';
 
 export async function POST(request: Request) {
   try {
@@ -19,13 +21,15 @@ export async function POST(request: Request) {
     const data = parsed.data;
 
     if (!isValidDesignerPhone(data.phone)) {
-      return NextResponse.json({ error: 'Please enter a valid 10-digit mobile number.' }, { status: 400 });
+      return NextResponse.json({ error: INDIAN_MOBILE_ERROR }, { status: 400 });
     }
+
+    const normalizedPhone = normalizeDesignerPhone(data.phone);
 
     const db = await getDatabase();
     await ensureDesignerLeadIndexes(db);
 
-    const duplicate = await findRecentDesignerLeadByPhone(db, data.phone, 30);
+    const duplicate = await findRecentDesignerLeadByPhone(db, normalizedPhone, 30);
     if (duplicate) {
       return NextResponse.json({
         success: true,
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
 
     const lead = await createDesignerCallbackLead(db, {
       name: data.name,
-      phone: data.phone,
+      phone: normalizedPhone,
       city: data.city || '',
       projectType: data.projectType || '',
       message: data.message || '',
