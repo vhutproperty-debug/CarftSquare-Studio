@@ -46,17 +46,31 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
 
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
+      const message =
+        typeof result?.error?.message === 'string' ? result.error.message : 'Meta CAPI request failed.';
+      console.error('[Meta CAPI] Graph API error:', {
+        eventName: input.eventName,
+        eventId: input.eventId,
+        status: response.status,
+        message,
+      });
       return {
         ok: false,
-        error: typeof result?.error?.message === 'string' ? result.error.message : 'Meta CAPI request failed.',
+        error: message,
       };
     }
 
     return { ok: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Meta CAPI request failed.';
+    console.error('[Meta CAPI] Request failed:', {
+      eventName: input.eventName,
+      eventId: input.eventId,
+      message,
+    });
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Meta CAPI request failed.',
+      error: message,
     };
   }
 }

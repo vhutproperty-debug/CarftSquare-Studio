@@ -35,7 +35,11 @@ export function generateMetaEventId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0;
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 function readCookie(name: string): string | undefined {
@@ -113,7 +117,9 @@ function trackMetaEvent(
   const eventId = generateMetaEventId();
 
   safeFbq('track', eventName, customData ?? {}, { eventID: eventId });
-  sendMetaCapiEvent(eventName, eventId, customData, userData);
+  if (eventName === 'Lead') {
+    sendMetaCapiEvent(eventName, eventId, customData, userData);
+  }
 
   return eventId;
 }

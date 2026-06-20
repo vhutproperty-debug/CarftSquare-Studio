@@ -35,6 +35,11 @@ export async function POST(request: Request) {
     }
 
     if (!result.ok) {
+      console.error('[Meta CAPI] Route handler error:', {
+        eventName: data.eventName,
+        eventId: data.eventId,
+        error: result.error || 'Meta CAPI failed',
+      });
       return NextResponse.json({ ok: false, error: result.error || 'Meta CAPI failed' }, { status: 502 });
     }
 
