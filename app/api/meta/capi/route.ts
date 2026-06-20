@@ -16,10 +16,19 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = metaCapiRequestSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn('[Meta CAPI] Invalid request payload:', parsed.error.flatten());
       return NextResponse.json({ ok: false, error: parsed.error.flatten() }, { status: 400 });
     }
 
     const data = parsed.data;
+    console.info('[Meta CAPI] Lead event received:', {
+      eventId: data.eventId,
+      eventSourceUrl: data.eventSourceUrl,
+      landingPage: data.customData?.landing_page,
+      contentName: data.customData?.content_name,
+      hasPhone: Boolean(data.userData?.phone),
+      hasEmail: Boolean(data.userData?.email),
+    });
     const result = await sendMetaConversionEvent({
       eventName: data.eventName,
       eventId: data.eventId,
@@ -31,6 +40,10 @@ export async function POST(request: Request) {
     });
 
     if (result.skipped) {
+      console.warn('[Meta CAPI] Skipped server event:', {
+        eventId: data.eventId,
+        reason: result.error,
+      });
       return NextResponse.json({ ok: false, skipped: true }, { status: 202 });
     }
 

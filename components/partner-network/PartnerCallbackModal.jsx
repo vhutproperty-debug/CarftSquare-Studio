@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
 
 export default function PartnerCallbackModal({ open, onOpenChange }) {
   const [success, setSuccess] = useState(false);
@@ -54,6 +55,23 @@ export default function PartnerCallbackModal({ open, onOpenChange }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
+
+      const digits = mobile.replace(/\D/g, '').slice(-10);
+      const trimmedName = name.trim();
+      const { firstName, lastName } = splitFullName(trimmedName || 'Partner Lead');
+      trackLeadFromSource(
+        'partner_callback',
+        {
+          form_source: 'partner_page',
+          landing_page: '/partner',
+        },
+        {
+          phone: digits,
+          firstName,
+          lastName,
+        },
+      );
+
       setSuccess(true);
     } catch (err) {
       submittedRef.current = false;

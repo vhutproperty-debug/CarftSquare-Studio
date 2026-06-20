@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const metaCapiRequestSchema = z.object({
-  eventName: z.enum(['PageView', 'ViewContent', 'Lead', 'Contact', 'Schedule']),
+  eventName: z.literal('Lead'),
   eventId: z.string().uuid(),
   eventSourceUrl: z.string().url().max(500),
   customData: z.record(z.unknown()).optional().default({}),

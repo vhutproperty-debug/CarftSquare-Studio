@@ -20,7 +20,8 @@ declare global {
 export type MetaLeadSource =
   | 'ai_interior_consultant'
   | 'contact_consultation_form'
-  | 'designer_callback';
+  | 'designer_callback'
+  | 'partner_callback';
 
 export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
@@ -162,7 +163,18 @@ export function trackLeadFromSource(
   extra?: Record<string, unknown>,
   userData?: MetaRawUserData,
 ): string {
-  return trackLead({ content_name: source, ...extra }, userData);
+  const landingPage =
+    (typeof extra?.landing_page === 'string' && extra.landing_page) ||
+    (typeof window !== 'undefined' ? window.location.pathname : undefined);
+
+  return trackLead(
+    {
+      content_name: source,
+      ...extra,
+      ...(landingPage ? { landing_page: landingPage } : {}),
+    },
+    userData,
+  );
 }
 
 export function splitFullName(fullName: string): { firstName?: string; lastName?: string } {

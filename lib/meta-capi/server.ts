@@ -1,9 +1,28 @@
-import { getMetaAccessToken, getMetaGraphEventsUrl, getMetaPixelIdServer, getMetaTestEventCode, isMetaCapiEnabled } from './config';
+import { getMetaAccessToken, getMetaGraphEventsUrl, getMetaPixelIdServer, getMetaTestEventCode, validateMetaCapiConfig } from './config';
 import { hashUserData } from './hash';
 import type { MetaConversionEventInput, MetaCapiSendResult } from './types';
 
+function summarizeHashedUserData(userData: ReturnType<typeof hashUserData>) {
+  return {
+    hasEmail: Boolean(userData.em?.length),
+    hasPhone: Boolean(userData.ph?.length),
+    hasFirstName: Boolean(userData.fn?.length),
+    hasLastName: Boolean(userData.ln?.length),
+    hasFbp: Boolean(userData.fbp),
+    hasFbc: Boolean(userData.fbc),
+    hasIp: Boolean(userData.client_ip_address),
+    hasUserAgent: Boolean(userData.client_user_agent),
+  };
+}
+
 export async function sendMetaConversionEvent(input: MetaConversionEventInput): Promise<MetaCapiSendResult> {
-  if (!isMetaCapiEnabled()) {
+  const config = validateMetaCapiConfig();
+  if (!config.enabled) {
+    console.warn('[Meta CAPI] Skipped — missing configuration:', {
+      missing: config.missing,
+      eventName: input.eventName,
+      eventId: input.eventId,
+    });
     return { ok: false, skipped: true, error: 'Meta CAPI is not configured.' };
   }
 
@@ -37,6 +56,16 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
     payload.test_event_code = testEventCode;
   }
 
+  console.info('[Meta CAPI] Sending event:', {
+    eventName: input.eventName,
+    eventId: input.eventId,
+    eventSourceUrl: input.eventSourceUrl,
+    landingPage: input.customData?.landing_page,
+    contentName: input.customData?.content_name,
+    testMode: Boolean(testEventCode),
+    advancedMatching: summarizeHashedUserData(userData),
+  });
+
   try {
     const response = await fetch(getMetaGraphEventsUrl(pixelId, accessToken), {
       method: 'POST',
@@ -53,12 +82,21 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
         eventId: input.eventId,
         status: response.status,
         message,
+        fbtraceId: result?.error?.fbtrace_id,
       });
       return {
         ok: false,
         error: message,
       };
     }
+
+    console.info('[Meta CAPI] Event accepted:', {
+      eventName: input.eventName,
+      eventId: input.eventId,
+      eventsReceived: result?.events_received,
+      fbtraceId: result?.fbtrace_id,
+      testMode: Boolean(testEventCode),
+    });
 
     return { ok: true };
   } catch (error) {
