@@ -330,7 +330,7 @@ export default function MetaConsultationChat({ active, onStarted }) {
                 onChange={(event) => setTextInput(event.target.value)}
                 placeholder={step.placeholder}
                 inputMode={step.inputMode || 'text'}
-                className="h-14 flex-1 rounded-2xl border-slate-200 px-5 text-base"
+                className="meta-chat-input h-14 flex-1 rounded-2xl border-slate-200 bg-white px-5 text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] caret-[#F97316] md:text-base"
                 autoFocus
               />
               <Button type="submit" disabled={submitting} className="h-14 rounded-2xl bg-orange-600 px-6 font-black text-white hover:bg-orange-700">
@@ -361,7 +361,7 @@ export default function MetaConsultationChat({ active, onStarted }) {
                 value={contact.name}
                 onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
                 placeholder="Full name *"
-                className="h-14 rounded-2xl border-slate-200 px-5 text-base"
+                className="meta-chat-input h-14 rounded-2xl border-slate-200 bg-white px-5 text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] caret-[#F97316] md:text-base"
                 autoFocus
               />
               <Input
@@ -369,7 +369,7 @@ export default function MetaConsultationChat({ active, onStarted }) {
                 onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))}
                 placeholder="Mobile number *"
                 inputMode="tel"
-                className="h-14 rounded-2xl border-slate-200 px-5 text-base"
+                className="meta-chat-input h-14 rounded-2xl border-slate-200 bg-white px-5 text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] caret-[#F97316] md:text-base"
               />
               {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
               <Button

@@ -52,6 +52,35 @@
     0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
+.meta-chat-input {
+  background-color: #ffffff;
+  color: #111827;
+  font-weight: 500;
+  font-size: 16px;
+  caret-color: #f97316;
+}
+
+.meta-chat-input::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.meta-chat-input:focus,
+.meta-chat-input:focus-visible {
+  color: #111827;
+  background-color: #ffffff;
+}
+
+.meta-chat-input:-webkit-autofill,
+.meta-chat-input:-webkit-autofill:hover,
+.meta-chat-input:-webkit-autofill:focus,
+.meta-chat-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111827 !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #f97316;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
 .meta-glass-panel {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
