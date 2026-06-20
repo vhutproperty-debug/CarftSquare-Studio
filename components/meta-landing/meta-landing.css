@@ -3,10 +3,14 @@
   background: #0a0a0b;
 }
 
+.meta-hero-image {
+  filter: brightness(1.15) contrast(1.1);
+}
+
 .meta-hero-overlay {
   background:
     linear-gradient(135deg, rgba(212, 165, 90, 0.1) 0%, transparent 42%),
-    linear-gradient(180deg, rgba(15, 15, 16, 0.72) 0%, rgba(15, 15, 16, 0.92) 100%);
+    linear-gradient(180deg, rgba(15, 15, 16, 0.47) 0%, rgba(15, 15, 16, 0.6) 100%);
 }
 
 .meta-hero-content {

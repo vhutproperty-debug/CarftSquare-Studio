@@ -78,7 +78,7 @@ export default function MetaLandingClient({ reviews = [], galleryItems = [], her
               alt="Premium interior project by CraftSquare Studio"
               fill
               priority
-              className="object-cover"
+              className="meta-hero-image object-cover"
               sizes="100vw"
             />
           </div>
@@ -102,7 +102,7 @@ export default function MetaLandingClient({ reviews = [], galleryItems = [], her
                 onClick={() => startConsultation(setChatActive, consultationRef)}
                 className="meta-cta-primary h-14 rounded-full bg-orange-600 px-8 text-base font-black text-white hover:bg-orange-500"
               >
-                Get Free AI Estimate
+                Get Free Estimate
               </Button>
               <Button
                 type="button"

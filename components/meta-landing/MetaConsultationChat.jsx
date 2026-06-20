@@ -118,9 +118,9 @@ export default function MetaConsultationChat({ active, onStarted }) {
   const [complete, setComplete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [started, setStarted] = useState(false);
   const scrollRef = useRef(null);
   const conversationRef = useRef([]);
+  const initializedRef = useRef(false);
 
   const step = CONSULTATION_STEPS[stepIndex];
 
@@ -139,21 +139,26 @@ export default function MetaConsultationChat({ active, onStarted }) {
   const advanceWithAssistant = useCallback(async (nextIndex) => {
     setTyping(true);
     scrollToBottom();
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    setTyping(false);
-    if (nextIndex >= CONSULTATION_STEPS.length) {
-      setComplete(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      if (nextIndex >= CONSULTATION_STEPS.length) {
+        setComplete(true);
+        scrollToBottom();
+        return;
+      }
+      pushMessage('assistant', CONSULTATION_STEPS[nextIndex].assistant);
+      setStepIndex(nextIndex);
       scrollToBottom();
-      return;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setTyping(false);
     }
-    pushMessage('assistant', CONSULTATION_STEPS[nextIndex].assistant);
-    setStepIndex(nextIndex);
-    scrollToBottom();
   }, [pushMessage, scrollToBottom]);
 
   useEffect(() => {
-    if (!active || started) return;
-    setStarted(true);
+    if (!active || initializedRef.current) return;
+    initializedRef.current = true;
     onStarted?.();
     conversationRef.current = [];
     pushMessage('assistant', WELCOME_MESSAGE);
@@ -161,10 +166,17 @@ export default function MetaConsultationChat({ active, onStarted }) {
     const timer = window.setTimeout(() => {
       setTyping(false);
       pushMessage('assistant', CONSULTATION_STEPS[0].assistant);
+      setStepIndex(0);
       scrollToBottom();
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [active, onStarted, pushMessage, scrollToBottom, started]);
+  }, [active, onStarted, pushMessage, scrollToBottom]);
+
+  useEffect(() => {
+    if (!typing) return undefined;
+    const safetyTimer = window.setTimeout(() => setTyping(false), 8000);
+    return () => window.clearTimeout(safetyTimer);
+  }, [typing]);
 
   useEffect(() => {
     scrollToBottom();
@@ -277,10 +289,14 @@ export default function MetaConsultationChat({ active, onStarted }) {
     if (step.earlyCapture) {
       setTyping(true);
       scrollToBottom();
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      setTyping(false);
-      pushMessage('assistant', CONTACT_ACK_MESSAGE(name.split(' ')[0]));
-      await advanceWithAssistant(stepIndex + 1);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        pushMessage('assistant', CONTACT_ACK_MESSAGE(name.split(' ')[0]));
+        await advanceWithAssistant(stepIndex + 1);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+        setTyping(false);
+      }
       return;
     }
 
