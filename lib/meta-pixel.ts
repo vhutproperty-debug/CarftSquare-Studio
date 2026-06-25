@@ -21,7 +21,8 @@ export type MetaLeadSource =
   | 'ai_interior_consultant'
   | 'contact_consultation_form'
   | 'designer_callback'
-  | 'partner_callback';
+  | 'partner_callback'
+  | 'painting_landing';
 
 export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
@@ -189,6 +190,7 @@ export function shouldTrackViewContent(pathname: string): boolean {
     pathname === '/estimate' ||
     pathname.startsWith('/estimate/') ||
     pathname.startsWith('/services/') ||
-    pathname === '/rental-interiors'
+    pathname === '/rental-interiors' ||
+    pathname === '/painting'
   );
 }

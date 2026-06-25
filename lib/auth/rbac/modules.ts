@@ -15,6 +15,7 @@ export const MODULES = {
   TESTIMONIALS: 'testimonials',
   SETTINGS: 'settings',
   PARTNER_NETWORK: 'partner_network',
+  PAINTING: 'painting',
   FUTURE_MODULES: 'future_modules',
 } as const;
 
@@ -44,6 +45,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   testimonials: 'Testimonials',
   settings: 'Settings',
   partner_network: 'Partner Network',
+  painting: 'Painting Services',
   future_modules: 'Future Modules',
 };
 

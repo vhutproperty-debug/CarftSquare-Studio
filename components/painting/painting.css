@@ -1,0 +1,98 @@
+/* Painting landing — premium light theme, isolated from other pages */
+
+.painting-page {
+  --painting-bg: #fafafa;
+  --painting-surface: #ffffff;
+  --painting-text: #1d1d1f;
+  --painting-muted: #6e6e73;
+  --painting-border: rgba(0, 0, 0, 0.08);
+  --painting-accent: #ea580c;
+  --painting-accent-hover: #c2410c;
+  background: var(--painting-bg);
+  color: var(--painting-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.painting-hero-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 55%, #fafafa 100%);
+}
+
+.painting-card {
+  background: var(--painting-surface);
+  border: 1px solid var(--painting-border);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.painting-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.painting-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--painting-border);
+}
+
+.painting-cta-primary {
+  background: var(--painting-accent);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 9999px;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.painting-cta-primary:hover {
+  background: var(--painting-accent-hover);
+}
+
+.painting-cta-secondary {
+  background: transparent;
+  color: var(--painting-text);
+  border: 1.5px solid var(--painting-border);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.painting-cta-secondary:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.painting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 9999px;
+  background: rgba(234, 88, 12, 0.08);
+  color: #c2410c;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.painting-sticky-cta {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .painting-sticky-cta {
+    padding-bottom: 0;
+  }
+}
+
+.painting-sticky-bar {
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.painting-process-line {
+  background: linear-gradient(180deg, #ea580c 0%, rgba(234, 88, 12, 0.15) 100%);
+}
+
+.painting-brand-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f5f5f7 100%);
+}

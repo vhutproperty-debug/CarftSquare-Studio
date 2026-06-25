@@ -64,3 +64,8 @@ registerRoutePermissionRule({
   pathPrefix: '/api/admin/partner-network',
   module: MODULES.PARTNER_NETWORK,
 });
+
+registerRoutePermissionRule({
+  pathPrefix: '/api/admin/painting',
+  module: MODULES.PAINTING,
+});
