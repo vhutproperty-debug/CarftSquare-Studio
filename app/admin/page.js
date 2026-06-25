@@ -436,6 +436,11 @@ const AdminPage = () => {
                 <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Handshake className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Partners</span></Button>
               </a>
             )}
+            {auth.authenticated && (canAccess(auth.user, 'painting', 'view') || canAccess(auth.user, 'leads', 'view')) && (
+              <a href="/admin/painting">
+                <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Paintbrush className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Painting</span></Button>
+              </a>
+            )}
             <a href="/">
               <Button variant="outline" className="border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 sm:px-4"><Home className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Public Site</span></Button>
             </a>
@@ -585,6 +590,15 @@ const AdminPage = () => {
               <Card className="border-white/10 bg-white text-slate-950">
                 <CardHeader><CardTitle>Secure lead management</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-slate-700">
+                    <p className="font-bold text-slate-900">Painting landing leads are separate</p>
+                    <p className="mt-1">Submissions from <a href="/painting" className="font-semibold text-orange-700 hover:underline">/painting</a> are stored in the <strong>painting_leads</strong> collection — not in this list.</p>
+                    <a href="/admin/painting" className="mt-3 inline-flex">
+                      <Button className="bg-orange-600 font-bold text-white hover:bg-orange-700">
+                        <Paintbrush className="mr-2 h-4 w-4" /> Open Painting Leads
+                      </Button>
+                    </a>
+                  </div>
                   {adminLeads.length ? adminLeads.slice(0, 12).map((lead) => (
                     <div key={lead.id} className="grid gap-3 rounded-2xl border border-slate-100 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
                       <div className="min-w-0">

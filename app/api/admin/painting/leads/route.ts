@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authorizeRequest } from '@/lib/auth/require-admin-api';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
-import { MODULES } from '@/lib/auth/rbac/modules';
+import { authorizePaintingLeadsRequest } from '@/lib/painting/admin-auth';
 import {
   paintingLeadDeleteSchema,
   paintingLeadUpdateSchema,
@@ -18,7 +17,7 @@ import {
 import type { PaintingLeadStatus } from '@/lib/painting/types';
 
 export async function GET(request: Request) {
-  const auth = await authorizeRequest(request, { permission: MODULES.PAINTING, action: 'view' });
+  const auth = await authorizePaintingLeadsRequest(request, 'view');
   const denied = authResultToResponse(auth);
   if (denied) return denied;
 
@@ -49,7 +48,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await authorizeRequest(request, { permission: MODULES.PAINTING, action: 'edit' });
+  const auth = await authorizePaintingLeadsRequest(request, 'edit');
   const denied = authResultToResponse(auth);
   if (denied) return denied;
 
@@ -73,7 +72,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await authorizeRequest(request, { permission: MODULES.PAINTING, action: 'delete' });
+  const auth = await authorizePaintingLeadsRequest(request, 'delete');
   const denied = authResultToResponse(auth);
   if (denied) return denied;
 

@@ -30,7 +30,9 @@ export default function PaintingAdminPage() {
           router.replace('/admin');
           return;
         }
-        if (!canAccess(data.user, 'painting', 'view')) {
+        const canViewPainting =
+          canAccess(data.user, 'painting', 'view') || canAccess(data.user, 'leads', 'view');
+        if (!canViewPainting) {
           router.replace('/admin?denied=painting');
           return;
         }

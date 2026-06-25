@@ -27,6 +27,7 @@ export default function PaintingLeadsPanel() {
   const [statusFilter, setStatusFilter] = useState('');
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [deletingId, setDeletingId] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -36,13 +37,23 @@ export default function PaintingLeadsPanel() {
     const res = await fetch(`/api/admin/painting/leads?${params}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
+      setLoadError('');
       setLeads(data.leads || []);
       const drafts: Record<string, string> = {};
       for (const lead of data.leads || []) {
         drafts[lead.id] = lead.notes || '';
       }
       setNotesDraft(drafts);
+      return;
     }
+
+    setLeads([]);
+    setLoadError(
+      data.error
+        || (res.status === 403
+          ? 'Access denied. Ask a Super Admin to grant Painting or Leads permission.'
+          : `Could not load painting leads (HTTP ${res.status}).`),
+    );
   }, [search, statusFilter]);
 
   useEffect(() => {
@@ -122,9 +133,15 @@ export default function PaintingLeadsPanel() {
         </div>
       </div>
 
+      {loadError && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+          {loadError}
+        </p>
+      )}
+
       <div className="space-y-4">
-        {leads.length === 0 && (
-          <p className="text-sm text-slate-500">No painting leads yet.</p>
+        {!loadError && leads.length === 0 && (
+          <p className="text-sm text-slate-500">No painting leads yet. Leads from /painting appear here.</p>
         )}
         {leads.map((lead) => (
           <Card key={lead.id} className="border-slate-100">
