@@ -19,12 +19,12 @@ export const AURIS_INTENTS = [
   },
   {
     id: 'ac_kitchen_basics',
-    label: 'AC, Kitchen & Basics',
+    label: 'AC + Kitchen + Rental Basics',
     subtext: 'I need the essentials before renting or moving in',
   },
   {
     id: 'full_home_furnishing',
-    label: 'Full Home Furnishing',
+    label: 'Complete Home Furnishing',
     subtext: 'I want complete interiors and furnishing',
   },
 ] as const;
@@ -32,10 +32,10 @@ export const AURIS_INTENTS = [
 export type AurisIntentId = (typeof AURIS_INTENTS)[number]['id'];
 
 export const AURIS_POSSESSION_OPTIONS = [
-  { id: 'already_received', label: 'Already received' },
-  { id: 'within_30_days', label: 'Within 30 days' },
+  { id: 'already_received', label: 'Already received possession' },
+  { id: 'within_1_month', label: 'Within 1 month' },
   { id: '1_3_months', label: '1–3 months' },
-  { id: 'not_sure', label: 'Not sure' },
+  { id: 'later', label: 'Later' },
 ] as const;
 
 export type AurisPossessionId = (typeof AURIS_POSSESSION_OPTIONS)[number]['id'];

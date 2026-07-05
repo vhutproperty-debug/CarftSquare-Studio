@@ -1,5 +1,5 @@
 import { trackGaEvent, trackGaPageView } from '@/lib/analytics/ga4';
-import { isMetaPixelEnabled, splitFullName, trackLeadFromSource } from '@/lib/meta-pixel';
+import { isMetaPixelEnabled, trackLeadFromSource } from '@/lib/meta-pixel';
 import { AURIS_LANDING_PATH } from './constants';
 
 type AurisEventParams = {
@@ -53,15 +53,11 @@ export function trackAurisWhatsAppClicked(selectedIntent: string, clickLocation 
   });
 }
 
-export function trackAurisMetaLead(name: string, mobile: string, selectedIntent: string): void {
-  const { firstName, lastName } = splitFullName(name);
-  trackLeadFromSource(
-    'ai_interior_consultant',
-    {
-      form_source: 'auris_serenity',
-      landing_page: AURIS_LANDING_PATH,
-      selected_intent: selectedIntent,
-    },
-    { phone: mobile, firstName, lastName },
-  );
+export function trackAurisMetaLead(selectedIntent: string, possessionTimeline: string): void {
+  trackLeadFromSource('ai_interior_consultant', {
+    form_source: 'auris_serenity',
+    landing_page: AURIS_LANDING_PATH,
+    selected_intent: selectedIntent,
+    possession_timeline: possessionTimeline,
+  });
 }

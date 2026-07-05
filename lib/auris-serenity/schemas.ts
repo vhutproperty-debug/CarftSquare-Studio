@@ -15,8 +15,8 @@ const utmSchema = z
   .optional();
 
 export const aurisSerenityLeadSubmitSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  mobile: z.string().trim().min(8).max(20).regex(/^[+\d\s()-]+$/),
+  name: z.string().trim().max(80).optional(),
+  mobile: z.string().trim().max(20).optional(),
   selectedIntent: z.enum(intentIds),
   possessionTimeline: z.enum(possessionIds),
   pagePath: z.string().trim().max(200).optional(),

@@ -20,26 +20,30 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
-    if (!isValidAurisMobile(data.mobile)) {
+    const mobileInput = data.mobile?.trim() || '';
+    const normalizedMobile = mobileInput ? normalizeAurisMobile(mobileInput) : '';
+
+    if (mobileInput && !isValidAurisMobile(mobileInput)) {
       return NextResponse.json({ error: INDIAN_MOBILE_ERROR }, { status: 400 });
     }
 
-    const normalizedMobile = normalizeAurisMobile(data.mobile);
     const db = await getAurisSerenityDatabase();
     await ensureAurisSerenityLeadIndexes(db);
 
-    const duplicate = await findRecentAurisLeadByMobile(db, normalizedMobile, 30);
-    if (duplicate) {
-      return NextResponse.json({
-        success: true,
-        duplicate: true,
-        message: 'Thank you! Our team will connect with you on WhatsApp shortly.',
-        lead: { id: duplicate.id },
-      });
+    if (normalizedMobile) {
+      const duplicate = await findRecentAurisLeadByMobile(db, normalizedMobile, 30);
+      if (duplicate) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          message: 'Thank you! Our team will connect with you on WhatsApp shortly.',
+          lead: { id: duplicate.id },
+        });
+      }
     }
 
     const lead = await createAurisSerenityLead(db, {
-      name: data.name,
+      name: data.name?.trim() || '',
       mobile: normalizedMobile,
       selectedIntent: data.selectedIntent,
       possessionTimeline: data.possessionTimeline,
