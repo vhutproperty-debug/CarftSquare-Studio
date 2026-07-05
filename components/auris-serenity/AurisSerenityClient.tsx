@@ -53,7 +53,7 @@ export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClie
 
       <section className="relative min-h-[92vh] overflow-hidden">
         <AurisHeroImage hasTowerImage={hasTowerImage} />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/40" />
 
         <div className="container relative z-10 flex min-h-[92vh] flex-col justify-end pb-28 pt-24 md:justify-center md:pb-20 md:pt-20">
           <div className="max-w-2xl">

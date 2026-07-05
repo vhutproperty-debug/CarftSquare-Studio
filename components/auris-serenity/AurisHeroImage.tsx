@@ -17,11 +17,11 @@ export default function AurisHeroImage({ hasTowerImage }: AurisHeroImageProps) {
     return (
       <Image
         src={AURIS_TOWER_IMAGE}
-        alt="Auris Serenity residential tower, Mumbai"
+        alt="Auris Serenity residential towers, Mumbai"
         fill
         priority
         sizes="100vw"
-        className="object-cover object-center"
+        className="object-cover object-[50%_42%] md:object-[50%_48%] lg:object-[center_52%]"
         onError={() => setImageFailed(true)}
       />
     );

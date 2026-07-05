@@ -2,8 +2,8 @@ import { BRAND } from '@/lib/brand';
 
 export const AURIS_LANDING_PATH = '/auris-serenity';
 
-/** Upload approved tower image here: public/images/auris-serenity/auris-serenity-tower.webp */
-export const AURIS_TOWER_IMAGE = '/images/auris-serenity/auris-serenity-tower.webp';
+/** Approved tower image: public/images/auris-serenity/auris-serenity-tower.jpg */
+export const AURIS_TOWER_IMAGE = '/images/auris-serenity/auris-serenity-tower.jpg';
 
 export const AURIS_LEAD_SOURCE = 'auris_serenity';
 
