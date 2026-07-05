@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { buildWebPageJsonLd } from '@/lib/seo/jsonld';
 import { pageBreadcrumb } from '@/lib/seo/breadcrumbs';
+import { buildAurisWebPageJsonLd } from '@/lib/auris-serenity/jsonld';
 import { AURIS_LANDING_PATH, AURIS_TOWER_IMAGE } from '@/lib/auris-serenity/constants';
 import JsonLd from '@/components/JsonLd';
 import AurisSerenityClient from '@/components/auris-serenity/AurisSerenityClient';
@@ -44,7 +44,7 @@ export default function AurisSerenityPage() {
   return (
     <>
       <JsonLd
-        data={buildWebPageJsonLd({
+        data={buildAurisWebPageJsonLd({
           name: 'Auris Serenity Interiors & Rental-Ready Solutions',
           description: PAGE_DESCRIPTION,
           path: AURIS_LANDING_PATH,
