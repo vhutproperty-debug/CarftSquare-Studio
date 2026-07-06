@@ -14,18 +14,18 @@ export const AURIS_WHATSAPP_NUMBER = BRAND.whatsappNumber;
 export const AURIS_INTENTS = [
   {
     id: 'rental_apartment',
-    label: 'Rental Apartment',
-    subtext: 'I want to rent out my apartment',
+    label: 'Rent Out My Apartment',
+    subtext: 'Get your Auris Serenity apartment rental-ready',
   },
   {
     id: 'ac_kitchen_basics',
-    label: 'AC + Kitchen + Rental Basics',
-    subtext: 'I need the essentials before renting or moving in',
+    label: 'AC + Kitchen + Basics for Rental',
+    subtext: 'Essentials before renting or moving in',
   },
   {
     id: 'full_home_furnishing',
-    label: 'Complete Home Furnishing',
-    subtext: 'I want complete interiors and furnishing',
+    label: 'Full Home Furnishing',
+    subtext: 'Complete interiors and furnishing',
   },
 ] as const;
 

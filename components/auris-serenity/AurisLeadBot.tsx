@@ -1,17 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Check, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 import { Drawer } from 'vaul';
 import {
-  trackAurisIntentSelected,
   trackAurisLeadSubmitted,
   trackAurisMetaLead,
   trackAurisWhatsAppClicked,
 } from '@/lib/auris-serenity/analytics';
 import {
   AURIS_BOT_DISMISSED_KEY,
-  AURIS_INTENTS,
   AURIS_LANDING_PATH,
   AURIS_LEAD_SOURCE,
   AURIS_POSSESSION_OPTIONS,
@@ -25,16 +23,17 @@ type BotStep = 1 | 2;
 
 type AurisLeadBotProps = {
   open: boolean;
+  initialIntent?: AurisIntentId | '';
   onOpenChange: (open: boolean) => void;
   onDismiss: () => void;
 };
 
-function isMobileViewport(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(max-width: 767px)').matches;
-}
-
-export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLeadBotProps) {
+export default function AurisLeadBot({
+  open,
+  initialIntent = '',
+  onOpenChange,
+  onDismiss,
+}: AurisLeadBotProps) {
   const [step, setStep] = useState<BotStep>(1);
   const [selectedIntent, setSelectedIntent] = useState<AurisIntentId | ''>('');
   const [possessionTimeline, setPossessionTimeline] = useState<AurisPossessionId | ''>('');
@@ -51,8 +50,18 @@ export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLea
 
   useEffect(() => {
     if (!open) return;
+
+    if (initialIntent) {
+      setSelectedIntent(initialIntent);
+      setStep(2);
+      setPossessionTimeline('');
+      setContinuing(false);
+      setError('');
+      return;
+    }
+
     resetFlow();
-  }, [open, resetFlow]);
+  }, [open, initialIntent, resetFlow]);
 
   function handleClose() {
     onOpenChange(false);
@@ -62,17 +71,11 @@ export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLea
     }
   }
 
-  function selectIntent(intentId: AurisIntentId) {
-    setSelectedIntent(intentId);
-    trackAurisIntentSelected(intentId);
-    setStep(2);
-  }
-
   function goBack() {
     setError('');
     setContinuing(false);
     setPossessionTimeline('');
-    setStep(1);
+    handleClose();
   }
 
   async function continueOnWhatsApp(timelineId: AurisPossessionId) {
@@ -155,12 +158,10 @@ export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLea
                   </button>
                 )}
                 <Drawer.Title className="text-xl font-black text-slate-950">
-                  {step === 1 && 'What are you planning for your Auris Serenity apartment?'}
-                  {step === 2 && 'When do you expect possession?'}
+                  When do you expect possession?
                 </Drawer.Title>
                 <Drawer.Description id="auris-bot-description" className="mt-1 text-sm text-slate-500">
-                  {step === 1 && 'Choose one option to continue on WhatsApp.'}
-                  {step === 2 && 'Select your timeline — we\'ll open WhatsApp with your requirement pre-filled.'}
+                  Select your timeline — we&apos;ll open WhatsApp with your requirement pre-filled.
                 </Drawer.Description>
               </div>
               <button
@@ -176,36 +177,6 @@ export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLea
           </div>
 
           <div className="overflow-y-auto px-5 pb-4">
-            {step === 1 && (
-              <div className="space-y-3">
-                {AURIS_INTENTS.map((intent) => {
-                  const selected = selectedIntent === intent.id;
-                  return (
-                    <button
-                      key={intent.id}
-                      type="button"
-                      onClick={() => selectIntent(intent.id)}
-                      className={`w-full rounded-2xl border-2 p-4 text-left transition ${
-                        selected
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50/50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-black uppercase tracking-wide text-orange-600">
-                            {intent.label}
-                          </p>
-                          <p className="mt-1 text-base font-semibold text-slate-900">{intent.subtext}</p>
-                        </div>
-                        {selected ? <Check className="h-5 w-5 shrink-0 text-orange-600" /> : null}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
             {step === 2 && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -248,19 +219,4 @@ export default function AurisLeadBot({ open, onOpenChange, onDismiss }: AurisLea
       </Drawer.Portal>
     </Drawer.Root>
   );
-}
-
-export function useAurisBotAutoOpen(onOpen: () => void): void {
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem(AURIS_BOT_DISMISSED_KEY)) return;
-    if (!isMobileViewport()) return;
-
-    const timer = window.setTimeout(() => {
-      if (sessionStorage.getItem(AURIS_BOT_DISMISSED_KEY)) return;
-      onOpen();
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [onOpen]);
 }

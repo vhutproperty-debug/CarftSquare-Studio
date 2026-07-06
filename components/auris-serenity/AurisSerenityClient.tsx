@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import BrandLogo from '@/components/BrandLogo';
-import { Button } from '@/components/ui/button';
 import AurisHeroImage from '@/components/auris-serenity/AurisHeroImage';
-import AurisLeadBot, { useAurisBotAutoOpen } from '@/components/auris-serenity/AurisLeadBot';
+import AurisLeadBot from '@/components/auris-serenity/AurisLeadBot';
 import AurisStickyWhatsApp from '@/components/auris-serenity/AurisStickyWhatsApp';
-import { trackAurisPageView } from '@/lib/auris-serenity/analytics';
-import { AURIS_BOT_DISMISSED_KEY } from '@/lib/auris-serenity/constants';
+import { trackAurisIntentSelected, trackAurisPageView } from '@/lib/auris-serenity/analytics';
+import { AURIS_INTENTS, type AurisIntentId } from '@/lib/auris-serenity/constants';
 
 type AurisSerenityClientProps = {
   hasTowerImage: boolean;
@@ -16,28 +15,34 @@ type AurisSerenityClientProps = {
 
 export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClientProps) {
   const [botOpen, setBotOpen] = useState(false);
-  const [showReopenButton, setShowReopenButton] = useState(false);
+  const [pendingIntent, setPendingIntent] = useState<AurisIntentId | ''>('');
+  const [inIntentFlow, setInIntentFlow] = useState(false);
 
-  const openBot = useCallback(() => {
+  const handleInlineIntentSelect = useCallback((intentId: AurisIntentId) => {
+    trackAurisIntentSelected(intentId);
+    setPendingIntent(intentId);
+    setInIntentFlow(true);
     setBotOpen(true);
-    setShowReopenButton(false);
+  }, []);
+
+  const handleBotOpenChange = useCallback((open: boolean) => {
+    setBotOpen(open);
+    if (!open) {
+      setPendingIntent('');
+      setInIntentFlow(false);
+    }
   }, []);
 
   const handleDismiss = useCallback(() => {
-    setShowReopenButton(true);
+    setPendingIntent('');
   }, []);
 
-  useAurisBotAutoOpen(openBot);
+  const scrollToChoices = useCallback(() => {
+    document.getElementById('auris-choices')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   useEffect(() => {
     trackAurisPageView();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem(AURIS_BOT_DISMISSED_KEY)) {
-      setShowReopenButton(true);
-    }
   }, []);
 
   return (
@@ -51,58 +56,78 @@ export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClie
         </div>
       </header>
 
-      <section className="relative min-h-[92vh] overflow-hidden">
+      <section className="relative min-h-[42vh] max-h-[50vh] overflow-hidden md:min-h-[48vh] md:max-h-[55vh]">
         <AurisHeroImage hasTowerImage={hasTowerImage} />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-950/35" />
 
-        <div className="container relative z-10 flex min-h-[92vh] flex-col justify-end pb-28 pt-24 md:justify-center md:pb-20 md:pt-20">
+        <div className="container relative z-10 flex h-full min-h-[42vh] flex-col justify-end pb-6 pt-20 md:min-h-[48vh] md:justify-end md:pb-8 md:pt-24">
           <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-300/90">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-300/90 md:text-sm">
               CraftSquare Studio
             </p>
-            <p className="mt-3 text-sm font-semibold text-slate-300">
+            <p className="mt-2 text-xs font-semibold text-slate-300 md:text-sm">
               Interior &amp; Rental-Ready Solutions for Auris Serenity Homeowners
             </p>
             <h1
-              className="mt-5 text-4xl font-black leading-[1.08] text-white md:text-5xl lg:text-6xl"
+              className="mt-3 text-3xl font-black leading-[1.08] text-white md:text-4xl lg:text-5xl"
               style={{ fontFamily: "'Cormorant Garamond', serif" }}
             >
               Your Auris Serenity Home.
               <br />
               What&apos;s Your Plan?
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 md:text-lg">
-              From preparing your apartment for rental to complete home furnishing, choose what you
-              need.
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              One team for everything your apartment needs after possession.
             </p>
-            <p className="mt-3 max-w-lg text-sm text-slate-400">
-              One team for everything your Auris Serenity apartment needs after possession.
-            </p>
-            <Button
-              type="button"
-              onClick={openBot}
-              className="mt-8 h-14 rounded-full bg-orange-600 px-8 text-base font-black text-white hover:bg-orange-500"
-            >
-              Choose Your Requirement
-              <ChevronDown className="ml-2 h-5 w-5" />
-            </Button>
           </div>
         </div>
       </section>
 
-      <AurisLeadBot open={botOpen} onOpenChange={setBotOpen} onDismiss={handleDismiss} />
+      <section
+        id="auris-choices"
+        className="relative z-10 bg-slate-950 px-4 pb-28 pt-2 md:pb-12"
+      >
+        <div className="container max-w-2xl">
+          <h2 className="text-lg font-black text-white md:text-xl">
+            What are you planning for your Auris Serenity apartment?
+          </h2>
+          <div className="mt-4 space-y-3">
+            {AURIS_INTENTS.map((intent) => (
+              <button
+                key={intent.id}
+                type="button"
+                onClick={() => handleInlineIntentSelect(intent.id)}
+                className="group flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-white/15 bg-white/5 p-4 text-left transition hover:border-orange-500/60 hover:bg-orange-500/10 active:scale-[0.99]"
+              >
+                <div className="min-w-0">
+                  <p className="text-base font-black text-white md:text-lg">{intent.label}</p>
+                  <p className="mt-0.5 text-sm text-slate-400">{intent.subtext}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-orange-400 transition group-hover:translate-x-0.5" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {showReopenButton && !botOpen ? (
+      <AurisLeadBot
+        open={botOpen}
+        initialIntent={pendingIntent}
+        onOpenChange={handleBotOpenChange}
+        onDismiss={handleDismiss}
+      />
+
+      {!botOpen ? (
         <button
           type="button"
-          onClick={openBot}
-          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/20 bg-slate-900/95 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-slate-800 md:bottom-8"
+          onClick={scrollToChoices}
+          className="fixed bottom-[calc(3.25rem+env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-slate-900/90 px-4 py-2 text-xs font-semibold text-slate-300 backdrop-blur-md transition hover:border-white/25 hover:text-white md:bottom-6"
         >
           What&apos;s Your Plan?
         </button>
       ) : null}
 
-      <AurisStickyWhatsApp />
+      <AurisStickyWhatsApp hidden={inIntentFlow || botOpen} />
     </div>
   );
 }
