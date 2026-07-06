@@ -68,10 +68,7 @@ export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClie
             <p className="mt-2 text-xs font-semibold text-slate-300 md:text-sm">
               Interior &amp; Rental-Ready Solutions for Auris Serenity Homeowners
             </p>
-            <h1
-              className="mt-3 text-3xl font-black leading-[1.08] text-white md:text-4xl lg:text-5xl"
-              style={{ fontFamily: "'Cormorant Garamond', serif" }}
-            >
+            <h1 className="mt-3 text-3xl font-semibold leading-[1.08] text-white [text-shadow:0_2px_16px_rgb(0_0_0/0.45)] md:text-4xl lg:text-5xl">
               Your Auris Serenity Home.
               <br />
               What&apos;s Your Plan?
@@ -88,7 +85,7 @@ export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClie
         className="relative z-10 bg-slate-950 px-4 pb-28 pt-2 md:pb-12"
       >
         <div className="container max-w-2xl">
-          <h2 className="text-lg font-black text-white md:text-xl">
+          <h2 className="text-lg font-semibold text-white md:text-xl">
             What are you planning for your Auris Serenity apartment?
           </h2>
           <div className="mt-4 space-y-3">
@@ -100,8 +97,8 @@ export default function AurisSerenityClient({ hasTowerImage }: AurisSerenityClie
                 className="group flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-white/15 bg-white/5 p-4 text-left transition hover:border-orange-500/60 hover:bg-orange-500/10 active:scale-[0.99]"
               >
                 <div className="min-w-0">
-                  <p className="text-base font-black text-white md:text-lg">{intent.label}</p>
-                  <p className="mt-0.5 text-sm text-slate-400">{intent.subtext}</p>
+                  <p className="text-base font-semibold text-white md:text-lg">{intent.label}</p>
+                  <p className="mt-0.5 text-sm font-normal text-slate-400">{intent.subtext}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-orange-400 transition group-hover:translate-x-0.5" />
               </button>
