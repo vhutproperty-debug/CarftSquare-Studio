@@ -35,6 +35,7 @@ export default function Footer() {
               <li><a href="/estimate/office" className="hover:text-orange-600">Office AI Estimate</a></li>
               <li><a href="/blog" className="hover:text-orange-600">Blog</a></li>
               <li><a href="/partner" className="hover:text-orange-600">Partner Network</a></li>
+              <li><a href="/privacy-policy" className="hover:text-orange-600">Privacy Policy</a></li>
             </ul>
           </div>
           <div>
