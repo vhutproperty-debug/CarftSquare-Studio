@@ -19,6 +19,7 @@ export default function Ga4ClickTracker() {
     if (!isGa4Enabled()) return;
 
     function handleClick(event) {
+      if (pathname.startsWith('/ops')) return;
       const anchor = event.target?.closest?.('a[href]');
       if (!anchor?.href) return;
 

@@ -14,6 +14,7 @@ export default function Ga4PageView() {
   const search = searchParams?.toString() ? `?${searchParams.toString()}` : '';
 
   useEffect(() => {
+    if (!pathname || pathname.startsWith('/ops')) return;
     if (!isGa4Enabled()) return;
     trackGaPageView(pathname, search);
   }, [pathname, search]);

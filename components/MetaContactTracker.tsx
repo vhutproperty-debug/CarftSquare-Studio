@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { isMetaPixelEnabled, trackContact } from '@/lib/meta-pixel';
 
 function isWhatsAppLink(href: string): boolean {
@@ -15,7 +16,10 @@ function isPhoneLink(href: string): boolean {
  * Delegated click tracking for WhatsApp and phone links (Contact event).
  */
 export default function MetaContactTracker() {
+  const pathname = usePathname() || '/';
+
   useEffect(() => {
+    if (pathname.startsWith('/ops')) return;
     if (!isMetaPixelEnabled()) return;
 
     function handleClick(event: MouseEvent) {
@@ -42,7 +46,7 @@ export default function MetaContactTracker() {
 
     document.addEventListener('click', handleClick, true);
     return () => document.removeEventListener('click', handleClick, true);
-  }, []);
+  }, [pathname]);
 
   return null;
 }

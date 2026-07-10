@@ -55,6 +55,7 @@ export default function DesignerCallbackWidget() {
   }, []);
 
   if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/ops')) return null;
   if (pathname.startsWith('/free-interior-consultation')) return null;
   if (pathname.startsWith('/oberoi-elysian-rental-interiors')) return null;
 

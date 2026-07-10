@@ -13,6 +13,7 @@ export default function MetaPixelPageView() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (!pathname || pathname.startsWith('/ops')) return;
     if (!isMetaPixelEnabled()) return;
 
     trackPageView({ page_path: pathname });
