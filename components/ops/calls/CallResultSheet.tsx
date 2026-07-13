@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,7 @@ type CallResultSheetProps = {
   target: CallTarget;
   currentSummary?: CallTargetSummary;
   currentUser?: { id?: string; role?: string; isSuperAdmin?: boolean } | null;
+  initialStatus?: CallActivityStatus | null;
   onSaved: (payload: { summary: CallTargetSummary }) => void;
 };
 
@@ -53,6 +54,7 @@ export default function CallResultSheet({
   target,
   currentSummary,
   currentUser,
+  initialStatus = null,
   onSaved,
 }: CallResultSheetProps) {
   const [selectedStatus, setSelectedStatus] = useState<CallActivityStatus | null>(null);
@@ -79,6 +81,12 @@ export default function CallResultSheet({
     if (!next) resetForm();
     onOpenChange(next);
   }
+
+  useEffect(() => {
+    if (open && initialStatus) {
+      setSelectedStatus(initialStatus);
+    }
+  }, [open, initialStatus]);
 
   function pickStatus(status: CallActivityStatus) {
     if (status === 'DO_NOT_CALL') {

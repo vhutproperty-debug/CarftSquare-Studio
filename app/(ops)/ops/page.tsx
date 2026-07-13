@@ -4,8 +4,8 @@ import OpsShell from '@/components/ops/OpsShell';
 export default function OpsDashboardPage() {
   return (
     <OpsShell
-      title="Operations Dashboard"
-      subtitle="Unified read-only view across live CraftSquare lead sources."
+      title="Brokerage Operations Overview"
+      subtitle="Mumbai real estate — demand intake, supply generation, and pipeline readiness."
     >
       <OpsDashboardPanel />
     </OpsShell>

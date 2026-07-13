@@ -2,24 +2,10 @@
  * Fix super_admin role in MongoDB and verify auth payload shape.
  * Run: node scripts/fix-super-admin.mjs
  */
-import { readFileSync } from 'fs';
 import { MongoClient } from 'mongodb';
+import { loadEnvLocal } from './lib/load-env-local.mjs';
 
-function loadEnv() {
-  try {
-    const raw = readFileSync('.env.local', 'utf8');
-    for (const line of raw.split('\n')) {
-      const m = line.match(/^([^#=]+)=(.*)$/);
-      if (m && !process.env[m[1].trim()]) {
-        process.env[m[1].trim()] = m[2].trim().replace(/^["']|["']$/g, '');
-      }
-    }
-  } catch {
-    // ignore
-  }
-}
-
-loadEnv();
+loadEnvLocal();
 
 const TARGET_EMAIL = 'vhutproperty@gmail.com';
 const uri = process.env.MONGODB_URI || process.env.MONGO_URL;

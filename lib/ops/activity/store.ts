@@ -9,7 +9,31 @@ const COLLECTION = 'ops_activity_logs';
 export type OpsActivityAction =
   | 'view_dashboard'
   | 'view_leads_inbox'
-  | 'view_lead_detail';
+  | 'view_lead_detail'
+  | 'view_demand_workspace'
+  | 'update_demand_record'
+  | 'view_supply_workspace'
+  | 'view_supply_record'
+  | 'create_supply_record'
+  | 'update_supply_record'
+  | 'view_matching_workspace'
+  | 'view_match_record'
+  | 'generate_matches'
+  | 'update_match_record'
+  | 'view_deal_workspace'
+  | 'view_deal_record'
+  | 'create_deal_record'
+  | 'update_deal_record'
+  | 'view_revenue_workspace'
+  | 'sync_revenue_records'
+  | 'update_revenue_record'
+  | 'view_agreement_workspace'
+  | 'sync_agreement_records'
+  | 'update_agreement_record'
+  | 'view_renewal_workspace'
+  | 'generate_renewal_records'
+  | 'update_renewal_record'
+  | 'view_ops_intelligence';
 
 export type OpsActivityLog = {
   id: string;

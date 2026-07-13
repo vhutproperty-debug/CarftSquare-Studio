@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { OPS_PRODUCT } from '@/lib/ops/business';
 
 type OpsHeaderProps = {
   title?: string;
@@ -20,7 +21,7 @@ export default function OpsHeader({ title, subtitle }: OpsHeaderProps) {
       <div className="flex items-start justify-between gap-4 px-4 py-4 md:px-6">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 md:hidden">
-            CraftSquare Ops
+            {OPS_PRODUCT.name}
           </p>
           {title ? <h1 className="truncate text-xl font-black text-slate-900 md:text-2xl">{title}</h1> : null}
           {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}

@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Inbox, LayoutDashboard, PhoneCall } from 'lucide-react';
+import { OpsNavIcon } from '@/components/ops/ops-nav-icons';
 
-const NAV_ITEMS = [
-  { href: '/ops', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/ops/leads', label: 'Leads', icon: Inbox, exact: false },
-  { href: '/ops/calls', label: 'Calls', icon: PhoneCall, exact: false },
+const MOBILE_NAV = [
+  { href: '/ops', label: 'Overview', icon: 'overview' as const, exact: true },
+  { href: '/ops/leads', label: 'Demand', icon: 'demand' as const },
+  { href: '/ops/supply', label: 'Supply', icon: 'supply' as const },
+  { href: '/ops/calls', label: 'Outreach', icon: 'supply' as const },
 ];
 
-function isActive(pathname: string, href: string, exact: boolean) {
+function isActive(pathname: string, href: string, exact?: boolean) {
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -20,10 +21,9 @@ export default function OpsMobileNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-2 py-2 md:hidden">
-      <ul className="grid grid-cols-3 gap-1">
-        {NAV_ITEMS.map((item) => {
+      <ul className="grid grid-cols-4 gap-1">
+        {MOBILE_NAV.map((item) => {
           const active = isActive(pathname, item.href, item.exact);
-          const Icon = item.icon;
           return (
             <li key={item.href}>
               <Link
@@ -32,7 +32,7 @@ export default function OpsMobileNav() {
                   active ? 'bg-orange-50 text-orange-700' : 'text-slate-600'
                 }`}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                <OpsNavIcon icon={item.icon} className="h-5 w-5" />
                 {item.label}
               </Link>
             </li>
