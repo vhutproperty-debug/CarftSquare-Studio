@@ -4,7 +4,8 @@ export type OpsLeadSource =
   | 'auris_serenity'
   | 'satellite_elegance'
   | 'designer_callback'
-  | 'quotation';
+  | 'quotation'
+  | 'housing_com';
 
 export type OpsLeadCategory =
   | 'general'
@@ -31,6 +32,7 @@ export type NormalizedOpsLead = {
   budget?: string | number | null;
   location?: string | null;
   sourceStatus?: string | null;
+  assignedTo?: string | null;
   rawSummary?: Record<string, unknown>;
 };
 
@@ -65,6 +67,7 @@ export const OPS_LEAD_SOURCES: OpsLeadSource[] = [
   'satellite_elegance',
   'designer_callback',
   'quotation',
+  'housing_com',
 ];
 
 export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
@@ -74,6 +77,7 @@ export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
   satellite_elegance: 'Satellite Elegance',
   designer_callback: 'Designer Callback',
   quotation: 'AI Quotation',
+  housing_com: 'Housing.com',
 };
 
 export const OPS_LEAD_CATEGORY_LABELS: Record<OpsLeadCategory, string> = {

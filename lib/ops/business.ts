@@ -111,7 +111,7 @@ export const OPS_PIPELINE: Array<{
 /** Future demand channels — maps to live adapters where connected today. */
 export const DEMAND_CHANNELS = [
   { id: 'craftsquare_website', label: 'CraftSquare Website', live: true },
-  { id: 'housing_com', label: 'Housing.com', live: false },
+  { id: 'housing_com', label: 'Housing.com', live: true },
   { id: '99acres', label: '99acres', live: false },
   { id: 'magicbricks', label: 'MagicBricks', live: false },
   { id: 'meta_ads', label: 'Meta Ads', live: false },

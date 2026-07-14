@@ -37,6 +37,7 @@ const SOURCE_TO_CHANNEL: Record<OpsLeadSource, string> = {
   satellite_elegance: 'craftsquare_website',
   designer_callback: 'craftsquare_website',
   quotation: 'craftsquare_website',
+  housing_com: 'housing_com',
 };
 
 export type DemandWorkspaceQueryParams = UnifiedLeadsQueryParams & {

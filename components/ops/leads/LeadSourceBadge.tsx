@@ -9,6 +9,7 @@ const SOURCE_STYLES: Record<OpsLeadSource, string> = {
   satellite_elegance: 'bg-indigo-100 text-indigo-800',
   designer_callback: 'bg-amber-100 text-amber-800',
   quotation: 'bg-emerald-100 text-emerald-800',
+  housing_com: 'bg-orange-100 text-orange-800',
 };
 
 type LeadSourceBadgeProps = {
