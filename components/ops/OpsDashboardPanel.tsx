@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Inbox, PhoneCall } from 'lucide-react';
+import { ArrowRight, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OpsPipelineBar from '@/components/ops/OpsPipelineBar';
@@ -10,9 +10,6 @@ import LeadSourceBadge from '@/components/ops/leads/LeadSourceBadge';
 import {
   DEMAND_CHANNELS,
   OPS_PILLARS,
-  OPS_PIPELINE,
-  REVENUE_STREAMS,
-  SUPPLY_METHODS,
 } from '@/lib/ops/business';
 import type { OpsDashboardStats, NormalizedOpsLead } from '@/lib/ops/leads/types';
 import type { CallWorkspaceMetrics } from '@/lib/ops/calls/types';
@@ -79,7 +76,6 @@ export default function OpsDashboardPanel() {
   }
 
   const liveDemandChannels = DEMAND_CHANNELS.filter((c) => c.live).length;
-  const liveSupplyMethods = SUPPLY_METHODS.filter((m) => m.live).length;
 
   return (
     <div className="space-y-6">
@@ -89,7 +85,7 @@ export default function OpsDashboardPanel() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <PillarCard
           pillar="demand"
           metric={stats.leadsToday}
@@ -104,93 +100,27 @@ export default function OpsDashboardPanel() {
           actionHref="/ops/calls"
           actionLabel="Open Supply Workspace"
         />
-        <PillarCard
-          pillar="revenue"
-          comingSoon
-          detail={`${REVENUE_STREAMS.length} revenue streams planned`}
-        />
-        <PillarCard
-          pillar="profit"
-          comingSoon
-          detail="Billing, payouts & incentives"
-        />
       </div>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">{OPS_PILLARS.demand.label} — Intake</h2>
-            <p className="text-sm text-slate-500">{OPS_PILLARS.demand.description}</p>
-          </div>
-          <Button asChild size="sm">
-            <Link href="/ops/leads">
-              <Inbox className="mr-2 h-4 w-4" aria-hidden="true" />
-              Demand Inbox
-            </Link>
-          </Button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total enquiries" value={stats.totalLeads} />
-          <StatCard label="Today" value={stats.leadsToday} />
-          <StatCard label="Last 7 days" value={stats.leadsLast7Days} />
+      <div className="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible xl:grid-cols-7">
+        <StatCard label="Total enquiries" value={stats.totalLeads} />
+        <StatCard label="Today" value={stats.leadsToday} />
+        <StatCard label="Last 7 days" value={stats.leadsLast7Days} />
+        {callMetrics ? (
+          <>
+            <StatCard label="Follow-ups due today" value={callMetrics.callsDueToday} />
+            <StatCard label="Overdue" value={callMetrics.overdueFollowUps} />
+            <StatCard label="New prospects" value={callMetrics.notCalled} />
+            <StatCard label="Calls logged today" value={callMetrics.callsLoggedToday} />
+          </>
+        ) : (
           <StatCard
             label="Channels live"
             value={liveDemandChannels}
             suffix={` / ${DEMAND_CHANNELS.length}`}
           />
-        </div>
-      </section>
-
-      {callMetrics ? (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">{OPS_PILLARS.supply.label} — Outreach</h2>
-              <p className="text-sm text-slate-500">{OPS_PILLARS.supply.description}</p>
-            </div>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/ops/calls">
-                <PhoneCall className="mr-2 h-4 w-4" aria-hidden="true" />
-                Supply Workspace
-              </Link>
-            </Button>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <StatCard label="Follow-ups due today" value={callMetrics.callsDueToday} />
-            <StatCard label="Overdue" value={callMetrics.overdueFollowUps} />
-            <StatCard label="New prospects" value={callMetrics.notCalled} />
-            <StatCard label="Interested" value={callMetrics.interested} />
-            <StatCard label="Calls logged today" value={callMetrics.callsLoggedToday} />
-          </div>
-          <p className="text-xs text-slate-500">
-            Active supply methods: {SUPPLY_METHODS.filter((m) => m.live).map((m) => m.label).join(', ')}
-            {' · '}{liveSupplyMethods} of {SUPPLY_METHODS.length} connected
-          </p>
-        </section>
-      ) : null}
-
-      <Card className="border-dashed border-slate-200 bg-slate-50/50">
-        <CardHeader>
-          <CardTitle className="text-base text-slate-700">Pipeline — Coming Next</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {OPS_PIPELINE.filter((s) => s.status === 'coming_soon').map((stage) => (
-              <span
-                key={stage.id}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500"
-                title={stage.description}
-              >
-                {stage.label}
-                <span className="ml-2 text-[10px] font-bold uppercase text-slate-400">Soon</span>
-              </span>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-slate-500">
-            Demand → Supply → Matching → Deal → Revenue → Agreement → Renewal
-          </p>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
@@ -287,15 +217,13 @@ function PillarCard({
 
 function StatCard({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
   return (
-    <Card>
-      <CardContent className="px-5 py-5">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <p className="mt-2 text-3xl font-black text-slate-900">
-          {value.toLocaleString('en-IN')}
-          {suffix ? <span className="text-base font-semibold text-slate-500">{suffix}</span> : null}
-        </p>
-      </CardContent>
-    </Card>
+    <div className="min-w-[8.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm sm:min-w-0">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-black text-slate-900">
+        {value.toLocaleString('en-IN')}
+        {suffix ? <span className="text-sm font-semibold text-slate-500">{suffix}</span> : null}
+      </p>
+    </div>
   );
 }
 
