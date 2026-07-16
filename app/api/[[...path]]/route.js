@@ -21,6 +21,7 @@ import {
   SESSION_COOKIE,
   signSession,
 } from '@/lib/auth/session';
+import { resolveAuthStatus } from '@/lib/auth/resolve-auth-status';
 import {
   applyCorsHeaders,
   getCorsHeaders,
@@ -797,44 +798,8 @@ async function dashboard(request) {
 }
 
 async function authStatus(request) {
-  try {
-    const db = await connectDb();
-    await migrateLegacyAdmins(db);
-    const hasAdmin = await countActiveAdmins(db) > 0;
-    const auth = await requireAdmin(request);
-
-    let user = null;
-    if (auth.ok && auth.admin?.id) {
-      const freshAdmin = await findAdminById(db, auth.admin.id);
-      user = safeAdmin(freshAdmin);
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('[rbac] auth_status', JSON.stringify({
-          email: user?.email,
-          role: user?.role,
-          isSuperAdmin: user?.isSuperAdmin,
-          status: user?.status,
-        }));
-      }
-    }
-
-    return json({
-      hasAdmin,
-      authenticated: auth.ok,
-      role: user?.role || null,
-      isSuperAdmin: Boolean(user?.isSuperAdmin),
-      user,
-    });
-  } catch (error) {
-    console.error('[rbac] auth_status_failed', error instanceof Error ? error.message : error);
-    return json({
-      hasAdmin: false,
-      authenticated: false,
-      role: null,
-      isSuperAdmin: false,
-      user: null,
-      error: 'Auth service temporarily unavailable.',
-    });
-  }
+  const result = await resolveAuthStatus(request);
+  return json(result);
 }
 
 async function setupAdmin(request) {

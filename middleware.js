@@ -30,6 +30,13 @@ function isOpsPage(pathname) {
   return pathname === '/ops' || pathname.startsWith('/ops/');
 }
 
+function opsPageHeaders(response) {
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
@@ -59,25 +66,11 @@ export async function middleware(request) {
   }
 
   if (isOpsPage(pathname)) {
-    if (!session) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/admin';
-      url.searchParams.set('returnTo', pathname);
-      return NextResponse.redirect(url);
-    }
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    return response;
+    return opsPageHeaders(NextResponse.next());
   }
 
   if (pathname.startsWith('/admin')) {
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    return response;
+    return opsPageHeaders(NextResponse.next());
   }
 
   if (pathname.startsWith('/api/auth/') && !isPublicAuthPath(pathname)) {
