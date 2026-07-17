@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   AUTH_STATUS_CODES,
   LOGIN_REDIRECT_CODES,
   type AuthStatusResponse,
 } from '@/lib/auth/auth-status-types';
+import { isSafeOpsReturnTo } from '@/lib/auth/safe-ops-return-to';
 
 type OpsAuthGateProps = {
   initialAuth: AuthStatusResponse;
@@ -62,6 +63,7 @@ async function fetchAuthStatusWithRetry(): Promise<AuthStatusResponse> {
 
 export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [state, setState] = useState<GateState>(
     initialAuth.code === AUTH_STATUS_CODES.DB_TIMEOUT ? 'db_error' : 'loading',
   );
@@ -71,19 +73,15 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
   const redirectStartedRef = useRef(false);
   const verifyRunRef = useRef(0);
 
-  const clearSessionAndRedirectToLogin = useCallback(async () => {
+  const redirectToLogin = useCallback(() => {
     if (redirectStartedRef.current) return;
     redirectStartedRef.current = true;
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } catch {
-      // Proceed to login even if logout call fails.
-    }
-    router.replace('/admin?returnTo=/ops');
-  }, [router]);
+    const returnTo = isSafeOpsReturnTo(pathname) ? pathname : '/ops';
+    router.replace(`/admin?returnTo=${encodeURIComponent(returnTo)}`);
+  }, [pathname, router]);
 
   const handleAuthResult = useCallback(
-    async (data: AuthStatusResponse) => {
+    (data: AuthStatusResponse) => {
       if (data.authenticated && data.opsAccess) {
         router.refresh();
         return;
@@ -100,16 +98,11 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
         return;
       }
 
-      if (data.code && LOGIN_REDIRECT_CODES.has(data.code)) {
-        await clearSessionAndRedirectToLogin();
-        return;
-      }
-
-      if (!data.authenticated) {
-        await clearSessionAndRedirectToLogin();
+      if ((data.code && LOGIN_REDIRECT_CODES.has(data.code)) || !data.authenticated) {
+        redirectToLogin();
       }
     },
-    [clearSessionAndRedirectToLogin, router],
+    [redirectToLogin, router],
   );
 
   const verify = useCallback(async () => {
@@ -120,10 +113,12 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
     const data = await fetchAuthStatusWithRetry();
     if (verifyRunRef.current !== runId) return;
 
-    await handleAuthResult(data);
+    handleAuthResult(data);
   }, [handleAuthResult]);
 
   useEffect(() => {
+    // Always re-check via /api/auth/status before sending users to legacy /admin.
+    // Do not logout here — that destroyed valid sessions on server false-negatives.
     if (initialAuth.authenticated && initialAuth.opsAccess) {
       router.refresh();
       return;
@@ -133,15 +128,8 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
       return;
     }
 
-    if (initialAuth.code && LOGIN_REDIRECT_CODES.has(initialAuth.code)) {
-      void clearSessionAndRedirectToLogin();
-      return;
-    }
-
-    if (!initialAuth.authenticated) {
-      void clearSessionAndRedirectToLogin();
-    }
-  }, [clearSessionAndRedirectToLogin, initialAuth, router]);
+    void verify();
+  }, [initialAuth, router, verify]);
 
   if (state === 'db_error') {
     return (
