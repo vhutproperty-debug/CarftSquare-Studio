@@ -16,7 +16,6 @@ import {
   countHousingRawToday,
   createHousingSyncLog,
   getHousingDatabase,
-  getLastHousingSyncAt,
   getLastSuccessfulHousingSyncLog,
   getLatestHousingAuthLog,
   getLatestHousingSyncLog,
@@ -366,7 +365,9 @@ export async function getHousingConnectorStatus(): Promise<HousingConnectorStatu
   ]);
 
   const duplicateRecords = latest?.kind === 'sync' ? (latest.duplicates ?? 0) : 0;
-  const lastSyncAt = await getLastHousingSyncAt(db);
+  const lastSyncAt = latest?.kind === 'sync'
+    ? (latest.completedAt ?? latest.startedAt ?? null)
+    : (latest?.completedAt ?? latest?.startedAt ?? null);
   const authenticated = latestAuth?.authOk === true;
   const connectionStatus = !validation.ok
     ? 'misconfigured'

@@ -66,14 +66,15 @@ export async function GET(request: Request) {
       overdueOnly: parsed.data.overdueOnly,
     }, auth.admin);
 
-    await logOpsActivity({
+    // Do not block the response on audit logging.
+    void logOpsActivity({
       action: 'view_demand_workspace',
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
       resource: 'ops_demand_workspace',
       details: { page: result.pagination.page, total: result.pagination.total },
       request,
-    });
+    }).catch(() => undefined);
 
     return NextResponse.json(result);
   } catch (error) {

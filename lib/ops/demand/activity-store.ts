@@ -71,3 +71,37 @@ export async function getLatestDemandActivity(
   const items = await listDemandActivities(db, source, sourceId, 1);
   return items[0] || null;
 }
+
+/** Latest activity per (source, sourceId) in one aggregation — avoids N sequential finds. */
+export async function batchLatestDemandActivities(
+  db: Db,
+  keys: Array<{ source: OpsLeadSource; sourceId: string }>,
+): Promise<Map<string, OpsDemandActivity>> {
+  await ensureDemandActivityIndexes(db);
+  const map = new Map<string, OpsDemandActivity>();
+  if (!keys.length) return map;
+
+  const rows = await db
+    .collection(COLLECTION)
+    .aggregate([
+      {
+        $match: {
+          $or: keys.map((k) => ({ source: k.source, sourceId: k.sourceId })),
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: { source: '$source', sourceId: '$sourceId' },
+          doc: { $first: '$$ROOT' },
+        },
+      },
+    ])
+    .toArray();
+
+  for (const row of rows) {
+    const doc = row.doc as OpsDemandActivity;
+    map.set(`${doc.source}:${doc.sourceId}`, doc);
+  }
+  return map;
+}

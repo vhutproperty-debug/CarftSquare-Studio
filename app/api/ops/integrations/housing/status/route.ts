@@ -12,13 +12,13 @@ export async function GET(request: Request) {
 
   try {
     const status = await queryHousingIntegrationStatus();
-    await logOpsActivity({
+    void logOpsActivity({
       action: 'view_housing_integration_status',
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
       resource: 'ops_housing_status',
       request,
-    });
+    }).catch(() => undefined);
     return NextResponse.json(status);
   } catch (error) {
     console.error('[ops-housing] status_failed', error instanceof Error ? error.message : error);

@@ -5,7 +5,7 @@ import type { Db } from 'mongodb';
 // @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { DEMAND_CHANNELS } from '@/lib/ops/business';
-import { getLatestDemandActivity } from '@/lib/ops/demand/activity-store';
+import { batchLatestDemandActivities } from '@/lib/ops/demand/activity-store';
 import { mergeQualification } from '@/lib/ops/demand/qualification';
 import type {
   DemandDuplicateHint,
@@ -18,14 +18,12 @@ import type {
 import { demandKey } from '@/lib/ops/demand/types';
 import type { DemandPriority, DemandStatus } from '@/lib/ops/demand/statuses';
 import {
-  batchGetDemandRecords,
   ensureDemandRecord,
   findDuplicatesByContact,
   listAllDemandRecords,
 } from '@/lib/ops/demand/store';
 import { queryUnifiedLeads, type UnifiedLeadsQueryParams } from '@/lib/ops/leads/query';
 import type { NormalizedOpsLead, OpsLeadCategory, OpsLeadSource } from '@/lib/ops/leads/types';
-import { OPS_LEAD_SOURCE_LABELS } from '@/lib/ops/leads/types';
 import { listOpsTeamMembers } from '@/lib/ops/calls/query';
 import type { PublicAdminUser } from '@/lib/auth/rbac/types';
 import { normalizeIndianMobile } from '@/lib/phone/indian-mobile';
@@ -90,11 +88,10 @@ function matchesRentBuy(lead: NormalizedOpsLead, record: OpsDemandRecord, rentBu
   return true;
 }
 
-async function buildDuplicateHints(
-  db: Db,
+function buildDuplicateHintsFromRecords(
   lead: NormalizedOpsLead,
   allRecords: OpsDemandRecord[],
-): Promise<DemandDuplicateHint[]> {
+): DemandDuplicateHint[] {
   const hints: DemandDuplicateHint[] = [];
   const normalizedPhone = normalizeIndianMobile(lead.phone);
   const email = lead.email?.trim().toLowerCase();
@@ -120,20 +117,32 @@ async function buildDuplicateHints(
     }
   }
 
-  if (!hints.length) {
-    const dbDupes = await findDuplicatesByContact(db, lead.phone, lead.email, {
-      source: lead.source,
-      sourceId: lead.sourceId,
+  return hints.slice(0, 5);
+}
+
+async function buildDuplicateHints(
+  db: Db,
+  lead: NormalizedOpsLead,
+  allRecords: OpsDemandRecord[],
+): Promise<DemandDuplicateHint[]> {
+  const hints = buildDuplicateHintsFromRecords(lead, allRecords);
+  if (hints.length || allRecords.length) {
+    // When the workspace already loaded demand records, skip per-lead DB duplicate scans.
+    return hints;
+  }
+
+  const dbDupes = await findDuplicatesByContact(db, lead.phone, lead.email, {
+    source: lead.source,
+    sourceId: lead.sourceId,
+  });
+  for (const d of dbDupes) {
+    hints.push({
+      source: d.source,
+      sourceId: d.sourceId,
+      matchType: d.normalizedPhone ? 'phone' : 'email',
+      phone: d.normalizedPhone,
+      email: d.normalizedEmail,
     });
-    for (const d of dbDupes) {
-      hints.push({
-        source: d.source,
-        sourceId: d.sourceId,
-        matchType: d.normalizedPhone ? 'phone' : 'email',
-        phone: d.normalizedPhone,
-        email: d.normalizedEmail,
-      });
-    }
   }
 
   return hints.slice(0, 5);
@@ -156,49 +165,56 @@ export async function queryDemandWorkspace(
   const page = Math.max(1, Number(params.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 25));
 
-  const leadResult = await queryUnifiedLeads({
-    ...params,
-    page: 1,
-    pageSize: 500,
-  }, database);
+  // Parallel independent reads — adapters already fan out internally.
+  const [leadResult, team, allRecords] = await Promise.all([
+    queryUnifiedLeads({
+      ...params,
+      page: 1,
+      pageSize: 500,
+      skipCounts: true,
+    }, database),
+    listOpsTeamMembers(database),
+    listAllDemandRecords(database, 8000),
+  ]);
 
-  const team = await listOpsTeamMembers(database);
   const teamMap = new Map(team.map((m) => [m.id, m]));
-
-  const ensured: OpsDemandRecord[] = [];
-  for (const lead of leadResult.items) {
-    const record = await ensureDemandRecord(database, lead, admin.id);
-    if (record.assignedTo && !record.assignedToName) {
-      const member = teamMap.get(record.assignedTo);
-      if (member) {
-        record.assignedToName = member.name;
-      }
-    }
-    ensured.push(record);
-  }
-
-  const allRecords = await listAllDemandRecords(database, 8000);
   const recordByKey = new Map(allRecords.map((r) => [demandKey(r.source, r.sourceId), r]));
 
+  // Only insert sidecar rows for leads that do not yet have a demand record.
+  const missingLeads = leadResult.items.filter(
+    (lead) => !recordByKey.has(demandKey(lead.source, lead.sourceId)),
+  );
+  if (missingLeads.length) {
+    await Promise.all(
+      missingLeads.map(async (lead) => {
+        const record = await ensureDemandRecord(database, lead, admin.id);
+        recordByKey.set(demandKey(record.source, record.sourceId), record);
+      }),
+    );
+  }
+
+  const recordsForDupes = Array.from(recordByKey.values());
   const mergedLeads = leadResult.items;
   const queueCandidates: DemandQueueItem[] = [];
 
   for (const lead of mergedLeads) {
     const key = demandKey(lead.source, lead.sourceId);
-    const demand = recordByKey.get(key) || ensured.find((r) => r.source === lead.source && r.sourceId === lead.sourceId);
+    const demand = recordByKey.get(key);
     if (!demand) continue;
 
-    const latest = await getLatestDemandActivity(database, lead.source, lead.sourceId);
-    const duplicateHints = await buildDuplicateHints(database, lead, allRecords);
+    if (demand.assignedTo && !demand.assignedToName) {
+      const member = teamMap.get(demand.assignedTo);
+      if (member) demand.assignedToName = member.name;
+    }
 
     queueCandidates.push({
       key,
       lead,
       demand,
-      lastActivityAt: latest?.createdAt || demand.updatedAt,
-      lastActivityLabel: latest?.message || null,
+      lastActivityAt: demand.updatedAt,
+      lastActivityLabel: null,
       ageHours: computeAgeHours(lead.createdAt),
-      duplicateHints,
+      duplicateHints: buildDuplicateHintsFromRecords(lead, recordsForDupes),
       assigneeInitials: demand.assignedToName
         ? initials(demand.assignedToName)
         : demand.assignedTo
@@ -263,7 +279,20 @@ export async function queryDemandWorkspace(
   const start = (page - 1) * pageSize;
   const items = filtered.slice(start, start + pageSize);
 
-  const metrics = computeMetrics(allRecords, mergedLeads);
+  // Activity labels only needed for the visible page — one aggregation instead of N finds.
+  const latestByKey = await batchLatestDemandActivities(
+    database,
+    items.map((item) => ({ source: item.lead.source, sourceId: item.lead.sourceId })),
+  );
+  for (const item of items) {
+    const latest = latestByKey.get(item.key);
+    if (latest) {
+      item.lastActivityAt = latest.createdAt;
+      item.lastActivityLabel = latest.message || null;
+    }
+  }
+
+  const metrics = computeMetrics(recordsForDupes, mergedLeads);
   const sourceBreakdown = buildSourceBreakdown(mergedLeads);
 
   return {
@@ -277,6 +306,8 @@ export async function queryDemandWorkspace(
     sourceHealth: leadResult.sourceHealth,
     metrics,
     sourceBreakdown,
+    team,
+    currentUserId: admin.id,
   };
 }
 

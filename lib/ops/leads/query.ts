@@ -34,6 +34,8 @@ export type UnifiedLeadsQueryParams = {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** When true, skip per-adapter countLeads (Demand re-paginates after sidecar merge). */
+  skipCounts?: boolean;
 };
 
 function clampPagination(page?: number, pageSize?: number) {
@@ -80,21 +82,23 @@ export async function queryUnifiedLeads(
         return result.value;
       }),
     ),
-    Promise.all(
-      adapters.map(async (adapter) => {
-        const result = await runAdapterSafely(
-          adapter.source,
-          () => adapter.countLeads(database, countFilters),
-          0,
-        );
-        if (result.status === 'error') {
-          sourceHealth[adapter.source] = 'error';
-        } else if (!sourceHealth[adapter.source]) {
-          sourceHealth[adapter.source] = 'ok';
-        }
-        return result.value;
-      }),
-    ),
+    params.skipCounts
+      ? Promise.resolve([] as number[])
+      : Promise.all(
+        adapters.map(async (adapter) => {
+          const result = await runAdapterSafely(
+            adapter.source,
+            () => adapter.countLeads(database, countFilters),
+            0,
+          );
+          if (result.status === 'error') {
+            sourceHealth[adapter.source] = 'error';
+          } else if (!sourceHealth[adapter.source]) {
+            sourceHealth[adapter.source] = 'ok';
+          }
+          return result.value;
+        }),
+      ),
   ]);
 
   const merged = filterByCategory(fetchResults.flat(), params.category);
@@ -102,8 +106,10 @@ export async function queryUnifiedLeads(
   const start = (page - 1) * pageSize;
   const items = sorted.slice(start, start + pageSize);
 
-  const rawTotal = countResults.reduce((sum, count) => sum + count, 0);
-  const total = params.category
+  const rawTotal = params.skipCounts
+    ? sorted.length
+    : countResults.reduce((sum, count) => sum + count, 0);
+  const total = params.category && !params.skipCounts
     ? filterByCategory(
       sortLeadsNewestFirst(
         (await Promise.all(

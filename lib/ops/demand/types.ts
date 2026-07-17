@@ -107,6 +107,9 @@ export type DemandWorkspaceResult = {
   sourceHealth: Partial<Record<OpsLeadSource, 'ok' | 'error'>>;
   metrics: DemandWorkspaceMetrics;
   sourceBreakdown: DemandSourceBreakdownItem[];
+  /** Present so the Demand UI can avoid extra /api/ops/team + /api/auth/status round trips. */
+  team?: Array<{ id: string; name: string; email: string }>;
+  currentUserId?: string;
 };
 
 export function demandKey(source: OpsLeadSource, sourceId: string): string {

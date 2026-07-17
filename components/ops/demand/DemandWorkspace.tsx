@@ -71,12 +71,8 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
       if (filters.followUpToday) params.set('followUpToday', 'true');
       if (filters.overdueOnly) params.set('overdueOnly', 'true');
 
-      const [queueRes, teamRes, authRes] = await Promise.all([
-        fetch(`/api/ops/demand/queue?${params.toString()}`, { credentials: 'include' }),
-        fetch('/api/ops/team', { credentials: 'include' }),
-        fetch('/api/auth/status', { credentials: 'include' }),
-      ]);
-
+      // Single request — queue payload already includes metrics, sources, team, and currentUserId.
+      const queueRes = await fetch(`/api/ops/demand/queue?${params.toString()}`, { credentials: 'include' });
       const queueData = await queueRes.json().catch(() => ({}));
       if (!queueRes.ok) {
         setError(queueData.error || 'Unable to load demand workspace.');
@@ -87,12 +83,8 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
       setMetrics(queueData.metrics || null);
       setSourceBreakdown(queueData.sourceBreakdown || []);
       setPagination(queueData.pagination || { page: 1, pageSize: 25, total: 0, totalPages: 1 });
-
-      const teamData = await teamRes.json().catch(() => ({}));
-      if (teamRes.ok) setTeam(teamData.members || []);
-
-      const authData = await authRes.json().catch(() => ({}));
-      if (authRes.ok) setCurrentUserId(authData.user?.id);
+      if (Array.isArray(queueData.team)) setTeam(queueData.team);
+      if (typeof queueData.currentUserId === 'string') setCurrentUserId(queueData.currentUserId);
     } catch {
       setError('Unable to load demand workspace.');
     } finally {
@@ -104,23 +96,10 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
     loadWorkspace();
   }, [loadWorkspace, refreshToken]);
 
-  useEffect(() => {
+  function handleFiltersChange(next: DemandFilterState) {
+    setFilters(next);
     setPage(1);
-  }, [
-    debouncedSearch,
-    filters.source,
-    filters.status,
-    filters.priority,
-    filters.assignedTo,
-    filters.rentBuy,
-    filters.project,
-    filters.building,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.mineOnly,
-    filters.followUpToday,
-    filters.overdueOnly,
-  ]);
+  }
 
   function openDrawer(item: DemandQueueItem) {
     setSelected(item);
@@ -134,7 +113,7 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
 
       <DemandFilters
         filters={filters}
-        onChange={setFilters}
+        onChange={handleFiltersChange}
         team={team}
         currentUserId={currentUserId}
       />
