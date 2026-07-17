@@ -56,6 +56,7 @@ export const OPS_PIPELINE: Array<{
   pillar: OpsPillarId;
   status: PipelineStageStatus;
   description: string;
+  href: string;
 }> = [
   {
     id: 'demand',
@@ -63,6 +64,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'demand',
     status: 'active',
     description: 'Capture and qualify customer enquiries.',
+    href: '/ops/leads',
   },
   {
     id: 'supply',
@@ -70,6 +72,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'supply',
     status: 'active',
     description: 'Build company-owned inventory through outreach.',
+    href: '/ops/supply',
   },
   {
     id: 'matching',
@@ -77,6 +80,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'revenue',
     status: 'active',
     description: 'Match demand requirements with available supply.',
+    href: '/ops/matching',
   },
   {
     id: 'deal',
@@ -84,6 +88,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'revenue',
     status: 'active',
     description: 'Negotiate terms and close brokerage transactions.',
+    href: '/ops/deals',
   },
   {
     id: 'revenue',
@@ -91,6 +96,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'revenue',
     status: 'active',
     description: 'Track brokerage fees and referral commissions.',
+    href: '/ops/revenue',
   },
   {
     id: 'agreement',
@@ -98,6 +104,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'profit',
     status: 'active',
     description: 'Formalize agreements, billing, and collections.',
+    href: '/ops/agreements',
   },
   {
     id: 'renewal',
@@ -105,6 +112,7 @@ export const OPS_PIPELINE: Array<{
     pillar: 'profit',
     status: 'active',
     description: 'Renewals, payouts, incentives, and profitability.',
+    href: '/ops/renewals',
   },
 ];
 
@@ -154,74 +162,34 @@ export const OPS_NAV_SECTIONS: Array<{
 }> = [
   {
     pillar: 'overview',
-    label: 'Command',
+    label: 'Primary',
     items: [
       {
         href: '/ops',
-        label: 'Overview',
+        label: 'Dashboard',
         status: 'active',
         icon: 'overview',
         exact: true,
       },
       {
-        href: '/ops/intelligence',
-        label: 'Operations Intelligence',
-        status: 'active',
-        icon: 'intelligence',
-      },
-    ],
-  },
-  {
-    pillar: 'demand',
-    label: OPS_PILLARS.demand.label,
-    items: [
-      {
         href: '/ops/leads',
-        label: 'Demand Workspace',
+        label: 'Demand',
         pillar: 'demand',
         pipelineStage: 'demand',
         status: 'active',
         icon: 'demand',
       },
       {
-        href: '/ops/integrations/housing',
-        label: 'Housing.com Connector',
-        pillar: 'demand',
-        pipelineStage: 'demand',
-        status: 'active',
-        icon: 'integrations',
-      },
-    ],
-  },
-  {
-    pillar: 'supply',
-    label: OPS_PILLARS.supply.label,
-    items: [
-      {
         href: '/ops/supply',
-        label: 'Supply Workspace',
+        label: 'Supply',
         pillar: 'supply',
         pipelineStage: 'supply',
         status: 'active',
         icon: 'supply',
       },
-      {
-        href: '/ops/calls',
-        label: 'Supply Outreach',
-        pillar: 'supply',
-        pipelineStage: 'supply',
-        status: 'active',
-        icon: 'supply',
-      },
-    ],
-  },
-  {
-    pillar: 'revenue',
-    label: 'Pipeline',
-    items: [
       {
         href: '/ops/matching',
-        label: 'Matching Engine',
+        label: 'Matching',
         pillar: 'revenue',
         pipelineStage: 'matching',
         status: 'active',
@@ -229,25 +197,38 @@ export const OPS_NAV_SECTIONS: Array<{
       },
       {
         href: '/ops/deals',
-        label: 'Deal Workspace',
+        label: 'Deals',
         pillar: 'revenue',
         pipelineStage: 'deal',
         status: 'active',
         icon: 'deal',
       },
+    ],
+  },
+  {
+    pillar: 'revenue',
+    label: 'Financial',
+    items: [
       {
         href: '/ops/revenue',
-        label: 'Revenue Workspace',
+        label: 'Revenue',
         pillar: 'revenue',
         pipelineStage: 'revenue',
         status: 'active',
         icon: 'revenue',
       },
+      {
+        href: '/ops/intelligence',
+        label: 'Profit',
+        pillar: 'profit',
+        status: 'active',
+        icon: 'intelligence',
+      },
     ],
   },
   {
     pillar: 'profit',
-    label: OPS_PILLARS.profit.label,
+    label: 'Lifecycle',
     items: [
       {
         href: '/ops/agreements',
@@ -264,6 +245,28 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'renewal',
         status: 'active',
         icon: 'agreement',
+      },
+    ],
+  },
+  {
+    pillar: 'demand',
+    label: 'Integrations & tools',
+    items: [
+      {
+        href: '/ops/integrations/housing',
+        label: 'Housing.com',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'integrations',
+      },
+      {
+        href: '/ops/calls',
+        label: 'Calls',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'supply',
       },
     ],
   },

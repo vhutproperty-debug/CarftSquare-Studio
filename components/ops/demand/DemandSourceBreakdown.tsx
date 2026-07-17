@@ -2,28 +2,43 @@
 
 import type { DemandSourceBreakdownItem } from '@/lib/ops/demand/types';
 
+function sourceTone(channelId: string, live: boolean) {
+  if (!live) return 'border-dashed border-slate-200 bg-white text-slate-400';
+  if (channelId.includes('housing') && channelId.includes('api')) {
+    return 'border-sky-200 bg-sky-50 text-sky-900';
+  }
+  if (channelId.includes('housing')) {
+    return 'border-indigo-200 bg-indigo-50 text-indigo-900';
+  }
+  if (channelId.includes('craftsquare') || channelId.includes('website')) {
+    return 'border-orange-200 bg-orange-50 text-orange-900';
+  }
+  return 'border-slate-200 bg-slate-50 text-slate-800';
+}
+
 export default function DemandSourceBreakdown({ items }: { items: DemandSourceBreakdownItem[] }) {
+  if (!items.length) return null;
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Source breakdown</h3>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <div
-            key={item.channelId}
-            className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-              item.live ? 'border-slate-100 bg-slate-50' : 'border-dashed border-slate-200 bg-white opacity-70'
-            }`}
-          >
-            <span className="text-sm font-medium text-slate-700">
-              {item.label}
-              {!item.live ? (
-                <span className="ml-2 text-[10px] font-bold uppercase text-slate-400">Soon</span>
-              ) : null}
-            </span>
-            <span className="text-sm font-bold text-slate-900">{item.count}</span>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sources</span>
+      {items.map((item) => (
+        <span
+          key={item.channelId}
+          title={!item.live ? 'Coming soon' : item.label}
+          className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${sourceTone(
+            item.channelId,
+            item.live,
+          )}`}
+        >
+          <span className="truncate">{item.label}</span>
+          {!item.live ? (
+            <span className="text-[9px] font-bold uppercase opacity-70">Soon</span>
+          ) : (
+            <span className="tabular-nums font-bold">{item.count}</span>
+          )}
+        </span>
+      ))}
     </div>
   );
 }

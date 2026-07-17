@@ -4,8 +4,9 @@ import OpsShell from '@/components/ops/OpsShell';
 export default function OpsDashboardPage() {
   return (
     <OpsShell
-      title="Brokerage Operations Overview"
-      subtitle="Mumbai real estate — demand intake, supply generation, and pipeline readiness."
+      title="Dashboard"
+      subtitle="Brokerage operations overview — demand, supply, and pipeline readiness."
+      dense
     >
       <OpsDashboardPanel />
     </OpsShell>

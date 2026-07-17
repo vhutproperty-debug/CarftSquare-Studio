@@ -4,9 +4,10 @@ import HousingIntegrationPanel from '@/components/ops/integrations/HousingIntegr
 export default function HousingIntegrationPage() {
   return (
     <OpsShell
-      title="Housing.com Integration"
-      subtitle="Read-only connector — fetch, normalize, dedupe, and feed the unified demand pipeline."
+      title="Housing.com"
+      subtitle="Read-only connector — sync portal leads into the Demand workspace."
       pipelineStage="demand"
+      dense
     >
       <HousingIntegrationPanel />
     </OpsShell>
