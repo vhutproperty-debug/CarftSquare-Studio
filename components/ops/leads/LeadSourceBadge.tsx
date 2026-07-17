@@ -10,6 +10,7 @@ const SOURCE_STYLES: Record<OpsLeadSource, string> = {
   designer_callback: 'bg-amber-100 text-amber-800',
   quotation: 'bg-emerald-100 text-emerald-800',
   housing_com: 'bg-orange-100 text-orange-800',
+  housing: 'bg-orange-100 text-orange-900',
 };
 
 type LeadSourceBadgeProps = {

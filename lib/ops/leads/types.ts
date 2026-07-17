@@ -5,7 +5,8 @@ export type OpsLeadSource =
   | 'satellite_elegance'
   | 'designer_callback'
   | 'quotation'
-  | 'housing_com';
+  | 'housing_com'
+  | 'housing';
 
 export type OpsLeadCategory =
   | 'general'
@@ -68,6 +69,7 @@ export const OPS_LEAD_SOURCES: OpsLeadSource[] = [
   'designer_callback',
   'quotation',
   'housing_com',
+  'housing',
 ];
 
 export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
@@ -77,7 +79,8 @@ export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
   satellite_elegance: 'Satellite Elegance',
   designer_callback: 'Designer Callback',
   quotation: 'AI Quotation',
-  housing_com: 'Housing.com',
+  housing_com: 'Housing.com (Manual)',
+  housing: 'Housing.com (API)',
 };
 
 export const OPS_LEAD_CATEGORY_LABELS: Record<OpsLeadCategory, string> = {

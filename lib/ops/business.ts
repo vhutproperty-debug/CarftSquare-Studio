@@ -143,7 +143,7 @@ export type OpsNavItem = {
   pillar?: OpsPillarId;
   pipelineStage?: PipelineStageId;
   status: 'active' | 'coming_soon';
-  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence';
+  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations';
   exact?: boolean;
 };
 
@@ -182,6 +182,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'demand',
         status: 'active',
         icon: 'demand',
+      },
+      {
+        href: '/ops/integrations/housing',
+        label: 'Housing.com Connector',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'integrations',
       },
     ],
   },

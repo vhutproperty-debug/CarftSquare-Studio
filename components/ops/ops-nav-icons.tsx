@@ -6,6 +6,7 @@ import {
   Inbox,
   LayoutDashboard,
   PhoneCall,
+  Plug,
   TrendingUp,
 } from 'lucide-react';
 import type { OpsNavItem } from '@/lib/ops/business';
@@ -19,6 +20,7 @@ const ICONS = {
   revenue: TrendingUp,
   agreement: FileText,
   intelligence: BarChart3,
+  integrations: Plug,
 } as const;
 
 export function OpsNavIcon({ icon, className }: { icon: OpsNavItem['icon']; className?: string }) {

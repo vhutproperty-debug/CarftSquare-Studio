@@ -1,5 +1,6 @@
 import { aurisSerenityAdapter } from '@/lib/ops/leads/adapters/auris-serenity';
 import { designerCallbackAdapter } from '@/lib/ops/leads/adapters/designer-callback';
+import { housingApiAdapter } from '@/lib/ops/leads/adapters/housing-api';
 import { housingComAdapter } from '@/lib/ops/leads/adapters/housing-com';
 import { homepageAdapter } from '@/lib/ops/leads/adapters/homepage';
 import { paintingAdapter } from '@/lib/ops/leads/adapters/painting';
@@ -16,6 +17,7 @@ export const LEAD_SOURCE_ADAPTERS: LeadSourceAdapter[] = [
   designerCallbackAdapter,
   quotationAdapter,
   housingComAdapter,
+  housingApiAdapter,
 ];
 
 export const LEAD_ADAPTER_BY_SOURCE: Record<OpsLeadSource, LeadSourceAdapter> = {
@@ -26,6 +28,7 @@ export const LEAD_ADAPTER_BY_SOURCE: Record<OpsLeadSource, LeadSourceAdapter> = 
   designer_callback: designerCallbackAdapter,
   quotation: quotationAdapter,
   housing_com: housingComAdapter,
+  housing: housingApiAdapter,
 };
 
 export function getLeadAdapter(source: OpsLeadSource): LeadSourceAdapter {

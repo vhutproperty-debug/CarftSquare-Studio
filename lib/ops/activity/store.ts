@@ -33,7 +33,11 @@ export type OpsActivityAction =
   | 'view_renewal_workspace'
   | 'generate_renewal_records'
   | 'update_renewal_record'
-  | 'view_ops_intelligence';
+  | 'view_ops_intelligence'
+  | 'view_housing_integration_status'
+  | 'view_housing_integration_logs'
+  | 'sync_housing_connector'
+  | 'test_housing_connector';
 
 export type OpsActivityLog = {
   id: string;

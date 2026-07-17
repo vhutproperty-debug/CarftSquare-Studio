@@ -38,6 +38,7 @@ const SOURCE_TO_CHANNEL: Record<OpsLeadSource, string> = {
   designer_callback: 'craftsquare_website',
   quotation: 'craftsquare_website',
   housing_com: 'housing_com',
+  housing: 'housing_com',
 };
 
 export type DemandWorkspaceQueryParams = UnifiedLeadsQueryParams & {
