@@ -41,28 +41,32 @@ function success(user: AuthStatusUser, hasAdmin: boolean): AuthStatusResponse {
   };
 }
 
-/** Single authorization authority for admin session, RBAC, and ops access. */
+/**
+ * Single authorization authority for admin session, RBAC, and ops access.
+ * Always resolves hasAdmin from MongoDB (even when unauthenticated) so Admin UI
+ * can show Login vs Create First Admin correctly.
+ */
 export async function resolveAuthStatus(request: Request): Promise<AuthStatusResponse> {
   const token = getSessionTokenFromRequest(request);
   const inspection = inspectSessionToken(token);
-
-  if (inspection.state === 'missing' || inspection.state === 'invalid') {
-    return failure(AUTH_STATUS_CODES.INVALID_SESSION, 'Invalid or missing session.');
-  }
-  if (inspection.state === 'expired') {
-    return failure(AUTH_STATUS_CODES.SESSION_EXPIRED, 'Session has expired.');
-  }
-
-  const sessionId = inspection.payload.id;
-  if (!sessionId) {
-    return failure(AUTH_STATUS_CODES.INVALID_SESSION, 'Invalid session payload.');
-  }
 
   try {
     const db = await withTimeout(getDb(), AUTH_DB_TIMEOUT_MS, 'getDb');
     await withTimeout(migrateLegacyAdmins(db), AUTH_DB_TIMEOUT_MS, 'migrateLegacyAdmins');
     const hasAdmin =
       (await withTimeout(countActiveAdmins(db), AUTH_DB_TIMEOUT_MS, 'countActiveAdmins')) > 0;
+
+    if (inspection.state === 'missing' || inspection.state === 'invalid') {
+      return failure(AUTH_STATUS_CODES.INVALID_SESSION, 'Invalid or missing session.', { hasAdmin });
+    }
+    if (inspection.state === 'expired') {
+      return failure(AUTH_STATUS_CODES.SESSION_EXPIRED, 'Session has expired.', { hasAdmin });
+    }
+
+    const sessionId = inspection.payload?.id;
+    if (!sessionId) {
+      return failure(AUTH_STATUS_CODES.INVALID_SESSION, 'Invalid session payload.', { hasAdmin });
+    }
 
     const adminRecord = await withTimeout(findAdminById(db, sessionId), AUTH_DB_TIMEOUT_MS, 'findAdminById');
     if (!adminRecord) {
