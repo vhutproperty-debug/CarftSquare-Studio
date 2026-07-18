@@ -253,7 +253,14 @@ export default function BrokersWorkspace() {
         onOpenChange={setImportOpen}
         onImported={() => {
           loadWorkspace();
-          setTab('imports');
+        }}
+        onViewInventory={() => {
+          setTab('inventory');
+          loadWorkspace();
+        }}
+        onViewReview={() => {
+          setTab('review');
+          loadWorkspace();
         }}
       />
     </div>

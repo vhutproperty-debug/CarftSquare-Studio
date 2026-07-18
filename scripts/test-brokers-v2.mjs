@@ -57,15 +57,14 @@ const conf = computeConfidenceBreakdown({
 });
 assert.ok(conf.overallConfidence >= 70, 'expected high confidence, got ' + conf.overallConfidence);
 
-// Review routing — mid dedupe => review
+// Auto-index workflow — mid dedupe / unknown project no longer block inventory
 const route = decideReviewRouting({
   confidence: conf,
   dedupeConfidence: 55,
   existing: { id: 'x', rent: 85000, bhk: 3 } as any,
   projectMapped: true,
 });
-assert.equal(route.action, 'review');
-assert.ok(route.reasons.includes('duplicate_uncertainty'));
+assert.equal(route.action, 'auto_merge');
 
 // Auto create high confidence
 const createRoute = decideReviewRouting({
@@ -75,6 +74,36 @@ const createRoute = decideReviewRouting({
   projectMapped: true,
 });
 assert.equal(createRoute.action, 'auto_create');
+
+// Low confidence (badge band) still auto-indexes
+const lowBand = decideReviewRouting({
+  confidence: { ...conf, overallConfidence: 40 },
+  dedupeConfidence: 100,
+  existing: null,
+  projectMapped: false,
+});
+assert.equal(lowBand.action, 'auto_create');
+
+// Very low confidence → optional review queue
+const veryLow = decideReviewRouting({
+  confidence: { ...conf, overallConfidence: 20 },
+  dedupeConfidence: 100,
+  existing: null,
+  projectMapped: true,
+});
+assert.equal(veryLow.action, 'review');
+assert.ok(veryLow.reasons.includes('low_confidence'));
+
+// Parse failure → review
+const parseFail = decideReviewRouting({
+  confidence: conf,
+  dedupeConfidence: 100,
+  existing: null,
+  projectMapped: true,
+  malformed: true,
+});
+assert.equal(parseFail.action, 'review');
+assert.ok(parseFail.reasons.includes('malformed_listing'));
 
 // Change history diff
 const history = diffInventoryChanges(

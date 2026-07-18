@@ -71,7 +71,7 @@ export default function BrokerReviewPanel() {
   if (!items.length) {
     return (
       <div className="rounded-xl border border-dashed bg-white p-8 text-center text-sm text-slate-500">
-        No pending review items. High-confidence listings auto-merge.
+        No pending review items. Listings auto-index into searchable inventory; this queue is only for parser failures and extremely low-confidence records.
       </div>
     );
   }

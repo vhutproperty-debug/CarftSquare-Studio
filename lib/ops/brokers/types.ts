@@ -52,6 +52,8 @@ export type OpsBrokerImportBatch = {
   reviewQueued?: number;
   unknownProjects?: number;
   listingsExtracted?: number;
+  /** Indexed listings with overallConfidence ≤ lowConfidenceMax (badge band). */
+  lowConfidenceIndexed?: number;
   averageConfidence?: number;
   /** Optional content cache for resume without re-upload (truncated for huge files). */
   contentCached?: boolean;
@@ -293,6 +295,8 @@ export type BrokerImportSummary = {
   failedMessages: number;
   reviewQueued?: number;
   unknownProjects?: number;
+  /** Searchable listings indexed with Low Confidence badge. */
+  lowConfidenceIndexed?: number;
   averageConfidence?: number;
   errors: string[];
   stageTimings?: BrokerImportStageTimings;

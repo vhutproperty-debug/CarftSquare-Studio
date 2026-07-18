@@ -67,6 +67,17 @@ export async function bulkEnqueueReviewItems(
   }
 }
 
+/**
+ * Optional Review Queue routing for the internal search workflow.
+ *
+ * Auto-index (searchable) by default. Review only for:
+ * - malformed / unreadable / parse failures
+ * - extraction errors
+ * - extremely low overall confidence (≤ reviewQueueMaxOverall)
+ *
+ * Unknown projects, rent/config conflicts, mid-band confidence, and dedupe
+ * uncertainty no longer block indexing — they remain searchable.
+ */
 export function decideReviewRouting(input: {
   confidence: BrokerConfidenceBreakdown;
   dedupeConfidence: number;
@@ -75,63 +86,27 @@ export function decideReviewRouting(input: {
   hasConflictingRent?: boolean;
   hasConflictingConfiguration?: boolean;
   malformed?: boolean;
+  parseFailure?: boolean;
+  extractionError?: boolean;
 }): { action: 'auto_merge' | 'auto_create' | 'review'; reasons: BrokerReviewReason[] } {
   const reasons: BrokerReviewReason[] = [];
 
-  if (input.malformed) reasons.push('malformed_listing');
-  if (!input.projectMapped) reasons.push('unknown_project');
-  if (input.hasConflictingRent) reasons.push('conflicting_rent');
-  if (input.hasConflictingConfiguration) reasons.push('conflicting_configuration');
-  if (input.confidence.overallConfidence <= REVIEW_CONFIG.lowConfidenceMax) {
-    reasons.push('low_confidence');
+  if (input.malformed || input.parseFailure || input.extractionError) {
+    reasons.push('malformed_listing');
   }
 
-  if (input.existing) {
-    if (
-      input.dedupeConfidence >= REVIEW_CONFIG.dedupeReviewMin
-      && input.dedupeConfidence <= REVIEW_CONFIG.dedupeReviewMax
-    ) {
-      reasons.push('duplicate_uncertainty');
-    }
-
-    if (
-      reasons.length === 0
-      && input.dedupeConfidence >= REVIEW_CONFIG.dedupeAutoMergeMin
-      && input.confidence.overallConfidence >= REVIEW_CONFIG.autoMergeMinOverall
-    ) {
-      return { action: 'auto_merge', reasons: [] };
-    }
-
-    if (reasons.length > 0 || input.dedupeConfidence < REVIEW_CONFIG.dedupeAutoMergeMin) {
-      if (!reasons.includes('duplicate_uncertainty') && input.dedupeConfidence < REVIEW_CONFIG.dedupeAutoMergeMin) {
-        reasons.push('duplicate_uncertainty');
-      }
-      return { action: 'review', reasons };
-    }
-
-    return { action: 'auto_merge', reasons: [] };
-  }
-
-  // Create path
-  if (
-    reasons.length === 0
-    && input.confidence.overallConfidence >= REVIEW_CONFIG.autoMergeMinOverall
-  ) {
-    return { action: 'auto_create', reasons: [] };
-  }
-
-  if (
-    input.confidence.overallConfidence >= REVIEW_CONFIG.reviewBandMin
-    && input.confidence.overallConfidence <= REVIEW_CONFIG.reviewBandMax
-  ) {
+  if (input.confidence.overallConfidence <= REVIEW_CONFIG.reviewQueueMaxOverall) {
     if (!reasons.includes('low_confidence')) reasons.push('low_confidence');
-    return { action: 'review', reasons };
   }
 
   if (reasons.length > 0) {
     return { action: 'review', reasons };
   }
 
+  // Auto-index: refresh existing inventory or create searchable record.
+  if (input.existing) {
+    return { action: 'auto_merge', reasons: [] };
+  }
   return { action: 'auto_create', reasons: [] };
 }
 

@@ -45,21 +45,28 @@ export const CONFIDENCE_WEIGHTS = {
   phone: 0.1,
 } as const;
 
-/** Review / merge routing thresholds. */
+/**
+ * Confidence bands + optional Review Queue thresholds.
+ *
+ * Product workflow (internal search engine):
+ * - High / medium / low confidence → auto-index (searchable immediately)
+ * - Very low confidence / parse failure → optional Review Queue only
+ * Confidence is still calculated exactly as before; routing is what changed.
+ */
 export const REVIEW_CONFIG = {
-  /** Below this overall confidence → always review (or create cautiously). */
+  /** Overall ≤ this → Low Confidence badge (still searchable). */
   lowConfidenceMax: 45,
-  /** Mid-band overall confidence → review before merge/create. */
+  /** Overall ≤ this → optional Review Queue (not auto-indexed). */
+  reviewQueueMaxOverall: 25,
+  /** UI / analytics bands (no longer block indexing). */
   reviewBandMin: 46,
   reviewBandMax: 72,
-  /** Auto-merge only when overall ≥ this AND dedupe confidence ≥ mergeMin. */
   autoMergeMinOverall: 73,
-  /** Dedupe match confidence mid-band → review instead of merge. */
+  /** Retained for analytics / soft signals; do not block auto-index. */
   dedupeReviewMin: 40,
   dedupeReviewMax: 75,
-  /** Auto-merge requires dedupe confidence ≥ this. */
   dedupeAutoMergeMin: 76,
-  /** Relative rent conflict that forces review (e.g. 0.2 = 20%). */
+  /** Relative rent conflict ratio (tracked; does not block auto-index). */
   rentConflictRatio: 0.2,
 } as const;
 

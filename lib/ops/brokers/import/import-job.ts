@@ -95,6 +95,7 @@ export async function enqueueBrokerImport(input: {
         failedMessages: batch.failedMessages,
         reviewQueued: batch.reviewQueued,
         unknownProjects: batch.unknownProjects,
+        lowConfidenceIndexed: batch.lowConfidenceIndexed,
         averageConfidence: batch.averageConfidence,
         errors: batch.processingErrors || [],
         stageTimings: {
@@ -246,6 +247,7 @@ export async function getImportJobProgress(batchId: string): Promise<{
       failedMessages: batch.failedMessages,
       reviewQueued: batch.reviewQueued,
       unknownProjects: batch.unknownProjects,
+      lowConfidenceIndexed: batch.lowConfidenceIndexed,
       averageConfidence: batch.averageConfidence,
       errors: batch.processingErrors || [],
       stageTimings: batch.stageTimings,

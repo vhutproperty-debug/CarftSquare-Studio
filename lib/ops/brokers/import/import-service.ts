@@ -65,6 +65,7 @@ function summaryFromBatch(
     failedMessages: batch.failedMessages,
     reviewQueued: batch.reviewQueued,
     unknownProjects: batch.unknownProjects,
+    lowConfidenceIndexed: batch.lowConfidenceIndexed,
     averageConfidence: batch.averageConfidence,
     errors: batch.processingErrors || [],
     stageTimings: opts?.stageTimings || batch.stageTimings,
@@ -163,6 +164,7 @@ async function processCandidateWindow(input: {
     failedMessages: number;
     reviewQueued: number;
     unknownProjects: number;
+    lowConfidenceIndexed: number;
     confidenceSum: number;
     confidenceCount: number;
     listingsExtracted: number;
@@ -183,6 +185,8 @@ async function processCandidateWindow(input: {
   };
 
   const prepared: Prepared[] = [];
+  type ReviewPayload = Omit<OpsBrokerReviewItem, 'id' | 'createdAt' | 'updatedAt' | 'status'>;
+  const reviewBuffer: ReviewPayload[] = [];
 
   for (const raw of candidates) {
     try {
@@ -208,6 +212,27 @@ async function processCandidateWindow(input: {
       prepared.push({ raw, extracted, confidence, brokerPhone, brokerName });
     } catch (err) {
       counters.failedMessages += 1;
+      reviewBuffer.push({
+        reasons: ['malformed_listing'],
+        batchId: batch.id,
+        groupName: batch.groupName,
+        rawMessageId: raw.id,
+        dedupeKey: `extract-error:${raw.id}`,
+        proposed: {
+          groupName: batch.groupName,
+          notes: err instanceof Error ? err.message : 'Extraction error',
+          sourceType: 'BROKER_GROUP',
+        },
+        confidence: {
+          parserConfidence: 0,
+          projectConfidence: 0,
+          configurationConfidence: 0,
+          priceConfidence: 0,
+          phoneConfidence: 0,
+          overallConfidence: 0,
+        },
+        dedupeConfidence: 0,
+      });
       if (errors.length < BROKER_IMPORT_CONFIG.maxStoredErrors) {
         errors.push(
           `Candidate seq ${raw.sequence}: ${
@@ -266,8 +291,6 @@ async function processCandidateWindow(input: {
     findInventoryByDedupeKeys(db, provisionalKeys),
   );
 
-  type ReviewPayload = Omit<OpsBrokerReviewItem, 'id' | 'createdAt' | 'updatedAt' | 'status'>;
-  const reviewBuffer: ReviewPayload[] = [];
   const unknownBuffer: Array<{
     projectName: string;
     groupName?: string;
@@ -331,7 +354,8 @@ async function processCandidateWindow(input: {
         projectMapped: extracted.projectMapped,
         hasConflictingRent,
         hasConflictingConfiguration,
-        malformed: false,
+        malformed: raw.parseStatus === 'MALFORMED',
+        parseFailure: raw.parseStatus === 'MALFORMED',
       });
 
       const seenAt = raw.messageTimestamp || new Date().toISOString();
@@ -407,6 +431,9 @@ async function processCandidateWindow(input: {
           && before.furnishing === extracted.furnishing;
         if (pureRepost) counters.duplicateListings += 1;
         else counters.updatedListings += 1;
+        if (confidence.overallConfidence <= REVIEW_CONFIG.lowConfidenceMax) {
+          counters.lowConfidenceIndexed += 1;
+        }
         if (broker) {
           brokerBumps.push({
             brokerId: broker.id,
@@ -433,6 +460,9 @@ async function processCandidateWindow(input: {
         createBuffer.push(record);
         inventoryMap.set(dedupeKey, record);
         counters.createdListings += 1;
+        if (confidence.overallConfidence <= REVIEW_CONFIG.lowConfidenceMax) {
+          counters.lowConfidenceIndexed += 1;
+        }
         if (broker) {
           brokerBumps.push({
             brokerId: broker.id,
@@ -445,6 +475,28 @@ async function processCandidateWindow(input: {
     } catch (err) {
       timer.end('deduplication');
       counters.failedMessages += 1;
+      // Extraction / processing errors → optional Review Queue (not silent drop)
+      reviewBuffer.push({
+        reasons: ['malformed_listing'],
+        batchId: batch.id,
+        groupName: batch.groupName,
+        rawMessageId: raw.id,
+        dedupeKey: `extract-error:${raw.id}`,
+        proposed: {
+          groupName: batch.groupName,
+          notes: err instanceof Error ? err.message : 'Extraction error',
+          sourceType: 'BROKER_GROUP',
+        },
+        confidence: {
+          parserConfidence: 0,
+          projectConfidence: 0,
+          configurationConfidence: 0,
+          priceConfidence: 0,
+          phoneConfidence: 0,
+          overallConfidence: 0,
+        },
+        dedupeConfidence: 0,
+      });
       if (errors.length < BROKER_IMPORT_CONFIG.maxStoredErrors) {
         errors.push(
           `Candidate seq ${raw.sequence ?? i}: ${
@@ -611,6 +663,7 @@ export async function importWhatsAppBrokerExport(input: {
     failedMessages: batch.failedMessages || 0,
     reviewQueued: batch.reviewQueued || 0,
     unknownProjects: batch.unknownProjects || 0,
+    lowConfidenceIndexed: batch.lowConfidenceIndexed || 0,
     confidenceSum: 0,
     confidenceCount: 0,
     listingsExtracted: batch.listingsExtracted || 0,
@@ -764,6 +817,7 @@ export async function importWhatsAppBrokerExport(input: {
         failedMessages: counters.failedMessages,
         reviewQueued: counters.reviewQueued,
         unknownProjects: counters.unknownProjects,
+        lowConfidenceIndexed: counters.lowConfidenceIndexed,
         listingsExtracted: counters.listingsExtracted,
         stageTimings: timer.snapshot(),
       });
@@ -795,6 +849,7 @@ export async function importWhatsAppBrokerExport(input: {
         failedMessages: counters.failedMessages,
         reviewQueued: counters.reviewQueued,
         unknownProjects: counters.unknownProjects,
+        lowConfidenceIndexed: counters.lowConfidenceIndexed,
         listingsExtracted: counters.listingsExtracted,
         averageConfidence,
         processingErrors: errors.slice(0, BROKER_IMPORT_CONFIG.maxStoredErrors),
@@ -838,6 +893,7 @@ export async function importWhatsAppBrokerExport(input: {
         failedMessages: counters.failedMessages + 1,
         reviewQueued: counters.reviewQueued,
         unknownProjects: counters.unknownProjects,
+        lowConfidenceIndexed: counters.lowConfidenceIndexed,
         listingsExtracted: counters.listingsExtracted,
         stage: currentStage === 'PENDING' ? 'PENDING' : currentStage,
         stageTimings: timer.snapshot(),

@@ -22,6 +22,8 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported: () => void;
+  onViewInventory?: () => void;
+  onViewReview?: () => void;
 };
 
 const STAGE_LABELS: Array<{ key: keyof BrokerImportStageTimings; label: string }> = [
@@ -44,7 +46,13 @@ function formatMs(ms?: number): string {
   return `${(ms / 1000).toFixed(1)} s`;
 }
 
-export default function BrokerImportDialog({ open, onOpenChange, onImported }: Props) {
+export default function BrokerImportDialog({
+  open,
+  onOpenChange,
+  onImported,
+  onViewInventory,
+  onViewReview,
+}: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -141,6 +149,11 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
     }
   }
 
+  const duplicatesRefreshed =
+    (summary?.updatedListings || 0) + (summary?.duplicateListings || 0);
+  /** Optional review items (parse failures / very-low confidence / extraction errors). */
+  const parserFailures = summary?.reviewQueued || 0;
+
   return (
     <Dialog
       open={open}
@@ -153,8 +166,9 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
         <DialogHeader>
           <DialogTitle>Import WhatsApp export</DialogTitle>
           <DialogDescription>
-            Upload a manually exported broker-group .txt chat. The engine parses messages,
-            extracts listings, and refreshes existing inventory without discarding source text.
+            Upload a broker-group .txt chat. Listings are extracted, normalized, deduplicated,
+            and indexed into searchable inventory immediately. Review is optional for parser
+            failures only.
           </DialogDescription>
         </DialogHeader>
 
@@ -216,22 +230,30 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
               </p>
             ) : summary.batch.importStatus === 'FAILED' ? (
               <p className="font-semibold text-rose-700">Import failed.</p>
-            ) : summary.batch.importStatus === 'PARTIAL'
-              || summary.batch.importStatus === 'COMPLETED_WITH_ERRORS' ? (
-              <p className="font-semibold text-amber-700">
-                Import finished with partial results.
-              </p>
             ) : (
-              <p className="font-semibold text-emerald-700">Import completed.</p>
+              <p className="font-semibold text-emerald-700">Import complete.</p>
             )}
-            <ul className="grid grid-cols-2 gap-2 text-slate-700">
-              <li>Messages parsed: <strong>{summary.messagesParsed}</strong></li>
-              <li>Listing candidates: <strong>{summary.listingCandidates}</strong></li>
-              <li>Created: <strong>{summary.createdListings}</strong></li>
-              <li>Refreshed: <strong>{summary.updatedListings}</strong></li>
-              <li>Pure reposts: <strong>{summary.duplicateListings}</strong></li>
-              <li>Failed: <strong>{summary.failedMessages}</strong></li>
-            </ul>
+            {!summary.alreadyProcessed && summary.batch.importStatus !== 'FAILED' ? (
+              <ul className="space-y-1 text-slate-700">
+                <li>
+                  <strong>{summary.createdListings}</strong> listings indexed.
+                </li>
+                <li>
+                  <strong>{duplicatesRefreshed}</strong> duplicates refreshed.
+                </li>
+                <li>
+                  <strong>{summary.lowConfidenceIndexed || 0}</strong> low-confidence.
+                </li>
+                <li>
+                  <strong>{parserFailures}</strong> parser failures.
+                </li>
+              </ul>
+            ) : (
+              <ul className="grid grid-cols-2 gap-2 text-slate-700">
+                <li>Messages parsed: <strong>{summary.messagesParsed}</strong></li>
+                <li>Listing candidates: <strong>{summary.listingCandidates}</strong></li>
+              </ul>
+            )}
             {(summary.stageTimings || timings) ? (
               <div className="border-t border-slate-200 pt-2">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -270,7 +292,27 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
               </Button>
             </>
           ) : (
-            <Button onClick={() => { reset(); onOpenChange(false); }}>Done</Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  reset();
+                  onOpenChange(false);
+                  onViewReview?.();
+                }}
+              >
+                View Review Queue
+              </Button>
+              <Button
+                onClick={() => {
+                  reset();
+                  onOpenChange(false);
+                  onViewInventory?.();
+                }}
+              >
+                View Inventory
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
