@@ -7,10 +7,14 @@ export const BROKER_INVENTORY_HISTORY_COLLECTION = 'ops_broker_inventory_history
 
 const TRACKED = new Set<string>(BROKER_HISTORY_FIELDS);
 
+let historyIndexesEnsured = false;
+
 export async function ensureHistoryIndexes(db: Db): Promise<void> {
+  if (historyIndexesEnsured) return;
   await db.collection(BROKER_INVENTORY_HISTORY_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(BROKER_INVENTORY_HISTORY_COLLECTION).createIndex({ inventoryId: 1, changedAt: -1 });
   await db.collection(BROKER_INVENTORY_HISTORY_COLLECTION).createIndex({ importBatchId: 1 });
+  historyIndexesEnsured = true;
 }
 
 function serialize(value: unknown): string | number | null {

@@ -5,12 +5,16 @@ import type { OpsBrokerDirectory } from '@/lib/ops/brokers/types';
 
 export const BROKER_DIRECTORY_COLLECTION = 'ops_brokers';
 
+let directoryIndexesEnsured = false;
+
 export async function ensureBrokerDirectoryIndexes(db: Db): Promise<void> {
+  if (directoryIndexesEnsured) return;
   await db.collection(BROKER_DIRECTORY_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(BROKER_DIRECTORY_COLLECTION).createIndex({ phones: 1 });
   await db.collection(BROKER_DIRECTORY_COLLECTION).createIndex({ canonicalName: 1 });
   await db.collection(BROKER_DIRECTORY_COLLECTION).createIndex({ aliases: 1 });
   await db.collection(BROKER_DIRECTORY_COLLECTION).createIndex({ lastSeenAt: -1 });
+  directoryIndexesEnsured = true;
 }
 
 function nameKey(value: string): string {
@@ -121,6 +125,44 @@ export async function bumpBrokerInventoryStats(
       },
     },
   );
+}
+
+/** Aggregate directory stat bumps into one bulkWrite. */
+export async function bulkBumpBrokerInventoryStats(
+  db: Db,
+  bumps: Array<{ brokerId: string; created: boolean; freshnessDays?: number }>,
+): Promise<void> {
+  if (!bumps.length) return;
+  await ensureBrokerDirectoryIndexes(db);
+  const byId = new Map<
+    string,
+    { created: number; freshnessDays?: number }
+  >();
+  for (const b of bumps) {
+    const cur = byId.get(b.brokerId) || { created: 0 };
+    if (b.created) cur.created += 1;
+    if (b.freshnessDays != null) cur.freshnessDays = b.freshnessDays;
+    byId.set(b.brokerId, cur);
+  }
+  const now = new Date().toISOString();
+  const ops = [...byId.entries()].map(([id, v]) => ({
+    updateOne: {
+      filter: { id },
+      update: {
+        $inc: {
+          inventoryCount: v.created,
+          ...(v.created ? { activeInventory: v.created } : {}),
+        },
+        $set: {
+          updatedAt: now,
+          ...(v.freshnessDays != null ? { averageFreshnessDays: v.freshnessDays } : {}),
+        },
+      },
+    },
+  }));
+  if (ops.length) {
+    await db.collection(BROKER_DIRECTORY_COLLECTION).bulkWrite(ops, { ordered: false });
+  }
 }
 
 function escapeRegex(value: string): string {

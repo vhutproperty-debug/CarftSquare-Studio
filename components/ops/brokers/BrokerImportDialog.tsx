@@ -12,7 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { BrokerImportSummary } from '@/lib/ops/brokers/types';
+import type {
+  BrokerImportStageTimings,
+  BrokerImportSummary,
+  BrokerImportProgress,
+} from '@/lib/ops/brokers/types';
 
 type Props = {
   open: boolean;
@@ -20,19 +24,64 @@ type Props = {
   onImported: () => void;
 };
 
+const STAGE_LABELS: Array<{ key: keyof BrokerImportStageTimings; label: string }> = [
+  { key: 'upload', label: 'Upload' },
+  { key: 'fileRead', label: 'File read' },
+  { key: 'validation', label: 'Validation' },
+  { key: 'whatsappParse', label: 'WhatsApp parse' },
+  { key: 'messageExtraction', label: 'Message extraction' },
+  { key: 'normalization', label: 'Normalization' },
+  { key: 'deduplication', label: 'Deduplication' },
+  { key: 'mongoQueries', label: 'MongoDB queries' },
+  { key: 'bulkWrites', label: 'Bulk writes' },
+  { key: 'responseGeneration', label: 'Response' },
+  { key: 'total', label: 'Total' },
+];
+
+function formatMs(ms?: number): string {
+  if (ms == null) return '—';
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
 export default function BrokerImportDialog({ open, onOpenChange, onImported }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<BrokerImportSummary | null>(null);
+  const [progress, setProgress] = useState<BrokerImportProgress | null>(null);
+  const [timings, setTimings] = useState<BrokerImportStageTimings | null>(null);
 
   function reset() {
     setFile(null);
     setGroupName('');
     setError('');
     setSummary(null);
+    setProgress(null);
+    setTimings(null);
     setLoading(false);
+  }
+
+  async function pollUntilDone(batchId: string): Promise<BrokerImportSummary> {
+    const started = Date.now();
+    const maxWaitMs = 5 * 60 * 1000;
+    while (Date.now() - started < maxWaitMs) {
+      const res = await fetch(`/api/ops/brokers/import/${batchId}/progress`, {
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Progress check failed.');
+      }
+      if (data.progress) setProgress(data.progress as BrokerImportProgress);
+      if (data.stageTimings) setTimings(data.stageTimings as BrokerImportStageTimings);
+      if (data.done && data.summary) {
+        return data.summary as BrokerImportSummary;
+      }
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+    throw new Error('Import is still running. Check Imports tab for final status.');
   }
 
   async function handleImport() {
@@ -47,6 +96,14 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
 
     setLoading(true);
     setError('');
+    setProgress({
+      phase: 'upload',
+      percent: 0,
+      processedCandidates: 0,
+      totalCandidates: 0,
+      message: 'Uploading…',
+      updatedAt: new Date().toISOString(),
+    });
     try {
       const form = new FormData();
       form.append('file', file);
@@ -62,10 +119,23 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
         setError(typeof data.error === 'string' ? data.error : 'Import failed.');
         return;
       }
+
+      if (data.stageTimings) setTimings(data.stageTimings as BrokerImportStageTimings);
+
+      if (res.status === 202 && data.batchId) {
+        if (data.progress) setProgress(data.progress as BrokerImportProgress);
+        const finalSummary = await pollUntilDone(String(data.batchId));
+        setSummary(finalSummary);
+        setTimings(finalSummary.stageTimings || timings);
+        onImported();
+        return;
+      }
+
       setSummary(data as BrokerImportSummary);
+      setTimings((data as BrokerImportSummary).stageTimings || null);
       onImported();
-    } catch {
-      setError('Import failed. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,6 +168,7 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
                 placeholder="e.g. OSC Brokers Thane"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div>
@@ -108,6 +179,7 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
                 type="file"
                 accept=".txt,text/plain"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
+                disabled={loading}
               />
               {file ? (
                 <p className="mt-1 text-xs text-slate-500">
@@ -115,6 +187,25 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
                 </p>
               ) : null}
             </div>
+            {loading && progress ? (
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="flex items-center justify-between text-slate-700">
+                  <span>{progress.message || progress.phase}</span>
+                  <span>{progress.percent}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded bg-slate-200">
+                  <div
+                    className="h-full bg-slate-800 transition-all"
+                    style={{ width: `${Math.max(2, progress.percent)}%` }}
+                  />
+                </div>
+                {progress.totalCandidates > 0 ? (
+                  <p className="text-xs text-slate-500">
+                    Candidates {progress.processedCandidates}/{progress.totalCandidates}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </div>
         ) : (
@@ -141,6 +232,24 @@ export default function BrokerImportDialog({ open, onOpenChange, onImported }: P
               <li>Pure reposts: <strong>{summary.duplicateListings}</strong></li>
               <li>Failed: <strong>{summary.failedMessages}</strong></li>
             </ul>
+            {(summary.stageTimings || timings) ? (
+              <div className="border-t border-slate-200 pt-2">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Stage timings
+                </p>
+                <ul className="grid grid-cols-2 gap-1 text-xs text-slate-600">
+                  {STAGE_LABELS.map(({ key, label }) => {
+                    const ms = (summary.stageTimings || timings)?.[key];
+                    if (ms == null && key !== 'total') return null;
+                    return (
+                      <li key={key}>
+                        {label}: <strong>{formatMs(ms)}</strong>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
             {summary.errors?.length ? (
               <div className="text-xs text-slate-500">
                 Notes: {summary.errors.slice(0, 3).join(' · ')}

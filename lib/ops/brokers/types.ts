@@ -55,6 +55,46 @@ export type OpsBrokerImportBatch = {
   averageConfidence?: number;
   /** Optional content cache for resume without re-upload (truncated for huge files). */
   contentCached?: boolean;
+  /** Async job progress (polled by import UI). */
+  progress?: BrokerImportProgress;
+  /** Cumulative stage timings (ms) for production profiling. */
+  stageTimings?: BrokerImportStageTimings;
+};
+
+export type BrokerImportProgress = {
+  phase:
+    | 'queued'
+    | 'upload'
+    | 'fileRead'
+    | 'validation'
+    | 'whatsappParse'
+    | 'messageExtraction'
+    | 'normalization'
+    | 'deduplication'
+    | 'mongoQueries'
+    | 'bulkWrites'
+    | 'responseGeneration'
+    | 'done'
+    | 'failed';
+  percent: number;
+  processedCandidates: number;
+  totalCandidates: number;
+  message?: string;
+  updatedAt: string;
+};
+
+export type BrokerImportStageTimings = {
+  upload?: number;
+  fileRead?: number;
+  validation?: number;
+  whatsappParse?: number;
+  messageExtraction?: number;
+  normalization?: number;
+  deduplication?: number;
+  mongoQueries?: number;
+  bulkWrites?: number;
+  responseGeneration?: number;
+  total?: number;
 };
 
 export type OpsBrokerRawMessage = {
@@ -255,6 +295,9 @@ export type BrokerImportSummary = {
   unknownProjects?: number;
   averageConfidence?: number;
   errors: string[];
+  stageTimings?: BrokerImportStageTimings;
+  /** True when POST accepted work and processing continues in background. */
+  async?: boolean;
 };
 
 export type BrokerDemandMatchHit = {

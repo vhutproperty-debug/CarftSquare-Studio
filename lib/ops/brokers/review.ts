@@ -10,7 +10,10 @@ import type { BrokerReviewReason, BrokerReviewStatus } from '@/lib/ops/brokers/s
 
 export const BROKER_REVIEW_QUEUE_COLLECTION = 'ops_broker_review_queue';
 
+let reviewIndexesEnsured = false;
+
 export async function ensureReviewIndexes(db: Db): Promise<void> {
+  if (reviewIndexesEnsured) return;
   await db.collection(BROKER_REVIEW_QUEUE_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(BROKER_REVIEW_QUEUE_COLLECTION).createIndex({ status: 1, createdAt: -1 });
   await db.collection(BROKER_REVIEW_QUEUE_COLLECTION).createIndex({ batchId: 1 });
@@ -19,6 +22,49 @@ export async function ensureReviewIndexes(db: Db): Promise<void> {
     { unique: true },
   );
   await db.collection(BROKER_REVIEW_QUEUE_COLLECTION).createIndex({ dedupeKey: 1, status: 1 });
+  reviewIndexesEnsured = true;
+}
+
+/** Bulk enqueue; duplicates on rawMessageId are skipped (same as single enqueue). */
+export async function bulkEnqueueReviewItems(
+  db: Db,
+  payloads: Array<
+    Omit<OpsBrokerReviewItem, 'id' | 'createdAt' | 'updatedAt' | 'status'> & {
+      status?: BrokerReviewStatus;
+    }
+  >,
+): Promise<number> {
+  if (!payloads.length) return 0;
+  await ensureReviewIndexes(db);
+  const now = new Date().toISOString();
+  const items: OpsBrokerReviewItem[] = payloads.map((payload) => ({
+    id: uuidv4(),
+    status: payload.status || 'PENDING',
+    reasons: payload.reasons,
+    batchId: payload.batchId,
+    groupName: payload.groupName,
+    rawMessageId: payload.rawMessageId,
+    dedupeKey: payload.dedupeKey,
+    existingInventoryId: payload.existingInventoryId,
+    proposed: payload.proposed,
+    confidence: payload.confidence,
+    dedupeConfidence: payload.dedupeConfidence,
+    notes: payload.notes,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  try {
+    const result = await db
+      .collection(BROKER_REVIEW_QUEUE_COLLECTION)
+      .insertMany(items, { ordered: false });
+    return result.insertedCount;
+  } catch (err) {
+    const e = err as { result?: { insertedCount?: number }; writeErrors?: unknown[] };
+    if (e.result?.insertedCount != null) return e.result.insertedCount;
+    // All duplicates
+    if (Array.isArray(e.writeErrors)) return 0;
+    throw err;
+  }
 }
 
 export function decideReviewRouting(input: {

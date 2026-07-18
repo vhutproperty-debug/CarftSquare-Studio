@@ -24,7 +24,10 @@ export function normalizeKey(value: string): string {
     .trim();
 }
 
+let projectAliasIndexesEnsured = false;
+
 export async function ensureProjectAliasIndexes(db: Db): Promise<void> {
+  if (projectAliasIndexesEnsured) return;
   await db.collection(PROJECT_ALIASES_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(PROJECT_ALIASES_COLLECTION).createIndex({ canonicalProject: 1 }, { unique: true });
   await db.collection(PROJECT_ALIASES_COLLECTION).createIndex({ aliases: 1 });
@@ -32,6 +35,7 @@ export async function ensureProjectAliasIndexes(db: Db): Promise<void> {
   await db.collection(UNKNOWN_PROJECTS_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(UNKNOWN_PROJECTS_COLLECTION).createIndex({ normalizedKey: 1 }, { unique: true });
   await db.collection(UNKNOWN_PROJECTS_COLLECTION).createIndex({ count: -1 });
+  projectAliasIndexesEnsured = true;
 }
 
 async function seedAliasesIfEmpty(db: Db): Promise<void> {
@@ -174,43 +178,107 @@ export async function trackUnknownProject(
     messageId?: string;
   },
 ): Promise<void> {
-  if (!PROJECT_ALIAS_CONFIG.trackUnknownProjects) return;
-  if (PROJECT_ALIAS_CONFIG.autoCreateAliases) return;
+  await bulkTrackUnknownProjects(db, [input]);
+}
+
+/** Batch unknown-project sightings (same semantics as trackUnknownProject). */
+export async function bulkTrackUnknownProjects(
+  db: Db,
+  inputs: Array<{
+    projectName: string;
+    groupName?: string;
+    batchId?: string;
+    messageId?: string;
+  }>,
+): Promise<number> {
+  if (!PROJECT_ALIAS_CONFIG.trackUnknownProjects) return 0;
+  if (PROJECT_ALIAS_CONFIG.autoCreateAliases) return 0;
+  if (!inputs.length) return 0;
 
   await ensureProjectAliasIndexes(db);
-  const key = normalizeKey(input.projectName);
-  if (!key || key.length < 3) return;
-
   const now = new Date().toISOString();
   const col = db.collection<OpsUnknownProjectSighting>(UNKNOWN_PROJECTS_COLLECTION);
-  const existing = await col.findOne({ normalizedKey: key });
-  if (existing) {
-    await col.updateOne(
-      { id: existing.id },
-      {
-        $inc: { count: 1 },
-        $set: {
-          lastSeenAt: now,
-          groupName: input.groupName || existing.groupName,
-          batchId: input.batchId || existing.batchId,
-          messageId: input.messageId || existing.messageId,
+
+  const aggregated = new Map<
+    string,
+    { projectName: string; groupName?: string; batchId?: string; messageId?: string; count: number }
+  >();
+  for (const input of inputs) {
+    const key = normalizeKey(input.projectName);
+    if (!key || key.length < 3) continue;
+    const cur = aggregated.get(key);
+    if (cur) {
+      cur.count += 1;
+      cur.groupName = input.groupName || cur.groupName;
+      cur.batchId = input.batchId || cur.batchId;
+      cur.messageId = input.messageId || cur.messageId;
+    } else {
+      aggregated.set(key, {
+        projectName: input.projectName,
+        groupName: input.groupName,
+        batchId: input.batchId,
+        messageId: input.messageId,
+        count: 1,
+      });
+    }
+  }
+  if (!aggregated.size) return 0;
+
+  const keys = [...aggregated.keys()];
+  const existingRows = await col.find({ normalizedKey: { $in: keys } }).toArray();
+  const existingByKey = new Map(existingRows.map((r) => [r.normalizedKey, r]));
+
+  const ops: Array<
+    | {
+        updateOne: {
+          filter: { id: string };
+          update: {
+            $inc: { count: number };
+            $set: Record<string, unknown>;
+          };
+        };
+      }
+    | { insertOne: { document: OpsUnknownProjectSighting } }
+  > = [];
+
+  for (const [key, agg] of aggregated) {
+    const existing = existingByKey.get(key);
+    if (existing) {
+      ops.push({
+        updateOne: {
+          filter: { id: existing.id },
+          update: {
+            $inc: { count: agg.count },
+            $set: {
+              lastSeenAt: now,
+              groupName: agg.groupName || existing.groupName,
+              batchId: agg.batchId || existing.batchId,
+              messageId: agg.messageId || existing.messageId,
+            },
+          },
         },
-      },
-    );
-    return;
+      });
+    } else {
+      ops.push({
+        insertOne: {
+          document: {
+            id: uuidv4(),
+            projectName: agg.projectName,
+            normalizedKey: key,
+            groupName: agg.groupName,
+            batchId: agg.batchId,
+            messageId: agg.messageId,
+            count: agg.count,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        },
+      });
+    }
   }
 
-  await col.insertOne({
-    id: uuidv4(),
-    projectName: input.projectName,
-    normalizedKey: key,
-    groupName: input.groupName,
-    batchId: input.batchId,
-    messageId: input.messageId,
-    count: 1,
-    firstSeenAt: now,
-    lastSeenAt: now,
-  });
+  if (ops.length) await col.bulkWrite(ops as never, { ordered: false });
+  return aggregated.size;
 }
 
 export async function listProjectAliases(

@@ -42,6 +42,7 @@ export type OpsActivityAction =
   | 'view_broker_inventory_detail'
   | 'broker_import_completed'
   | 'broker_import_duplicate_skipped'
+  | 'broker_import_accepted'
   | 'broker_freshness_recalculated'
   | 'broker_review_resolved'
   | 'broker_project_alias_mutated'

@@ -25,54 +25,53 @@ export const BROKER_RAW_MESSAGES_COLLECTION = 'ops_broker_raw_messages';
 export const BROKER_INVENTORY_COLLECTION = 'ops_broker_inventory';
 
 let indexesEnsured = false;
+let indexesPromise: Promise<void> | null = null;
 
 export async function getDatabase(): Promise<Db> {
   return getDb() as Promise<Db>;
 }
 
-export async function ensureBrokerIndexes(db: Db): Promise<void> {
-  if (indexesEnsured) return;
-
-  await db.collection(BROKER_BATCHES_COLLECTION).createIndex({ id: 1 }, { unique: true });
-  await db.collection(BROKER_BATCHES_COLLECTION).createIndex({ fileHash: 1 }, { unique: true });
-  await db.collection(BROKER_BATCHES_COLLECTION).createIndex({ uploadedAt: -1 });
-  await db.collection(BROKER_BATCHES_COLLECTION).createIndex({ groupName: 1, uploadedAt: -1 });
-  await db.collection(BROKER_BATCHES_COLLECTION).createIndex({ importStatus: 1, uploadedAt: -1 });
-
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ id: 1 }, { unique: true });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ batchId: 1, sequence: 1 });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex(
-    { batchId: 1, messageHash: 1 },
-    { unique: true },
-  );
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ messageHash: 1 });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ listingCandidate: 1, batchId: 1 });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({
-    batchId: 1,
-    listingCandidate: 1,
-    parseStatus: 1,
-    sequence: 1,
-  });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ groupName: 1, messageTimestamp: -1 });
-  await db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ parseStatus: 1, batchId: 1 });
-
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ id: 1 }, { unique: true });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ dedupeKey: 1 }, { unique: true });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ freshnessStatus: 1, lastSeenAt: -1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectNormalized: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectName: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ transactionType: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerName: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerPhone: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerId: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ groupName: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ bhk: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ furnishing: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ status: 1, lastSeenAt: -1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ lastImportBatchId: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ overallConfidence: -1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ sourceType: 1 });
-  await db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectMapped: 1 });
+async function createAllBrokerIndexes(db: Db): Promise<void> {
+  await Promise.all([
+    db.collection(BROKER_BATCHES_COLLECTION).createIndex({ id: 1 }, { unique: true }),
+    db.collection(BROKER_BATCHES_COLLECTION).createIndex({ fileHash: 1 }, { unique: true }),
+    db.collection(BROKER_BATCHES_COLLECTION).createIndex({ uploadedAt: -1 }),
+    db.collection(BROKER_BATCHES_COLLECTION).createIndex({ groupName: 1, uploadedAt: -1 }),
+    db.collection(BROKER_BATCHES_COLLECTION).createIndex({ importStatus: 1, uploadedAt: -1 }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ id: 1 }, { unique: true }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ batchId: 1, sequence: 1 }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex(
+      { batchId: 1, messageHash: 1 },
+      { unique: true },
+    ),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ messageHash: 1 }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ listingCandidate: 1, batchId: 1 }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({
+      batchId: 1,
+      listingCandidate: 1,
+      parseStatus: 1,
+      sequence: 1,
+    }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ groupName: 1, messageTimestamp: -1 }),
+    db.collection(BROKER_RAW_MESSAGES_COLLECTION).createIndex({ parseStatus: 1, batchId: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ id: 1 }, { unique: true }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ dedupeKey: 1 }, { unique: true }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ freshnessStatus: 1, lastSeenAt: -1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectNormalized: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectName: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ transactionType: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerName: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerPhone: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ brokerId: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ groupName: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ bhk: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ furnishing: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ status: 1, lastSeenAt: -1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ lastImportBatchId: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ overallConfidence: -1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ sourceType: 1 }),
+    db.collection(BROKER_INVENTORY_COLLECTION).createIndex({ projectMapped: 1 }),
+  ]);
 
   await Promise.all([
     ensureHistoryIndexes(db),
@@ -80,8 +79,74 @@ export async function ensureBrokerIndexes(db: Db): Promise<void> {
     ensureBrokerDirectoryIndexes(db),
     ensureProjectAliasIndexes(db),
   ]);
+}
 
-  indexesEnsured = true;
+/** Idempotent index bootstrap — single in-flight promise (not per-request recreate). */
+export async function ensureBrokerIndexes(db: Db): Promise<void> {
+  if (indexesEnsured) return;
+  if (!indexesPromise) {
+    indexesPromise = createAllBrokerIndexes(db)
+      .then(() => {
+        indexesEnsured = true;
+      })
+      .catch((err) => {
+        indexesPromise = null;
+        throw err;
+      });
+  }
+  await indexesPromise;
+}
+
+export async function findInventoryByDedupeKeys(
+  db: Db,
+  keys: string[],
+): Promise<Map<string, OpsBrokerInventory>> {
+  await ensureBrokerIndexes(db);
+  const map = new Map<string, OpsBrokerInventory>();
+  if (!keys.length) return map;
+  const unique = [...new Set(keys.filter(Boolean))];
+  const chunkSize = 200;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const slice = unique.slice(i, i + chunkSize);
+    const rows = await db
+      .collection<OpsBrokerInventory>(BROKER_INVENTORY_COLLECTION)
+      .find({ dedupeKey: { $in: slice } })
+      .toArray();
+    for (const row of rows) map.set(row.dedupeKey, row);
+  }
+  return map;
+}
+
+export async function bulkInsertInventoryRecords(
+  db: Db,
+  records: OpsBrokerInventory[],
+): Promise<{ inserted: number; duplicateKeys: string[] }> {
+  if (!records.length) return { inserted: 0, duplicateKeys: [] };
+  await ensureBrokerIndexes(db);
+  try {
+    const result = await db
+      .collection(BROKER_INVENTORY_COLLECTION)
+      .insertMany(records, { ordered: false });
+    return { inserted: result.insertedCount, duplicateKeys: [] };
+  } catch (err) {
+    const duplicateKeys: string[] = [];
+    const e = err as {
+      code?: number;
+      writeErrors?: Array<{ code?: number; op?: { dedupeKey?: string } }>;
+      result?: { insertedCount?: number; writeErrors?: Array<{ code?: number; op?: { dedupeKey?: string } }> };
+    };
+    const writeErrors = e.writeErrors || e.result?.writeErrors || [];
+    for (const w of writeErrors) {
+      if (w.code === 11000 && w.op?.dedupeKey) duplicateKeys.push(w.op.dedupeKey);
+    }
+    if (e.code === 11000 || writeErrors.every((w) => w.code === 11000)) {
+      return {
+        inserted: e.result?.insertedCount ?? Math.max(0, records.length - duplicateKeys.length),
+        duplicateKeys,
+      };
+    }
+    throw err;
+  }
 }
 
 export async function findBatchByFileHash(
@@ -300,18 +365,23 @@ export async function createInventoryRecord(
   return record;
 }
 
-export async function refreshInventoryRecord(
-  db: Db,
+export type InventoryRefreshPatch = Partial<OpsBrokerInventory> & {
+  sourceMessageId: string;
+  lastImportBatchId: string;
+  lastSeenAt: string;
+  lastMessageAt?: string;
+};
+
+/** Pure refresh merge (same rules as refreshInventoryRecord) for in-memory / bulk flush. */
+export function prepareInventoryRefresh(
   existing: OpsBrokerInventory,
-  patch: Partial<OpsBrokerInventory> & {
-    sourceMessageId: string;
-    lastImportBatchId: string;
-    lastSeenAt: string;
-    lastMessageAt?: string;
-  },
-): Promise<OpsBrokerInventory> {
-  await ensureBrokerIndexes(db);
-  const now = new Date().toISOString();
+  patch: InventoryRefreshPatch,
+  now = new Date().toISOString(),
+): {
+  updated: OpsBrokerInventory;
+  next: Partial<OpsBrokerInventory>;
+  history: ReturnType<typeof diffInventoryChanges>;
+} {
   let sourceMessageIds = existing.sourceMessageIds.includes(patch.sourceMessageId)
     ? existing.sourceMessageIds
     : [...existing.sourceMessageIds, patch.sourceMessageId];
@@ -380,12 +450,48 @@ export async function refreshInventoryRecord(
     importBatchId: patch.lastImportBatchId,
     changedAt: now,
   });
-  if (history.length) {
-    await insertHistoryEvents(db, history);
-  }
 
-  await db.collection(BROKER_INVENTORY_COLLECTION).updateOne({ id: existing.id }, { $set: next });
-  return { ...existing, ...next } as OpsBrokerInventory;
+  return {
+    next,
+    history,
+    updated: { ...existing, ...next } as OpsBrokerInventory,
+  };
+}
+
+/** Flush prepared refreshes with one history insertMany + inventory bulkWrite. */
+export async function bulkApplyInventoryRefreshes(
+  db: Db,
+  items: Array<{ id: string; next: Partial<OpsBrokerInventory>; history: ReturnType<typeof diffInventoryChanges> }>,
+): Promise<void> {
+  if (!items.length) return;
+  await ensureBrokerIndexes(db);
+  const allHistory = items.flatMap((i) => i.history);
+  if (allHistory.length) {
+    await insertHistoryEvents(db, allHistory);
+  }
+  // Latest next per id wins (callers should already merge sequentially in memory)
+  const byId = new Map<string, Partial<OpsBrokerInventory>>();
+  for (const item of items) byId.set(item.id, item.next);
+  const ops = [...byId.entries()].map(([id, next]) => ({
+    updateOne: {
+      filter: { id },
+      update: { $set: next },
+    },
+  }));
+  await db.collection(BROKER_INVENTORY_COLLECTION).bulkWrite(ops, { ordered: false });
+}
+
+export async function refreshInventoryRecord(
+  db: Db,
+  existing: OpsBrokerInventory,
+  patch: InventoryRefreshPatch,
+): Promise<OpsBrokerInventory> {
+  await ensureBrokerIndexes(db);
+  const prepared = prepareInventoryRefresh(existing, patch);
+  await bulkApplyInventoryRefreshes(db, [
+    { id: existing.id, next: prepared.next, history: prepared.history },
+  ]);
+  return prepared.updated;
 }
 
 export function buildInventoryRecord(input: {
