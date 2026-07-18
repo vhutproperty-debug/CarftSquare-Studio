@@ -1,6 +1,7 @@
 import { waitUntil } from '@vercel/functions';
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
+import { getSessionTokenFromRequest, SESSION_COOKIE } from '@/lib/auth/session-constants';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
 import {
@@ -14,11 +15,41 @@ import { brokerImportMetaSchema } from '@/lib/ops/brokers/schemas';
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
+function cookieNamesFromRequest(request: Request): string[] {
+  const header = request.headers.get('cookie') || '';
+  return header
+    .split(';')
+    .map((part) => part.trim().split('=')[0])
+    .filter(Boolean);
+}
+
 export async function POST(request: Request) {
+  // Identical auth path as other /api/ops mutate routes (e.g. housing sync / freshness).
   const auth = await requireOpsEditAccess(request);
-  const denied = authResultToResponse(auth);
-  if (denied) return denied;
-  if (!auth.ok) return denied!;
+  if (auth.ok === false) {
+    console.warn(
+      '[ops-brokers] import_auth_denied',
+      JSON.stringify({
+        userId: null,
+        role: null,
+        reason: auth.message,
+        status: auth.status,
+        hasSessionCookieName: cookieNamesFromRequest(request).includes(SESSION_COOKIE),
+        hasSessionToken: Boolean(getSessionTokenFromRequest(request)),
+        cookieNames: cookieNamesFromRequest(request),
+      }),
+    );
+    return authResultToResponse(auth);
+  }
+
+  console.info(
+    '[ops-brokers] import_auth_ok',
+    JSON.stringify({
+      userId: auth.admin.id,
+      role: auth.admin.role,
+      reason: null,
+    }),
+  );
 
   const uploadStarted = Date.now();
   try {

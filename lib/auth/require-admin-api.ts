@@ -6,15 +6,20 @@ import { authorizeAdmin, type AuthResult } from '@/lib/auth/rbac/guard';
 import { findAdminById, migrateLegacyAdmins, toPublicAdmin } from '@/lib/auth/rbac/store';
 import type { PublicAdminUser } from '@/lib/auth/rbac/types';
 import { withTimeout } from '@/lib/auth/async-timeout';
-import { readSessionToken, SESSION_COOKIE } from '@/lib/auth/session';
+import { readSessionToken } from '@/lib/auth/session';
+import { getSessionTokenFromRequest } from '@/lib/auth/session-constants';
 import { getDb } from '@/lib/mongodb';
 import { resolveRegisteredRoutePermission } from '@/lib/auth/rbac/registry';
 import { isSuperAdmin } from '@/lib/auth/rbac/roles';
 
 const AUTH_DB_TIMEOUT_MS = 6000;
 
+/**
+ * Same token extraction as middleware + /api/auth/status:
+ * NextRequest cookies API, then Cookie header fallback.
+ */
 async function loadAdminFromSession(request: Request): Promise<PublicAdminUser | null> {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const token = getSessionTokenFromRequest(request);
   const session = readSessionToken(token);
   if (!session?.id) return null;
 

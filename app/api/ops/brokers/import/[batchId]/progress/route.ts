@@ -11,8 +11,19 @@ export async function GET(
   context: { params: { batchId: string } },
 ) {
   const auth = await requireOpsViewAccess(request);
-  const denied = authResultToResponse(auth);
-  if (denied) return denied;
+  if (auth.ok === false) {
+    console.warn(
+      '[ops-brokers] import_progress_auth_denied',
+      JSON.stringify({
+        userId: null,
+        role: null,
+        reason: auth.message,
+        status: auth.status,
+        batchId: context.params.batchId,
+      }),
+    );
+    return authResultToResponse(auth);
+  }
 
   try {
     const batchId = context.params.batchId;
