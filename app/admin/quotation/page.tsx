@@ -63,6 +63,8 @@ export default function QuotationAdminPage() {
         clearTimeout(timer);
         setChecked(true);
       });
+    // Intentionally omit `tab` — only redirect when auth loads, not on every tab click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const visibleTabs = (Object.keys(TAB_PERMISSIONS) as Tab[]).filter((id) =>

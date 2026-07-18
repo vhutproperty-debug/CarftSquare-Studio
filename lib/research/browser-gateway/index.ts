@@ -23,3 +23,8 @@ export {
   validateDueSessions,
   cleanupExpiredProfiles,
 } from '@/lib/research/browser-gateway/worker-runtime';
+export {
+  fetchBrowserWorkerStatus,
+  fetchBrowserWorkerLogs,
+  getBrowserWorkerBaseUrl,
+} from '@/lib/research/browser-gateway/worker-client';

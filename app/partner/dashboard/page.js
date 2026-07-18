@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -23,20 +23,20 @@ export default function PartnerDashboardPage() {
   });
   const [submitMsg, setSubmitMsg] = useState('');
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     const res = await fetch('/api/partner-network/dashboard', { credentials: 'include' });
     if (res.status === 401) {
       router.replace('/partner/login');
       return null;
     }
     return res.json();
-  }
+  }, [router]);
 
   useEffect(() => {
     loadDashboard()
       .then((d) => { if (d) setData(d); })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [loadDashboard]);
 
   async function submitLead(e) {
     e.preventDefault();

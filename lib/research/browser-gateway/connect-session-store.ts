@@ -80,7 +80,7 @@ export async function createConnectSession(input: {
     phase: 'queued',
     provider: input.provider,
     loginUrl: input.loginUrl,
-    message: 'Waiting for browser worker…',
+    message: 'Queueing…',
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,

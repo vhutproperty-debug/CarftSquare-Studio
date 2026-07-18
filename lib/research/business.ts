@@ -15,6 +15,7 @@ export type ResearchNavItem = {
     | 'watches'
     | 'notifications'
     | 'operations'
+    | 'health'
     | 'saved'
     | 'history'
     | 'connectors'
@@ -29,6 +30,7 @@ export const RESEARCH_NAV_ITEMS: ResearchNavItem[] = [
   { label: 'Watches', href: '/research/watches', icon: 'watches' },
   { label: 'Notifications', href: '/research/notifications', icon: 'notifications' },
   { label: 'Operations', href: '/research/operations', icon: 'operations' },
+  { label: 'Health', href: '/research/health', icon: 'health' },
   { label: 'Saved Searches', href: '/research/saved-searches', icon: 'saved' },
   { label: 'History', href: '/research/history', icon: 'history' },
   { label: 'Connectors', href: '/research/connectors', icon: 'connectors' },

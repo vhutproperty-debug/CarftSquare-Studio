@@ -8,6 +8,7 @@ import {
   publicConnectSession,
   updateConnectSession,
 } from '@/lib/research/browser-gateway/connect-session-store';
+// updateConnectSession used by startRemoteConnect / disconnect
 import type {
   ConnectorStatusCard,
   PublicConnectSession,
@@ -39,6 +40,16 @@ export async function startRemoteConnect(input: {
   const meta = getPortalMeta(input.portal);
   if (!meta) throw new Error(`Unknown portal: ${input.portal}`);
 
+  const { fetchBrowserWorkerStatus } = await import(
+    '@/lib/research/browser-gateway/worker-client'
+  );
+  const worker = await fetchBrowserWorkerStatus();
+  if (!worker.online) {
+    throw new Error(
+      'Browser Worker is not running. Start it using:\nnpm run research:browser-worker',
+    );
+  }
+
   await upsertPortalConnection({
     workspaceId: input.workspaceId,
     portalKey: input.portal,
@@ -55,13 +66,25 @@ export async function startRemoteConnect(input: {
     provider: resolveBrowserProvider(),
   });
 
+  await updateConnectSession(session.id, {
+    phase: 'queued',
+    message: 'Queueing…',
+  });
+
   await audit(input.workspaceId, input.createdBy, 'connector_connect_started', {
     portal: input.portal,
     connectSessionId: session.id,
     provider: session.provider,
+    workerId: worker.workerId,
   });
 
-  return { connectSession: publicConnectSession(session) };
+  return {
+    connectSession: publicConnectSession({
+      ...session,
+      phase: 'queued',
+      message: 'Queueing…',
+    }),
+  };
 }
 
 export async function getConnectSessionPublic(id: string): Promise<PublicConnectSession | null> {

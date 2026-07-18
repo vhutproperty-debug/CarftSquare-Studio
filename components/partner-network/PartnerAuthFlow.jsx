@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export default function PartnerAuthFlow() {
     }
   }
 
-  async function restorePartnerSession() {
+  const restorePartnerSession = useCallback(async () => {
     try {
       const res = await fetch('/api/partner-network/auth/session', { credentials: 'include' });
       if (!res.ok) return null;
@@ -65,16 +65,19 @@ export default function PartnerAuthFlow() {
       // ignore
     }
     return null;
-  }
+  }, []);
 
   useEffect(() => {
     if (step !== 'profile') return;
+    let cancelled = false;
     restorePartnerSession().then((restored) => {
-      if (restored) {
-        setProfile((prev) => ({ ...prev, whatsapp: prev.whatsapp || restored.mobile }));
-      }
+      if (cancelled || !restored) return;
+      setProfile((prev) => ({ ...prev, whatsapp: prev.whatsapp || restored.mobile }));
     });
-  }, [step]);
+    return () => {
+      cancelled = true;
+    };
+  }, [step, restorePartnerSession]);
 
   function setRegisterField(key, value) {
     setRegisterForm((prev) => ({ ...prev, [key]: value }));

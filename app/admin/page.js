@@ -167,7 +167,9 @@ const AdminPage = () => {
   }
 
   useEffect(() => {
-    loadAuth();
+    void loadAuth();
+    // Mount-only auth bootstrap for admin shell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

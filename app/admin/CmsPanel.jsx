@@ -74,7 +74,11 @@ export default function CmsPanel({ onMessage, user }) {
     }
   }
 
-  useEffect(() => { loadCms(); }, []);
+  useEffect(() => {
+    void loadCms();
+    // Mount-only bootstrap for CMS panels.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function save(endpoint, body, label) {
     setLoading(true);

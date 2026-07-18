@@ -13,6 +13,12 @@ import {
 } from '@/lib/research/browser-gateway/connect-session-store';
 import { looksAuthenticated } from '@/lib/research/browser-gateway/login-detect';
 import { notifySessionNeedsLogin } from '@/lib/research/browser-gateway/gateway';
+import {
+  markWorkerJobDone,
+  pushWorkerLog,
+  setWorkerActiveJob,
+  setWorkerError,
+} from '@/lib/research/browser-gateway/worker-state';
 import { RESEARCH_COLLECTIONS } from '@/lib/research/collections';
 import { recordWorkerHeartbeat } from '@/lib/research/monitoring/worker-health';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
@@ -46,8 +52,17 @@ export async function processNextConnectJob(): Promise<boolean> {
       workerType: 'browser_crawl',
       status: 'idle',
     });
+    setWorkerActiveJob(null, null);
     return false;
   }
+
+  setWorkerActiveJob(session.id, session.portal);
+  pushWorkerLog('info', `Claimed connect session ${session.id} for ${session.portal}`);
+  await updateConnectSession(session.id, {
+    phase: 'connecting',
+    message: 'Worker Connected — preparing browser…',
+    workerId: WORKER_ID,
+  });
 
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
@@ -56,6 +71,7 @@ export async function processNextConnectJob(): Promise<boolean> {
 
   if (validateOnly) {
     await runValidateOnly(session.workspaceId, session.portal, session.id);
+    markWorkerJobDone();
     return true;
   }
 
@@ -73,9 +89,10 @@ export async function processNextConnectJob(): Promise<boolean> {
   try {
     await updateConnectSession(session.id, {
       phase: 'opening_browser',
-      message: 'Launching remote browser…',
+      message: 'Opening Browser…',
       workerId: WORKER_ID,
     });
+    pushWorkerLog('info', `Opening Chromium for ${session.portal} (${session.provider})`);
 
     handle = await adapter.launchLoginSession({
       workspaceId: session.workspaceId,
@@ -86,11 +103,12 @@ export async function processNextConnectJob(): Promise<boolean> {
 
     await updateConnectSession(session.id, {
       phase: 'waiting_for_login',
-      message: 'Log in inside the live browser window',
+      message: 'Waiting for Login…',
       browserVersion: handle.browserVersion,
       liveViewUrl: handle.liveViewUrl,
       previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
     });
+    pushWorkerLog('info', `Chromium ready — waiting for login on ${session.loginUrl}`);
 
     await handle.gotoLogin(session.loginUrl);
 
@@ -125,20 +143,25 @@ export async function processNextConnectJob(): Promise<boolean> {
         errorMessage: 'Login timed out before authentication was detected',
         finishedAt: new Date().toISOString(),
       });
+      pushWorkerLog('error', `Login timed out for ${session.portal}`);
+      setWorkerError(`Login timed out for ${session.portal}`);
       await handle.close();
+      markWorkerJobDone();
       return true;
     }
 
+    pushWorkerLog('info', `Login detected for ${session.portal} — capturing session`);
     await updateConnectSession(session.id, {
       phase: 'capturing',
-      message: 'Capturing encrypted session…',
+      message: 'Capturing Session…',
     });
     const secrets = await handle.captureSecrets();
 
     await updateConnectSession(session.id, {
       phase: 'encrypting',
-      message: 'Encrypting cookies and storage…',
+      message: 'Encrypting…',
     });
+    pushWorkerLog('info', 'Encrypting cookies and storage');
 
     // Close live browser before validation so the persistent profile is not locked.
     await handle.close();
@@ -156,9 +179,10 @@ export async function processNextConnectJob(): Promise<boolean> {
 
     await updateConnectSession(session.id, {
       phase: 'validating',
-      message: 'Validating portal session…',
+      message: 'Validating…',
       browserSessionId: browserSession.id,
     });
+    pushWorkerLog('info', `Validating ${session.portal} session`);
 
     const connector = requirePortalConnector(session.portal);
     const validation = await connector.validateSession(session.workspaceId);
@@ -169,6 +193,9 @@ export async function processNextConnectJob(): Promise<boolean> {
         errorMessage: validation.message || 'Validation failed after login',
         finishedAt: new Date().toISOString(),
       });
+      pushWorkerLog('error', validation.message || 'Validation failed');
+      setWorkerError(validation.message || 'Validation failed');
+      markWorkerJobDone();
       return true;
     }
 
@@ -181,10 +208,13 @@ export async function processNextConnectJob(): Promise<boolean> {
 
     await updateConnectSession(session.id, {
       phase: 'connected',
-      message: 'Connected successfully',
+      message: 'Connected',
       finishedAt: new Date().toISOString(),
       browserSessionId: browserSession.id,
     });
+    pushWorkerLog('info', `${session.portal} Connected`);
+    setWorkerError(null);
+    markWorkerJobDone();
 
     return true;
   } catch (error) {
@@ -194,7 +224,10 @@ export async function processNextConnectJob(): Promise<boolean> {
       errorMessage: message,
       finishedAt: new Date().toISOString(),
     });
+    pushWorkerLog('error', message);
+    setWorkerError(message);
     if (handle) await handle.close().catch(() => undefined);
+    markWorkerJobDone();
     return true;
   } finally {
     await recordWorkerHeartbeat({

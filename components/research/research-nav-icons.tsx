@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   Bookmark,
   Eye,
@@ -20,6 +21,7 @@ const ICONS: Record<ResearchNavItem['icon'], LucideIcon> = {
   watches: Eye,
   notifications: Bell,
   operations: Gauge,
+  health: Activity,
   saved: Bookmark,
   history: History,
   connectors: Plug,
