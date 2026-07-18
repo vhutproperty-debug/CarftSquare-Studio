@@ -26,11 +26,19 @@ function isProtectedOpsApi(pathname) {
   return pathname.startsWith('/api/ops/');
 }
 
+function isProtectedResearchApi(pathname) {
+  return pathname.startsWith('/api/research/');
+}
+
 function isOpsPage(pathname) {
   return pathname === '/ops' || pathname.startsWith('/ops/');
 }
 
-function opsPageHeaders(response) {
+function isResearchPage(pathname) {
+  return pathname === '/research' || pathname.startsWith('/research/');
+}
+
+function appPageHeaders(response) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -45,6 +53,7 @@ export async function middleware(request) {
     && !pathname.startsWith('/_next/')
     && !pathname.startsWith('/admin')
     && !pathname.startsWith('/ops')
+    && !pathname.startsWith('/research')
     && shouldNormalizePath(pathname)
   ) {
     const url = request.nextUrl.clone();
@@ -59,18 +68,23 @@ export async function middleware(request) {
     session = null;
   }
 
-  if (isProtectedAdminApi(pathname) || isProtectedDataApi(pathname) || isProtectedOpsApi(pathname)) {
+  if (
+    isProtectedAdminApi(pathname)
+    || isProtectedDataApi(pathname)
+    || isProtectedOpsApi(pathname)
+    || isProtectedResearchApi(pathname)
+  ) {
     if (!session) {
       return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
     }
   }
 
-  if (isOpsPage(pathname)) {
-    return opsPageHeaders(NextResponse.next());
+  if (isOpsPage(pathname) || isResearchPage(pathname)) {
+    return appPageHeaders(NextResponse.next());
   }
 
   if (pathname.startsWith('/admin')) {
-    return opsPageHeaders(NextResponse.next());
+    return appPageHeaders(NextResponse.next());
   }
 
   if (pathname.startsWith('/api/auth/') && !isPublicAuthPath(pathname)) {
@@ -97,6 +111,9 @@ export const config = {
     '/ops',
     '/ops/:path*',
     '/api/ops/:path*',
+    '/research',
+    '/research/:path*',
+    '/api/research/:path*',
     '/api/auth/:path*',
   ],
 };

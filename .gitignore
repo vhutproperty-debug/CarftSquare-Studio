@@ -10,3 +10,5 @@ test_result.md
 tsconfig.tsbuildinfo
 .ops-auth-repro.log
 .ops-auth-trace.log
+.research-profiles
+.research-screenshots

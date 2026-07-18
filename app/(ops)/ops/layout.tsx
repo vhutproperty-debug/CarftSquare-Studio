@@ -19,6 +19,7 @@ function dbTimeoutAuthStatus(): AuthStatusResponse {
     isSuperAdmin: false,
     user: null,
     opsAccess: false,
+    researchAccess: false,
     code: AUTH_STATUS_CODES.DB_TIMEOUT,
     message: 'Authentication service temporarily unavailable.',
   };
@@ -35,6 +36,12 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
 
   if (auth.authenticated && auth.opsAccess) {
     return children;
+  }
+
+  if (auth.authenticated && !auth.opsAccess) {
+    return (
+      <OpsAccessDenied message={auth.message || 'You do not have permission to access Operations.'} />
+    );
   }
 
   if (auth.code === AUTH_STATUS_CODES.RBAC_DENIED) {

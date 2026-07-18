@@ -29,6 +29,7 @@ async function fetchAuthStatusWithRetry(): Promise<AuthStatusResponse> {
     isSuperAdmin: false,
     user: null,
     opsAccess: false,
+    researchAccess: false,
     code: AUTH_STATUS_CODES.DB_TIMEOUT,
     message: 'Authentication service temporarily unavailable.',
   };
@@ -52,6 +53,7 @@ async function fetchAuthStatusWithRetry(): Promise<AuthStatusResponse> {
         isSuperAdmin: false,
         user: null,
         opsAccess: false,
+        researchAccess: false,
         code: AUTH_STATUS_CODES.DB_TIMEOUT,
         message: 'Authentication service temporarily unavailable.',
       };
@@ -83,6 +85,11 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
   const handleAuthResult = useCallback(
     (data: AuthStatusResponse) => {
       if (data.authenticated && data.opsAccess) {
+        router.refresh();
+        return;
+      }
+
+      if (data.authenticated && !data.opsAccess) {
         router.refresh();
         return;
       }

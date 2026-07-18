@@ -11,7 +11,9 @@
         "lint": "next lint",
         "type-check": "tsc --noEmit",
         "test:db": "node scripts/test-mongodb.mjs",
-        "test:brokers": "node scripts/test-brokers-v2.mjs"
+        "test:brokers": "node scripts/test-brokers-v2.mjs",
+        "research:monitor": "npx tsx scripts/research-monitor-worker.ts",
+        "research:monitor:once": "npx tsx scripts/research-monitor-worker.ts --once"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",
@@ -58,6 +60,7 @@
         "mongodb": "^6.21.0",
         "next": "14.2.3",
         "next-themes": "^0.4.6",
+        "playwright": "^1.61.1",
         "react": "^18",
         "react-day-picker": "^9.7.0",
         "react-dom": "^18",

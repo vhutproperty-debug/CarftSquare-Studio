@@ -19,6 +19,8 @@ export type AuthStatusResponse = {
   isSuperAdmin: boolean;
   user: AuthStatusUser | null;
   opsAccess: boolean;
+  /** Prop/Research module access (independent of Operations). */
+  researchAccess: boolean;
   code?: AuthStatusCode;
   message?: string;
 };

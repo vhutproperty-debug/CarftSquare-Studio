@@ -48,7 +48,7 @@ const ActivityLogsPanel = dynamic(() => import('./ActivityLogsPanel'), {
   loading: () => null,
 });
 import PermissionGate, { SuperAdminGate } from './PermissionGate';
-import { isSafeOpsReturnTo } from '@/lib/auth/safe-ops-return-to';
+import { isSafeAdminReturnTo } from '@/lib/auth/safe-research-return-to';
 import { canAccess, canAccessAny, isSuperAdmin } from '@/lib/auth/rbac/client';
 
 function formatCurrency(value = 0) {
@@ -149,7 +149,7 @@ const AdminPage = () => {
       setAuth({ checked: true, hasAdmin: Boolean(data.hasAdmin), authenticated: Boolean(data.authenticated), user });
       if (data.authenticated) {
         const returnTo = new URLSearchParams(window.location.search).get('returnTo');
-        if (isSafeOpsReturnTo(returnTo)) {
+        if (isSafeAdminReturnTo(returnTo)) {
           window.location.replace(returnTo);
           return;
         }
@@ -194,7 +194,7 @@ const AdminPage = () => {
       if (!response.ok) throw new Error(data.error || 'Authentication failed');
       setMessage(data.message || 'Authenticated.');
       const returnTo = new URLSearchParams(window.location.search).get('returnTo');
-      if (isSafeOpsReturnTo(returnTo)) {
+      if (isSafeAdminReturnTo(returnTo)) {
         window.location.replace(returnTo);
         return;
       }

@@ -24,27 +24,33 @@ function failure(
     role: extras.role ?? extras.user?.role ?? null,
     isSuperAdmin: extras.isSuperAdmin ?? extras.user?.isSuperAdmin ?? false,
     user: extras.user ?? null,
-    opsAccess: false,
+    opsAccess: extras.opsAccess ?? false,
+    researchAccess: extras.researchAccess ?? false,
     code,
     message,
   };
 }
 
-function success(user: AuthStatusUser, hasAdmin: boolean): AuthStatusResponse {
+function success(
+  user: AuthStatusUser,
+  hasAdmin: boolean,
+  access: { opsAccess: boolean; researchAccess: boolean },
+): AuthStatusResponse {
   return {
     hasAdmin,
     authenticated: true,
     role: user.role,
     isSuperAdmin: user.isSuperAdmin,
     user,
-    opsAccess: true,
+    opsAccess: access.opsAccess,
+    researchAccess: access.researchAccess,
   };
 }
 
 /**
- * Single authorization authority for admin session, RBAC, and ops access.
- * Always resolves hasAdmin from MongoDB (even when unauthenticated) so Admin UI
- * can show Login vs Create First Admin correctly.
+ * Single authorization authority for admin session and module access flags.
+ * Ops and Prop/Research access are computed independently so products can share
+ * the same session cookie without coupling layout gates.
  */
 export async function resolveAuthStatus(request: Request): Promise<AuthStatusResponse> {
   const token = getSessionTokenFromRequest(request);
@@ -84,15 +90,18 @@ export async function resolveAuthStatus(request: Request): Promise<AuthStatusRes
       return failure(AUTH_STATUS_CODES.RBAC_DENIED, 'This admin account is suspended.', { hasAdmin, user });
     }
 
-    if (!hasPermission(user, 'ops', 'view')) {
+    const opsAccess = hasPermission(user, 'ops', 'view');
+    const researchAccess = hasPermission(user, 'research', 'view');
+
+    if (!opsAccess && !researchAccess) {
       return failure(
         AUTH_STATUS_CODES.RBAC_DENIED,
-        'You do not have permission to access Operations.',
-        { hasAdmin, user },
+        'You do not have permission to access CraftSquare applications.',
+        { hasAdmin, user, opsAccess, researchAccess },
       );
     }
 
-    return success(user, hasAdmin);
+    return success(user, hasAdmin, { opsAccess, researchAccess });
   } catch (error) {
     if (error instanceof AsyncTimeoutError) {
       return failure(
