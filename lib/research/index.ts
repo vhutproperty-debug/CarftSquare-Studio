@@ -40,6 +40,13 @@ export {
   getSystemHealthReport,
   listWorkerHeartbeats,
 } from '@/lib/research/monitoring';
+export {
+  startRemoteConnect,
+  listConnectorStatuses,
+  disconnectPortal,
+  reconnectPortal,
+  processNextConnectJob,
+} from '@/lib/research/browser-gateway';
 export type * from '@/lib/research/types';
 export type * from '@/lib/research/graph/types';
 export type * from '@/lib/research/monitoring/types';

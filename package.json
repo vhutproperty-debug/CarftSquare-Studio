@@ -13,7 +13,9 @@
         "test:db": "node scripts/test-mongodb.mjs",
         "test:brokers": "node scripts/test-brokers-v2.mjs",
         "research:monitor": "npx tsx scripts/research-monitor-worker.ts",
-        "research:monitor:once": "npx tsx scripts/research-monitor-worker.ts --once"
+        "research:monitor:once": "npx tsx scripts/research-monitor-worker.ts --once",
+        "research:browser-worker": "npx tsx scripts/research-browser-worker.ts",
+        "research:browser-worker:once": "npx tsx scripts/research-browser-worker.ts --once"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

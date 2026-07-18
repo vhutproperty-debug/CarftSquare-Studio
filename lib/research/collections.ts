@@ -33,6 +33,8 @@ export const RESEARCH_COLLECTIONS = {
   monitorAudits: 'research_monitor_audits',
   workerHeartbeats: 'research_worker_heartbeats',
   monitorMetrics: 'research_monitor_metrics',
+  /** Connector UX — remote browser connect sessions (no Playwright in Next.js) */
+  connectSessions: 'research_connect_sessions',
 } as const;
 
 export type ResearchCollectionName =
