@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import BrokerAnalyticsPanel from '@/components/ops/brokers/BrokerAnalyticsPanel';
+import BrokerAssistantPanel from '@/components/ops/brokers/BrokerAssistantPanel';
 import BrokerDirectoryPanel from '@/components/ops/brokers/BrokerDirectoryPanel';
 import BrokerImportDialog from '@/components/ops/brokers/BrokerImportDialog';
 import BrokerImportsPanel from '@/components/ops/brokers/BrokerImportsPanel';
@@ -40,9 +41,10 @@ const DEFAULT_FILTERS: BrokersFilterState = {
   sortDir: 'desc',
 };
 
-type TabId = 'inventory' | 'review' | 'directory' | 'projects' | 'imports' | 'analytics';
+type TabId = 'assistant' | 'inventory' | 'review' | 'directory' | 'projects' | 'imports' | 'analytics';
 
 const TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'assistant', label: 'AI Search' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'review', label: 'Review queue' },
   { id: 'directory', label: 'Brokers' },
@@ -192,7 +194,16 @@ export default function BrokersWorkspace() {
         </div>
       </div>
 
-      {metrics ? <BrokersKpiHeader metrics={metrics} /> : null}
+      {tab !== 'assistant' && metrics ? <BrokersKpiHeader metrics={metrics} /> : null}
+
+      {tab === 'assistant' ? (
+        <BrokerAssistantPanel
+          onViewListing={(id) => {
+            setSelectedId(id);
+            setDrawerOpen(true);
+          }}
+        />
+      ) : null}
 
       {tab === 'inventory' ? (
         <>
