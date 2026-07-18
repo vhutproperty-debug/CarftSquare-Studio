@@ -5,6 +5,7 @@ import {
   Handshake,
   Inbox,
   LayoutDashboard,
+  MessagesSquare,
   PhoneCall,
   Plug,
   TrendingUp,
@@ -21,6 +22,7 @@ const ICONS = {
   agreement: FileText,
   intelligence: BarChart3,
   integrations: Plug,
+  brokers: MessagesSquare,
 } as const;
 
 export function OpsNavIcon({ icon, className }: { icon: OpsNavItem['icon']; className?: string }) {

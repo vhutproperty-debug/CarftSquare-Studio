@@ -10,7 +10,8 @@
         "start": "node scripts/start-standalone.mjs",
         "lint": "next lint",
         "type-check": "tsc --noEmit",
-        "test:db": "node scripts/test-mongodb.mjs"
+        "test:db": "node scripts/test-mongodb.mjs",
+        "test:brokers": "node scripts/test-brokers-v2.mjs"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

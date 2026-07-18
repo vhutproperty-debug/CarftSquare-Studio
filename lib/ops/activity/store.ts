@@ -37,7 +37,17 @@ export type OpsActivityAction =
   | 'view_housing_integration_status'
   | 'view_housing_integration_logs'
   | 'sync_housing_connector'
-  | 'test_housing_connector';
+  | 'test_housing_connector'
+  | 'view_broker_inventory_workspace'
+  | 'view_broker_inventory_detail'
+  | 'broker_import_completed'
+  | 'broker_import_duplicate_skipped'
+  | 'broker_freshness_recalculated'
+  | 'broker_review_resolved'
+  | 'broker_project_alias_mutated'
+  | 'view_broker_analytics'
+  | 'view_broker_review_queue'
+  | 'view_broker_directory';
 
 export type OpsActivityLog = {
   id: string;

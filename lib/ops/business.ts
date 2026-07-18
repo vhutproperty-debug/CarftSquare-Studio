@@ -151,7 +151,7 @@ export type OpsNavItem = {
   pillar?: OpsPillarId;
   pipelineStage?: PipelineStageId;
   status: 'active' | 'coming_soon';
-  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations';
+  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations' | 'brokers';
   exact?: boolean;
 };
 
@@ -186,6 +186,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'supply',
         status: 'active',
         icon: 'supply',
+      },
+      {
+        href: '/ops/brokers',
+        label: 'Brokers',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'brokers',
       },
       {
         href: '/ops/matching',
