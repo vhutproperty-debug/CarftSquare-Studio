@@ -30,11 +30,19 @@ export async function upsertPortalConnection(input: {
   portalKey: string;
   portalName: string;
   status: ResearchPortalConnectionStatus;
+  lastError?: string | null;
 }): Promise<ResearchPortalConnection> {
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
   const now = new Date().toISOString();
   const existing = await findPortalConnection(input.workspaceId, input.portalKey);
+  const clearError = input.status === 'connected' || input.lastError === null;
+  const lastError = clearError
+    ? undefined
+    : input.lastError !== undefined
+      ? input.lastError
+      : existing?.lastError;
+
   if (existing) {
     const next: ResearchPortalConnection = {
       ...existing,
@@ -43,9 +51,15 @@ export async function upsertPortalConnection(input: {
       lastSyncedAt: input.status === 'connected' ? now : existing.lastSyncedAt,
       updatedAt: now,
     };
+    if (lastError) next.lastError = lastError;
+    else delete next.lastError;
+
+    const update: Record<string, unknown> = { $set: next };
+    if (clearError) update.$unset = { lastError: '' };
+
     await db.collection(RESEARCH_COLLECTIONS.portalConnections).updateOne(
       { id: existing.id },
-      { $set: next },
+      update,
     );
     return next;
   }
@@ -57,6 +71,7 @@ export async function upsertPortalConnection(input: {
     portalName: input.portalName,
     status: input.status,
     lastSyncedAt: input.status === 'connected' ? now : undefined,
+    lastError,
     createdAt: now,
     updatedAt: now,
   };

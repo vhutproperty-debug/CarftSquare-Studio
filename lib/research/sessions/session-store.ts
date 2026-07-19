@@ -129,5 +129,10 @@ export async function touchBrowserSession(
 }
 
 export async function markBrowserSessionExpired(id: string): Promise<void> {
-  await touchBrowserSession(id, { sessionStatus: 'expired', status: 'expired' });
+  // Expired sessions require reconnect — surface as needs_login (not ERROR).
+  await touchBrowserSession(id, {
+    sessionStatus: 'needs_login',
+    status: 'needs_login',
+    lastValidationError: 'Session expired — reconnect required',
+  });
 }

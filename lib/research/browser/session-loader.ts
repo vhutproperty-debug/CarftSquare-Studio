@@ -1,4 +1,5 @@
 import type { BrowserContext, Cookie } from 'playwright';
+import { connectorLog } from '@/lib/research/browser/connector-log';
 import { decryptResearchPayload, encryptResearchPayload } from '@/lib/research/crypto';
 
 export type StorageStatePayload = {
@@ -10,13 +11,32 @@ export type StorageStatePayload = {
 };
 
 export class SessionLoader {
-  encryptCookies(cookies: Cookie[]): string {
+  encryptCookies(cookies: Cookie[], portal = 'unknown'): string {
+    connectorLog(portal, 'encryption', { cookieCount: cookies.length });
     return encryptResearchPayload(cookies);
   }
 
-  decryptCookies(encoded?: string): Cookie[] {
-    if (!encoded) return [];
-    return decryptResearchPayload<Cookie[]>(encoded);
+  decryptCookies(encoded?: string, portal = 'unknown'): Cookie[] {
+    if (!encoded) {
+      connectorLog(portal, 'decrypt', { ok: false, cookieCount: 0, reason: 'missing' }, 'warn');
+      return [];
+    }
+    try {
+      const cookies = decryptResearchPayload<Cookie[]>(encoded);
+      connectorLog(portal, 'decrypt', { ok: true, cookieCount: cookies.length });
+      return cookies;
+    } catch (error) {
+      connectorLog(
+        portal,
+        'decrypt',
+        {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'error',
+      );
+      throw error;
+    }
   }
 
   encryptStorage(storage: StorageStatePayload): string {
@@ -30,9 +50,10 @@ export class SessionLoader {
 
   async applyToContext(
     context: BrowserContext,
-    input: { encryptedCookies?: string; encryptedStorage?: string },
+    input: { encryptedCookies?: string; encryptedStorage?: string; portal?: string },
   ): Promise<void> {
-    const cookies = this.decryptCookies(input.encryptedCookies);
+    const portal = input.portal || 'unknown';
+    const cookies = this.decryptCookies(input.encryptedCookies, portal);
     if (cookies.length) {
       await context.addCookies(cookies);
     }
@@ -54,17 +75,24 @@ export class SessionLoader {
     }
   }
 
-  async captureFromContext(context: BrowserContext): Promise<{
+  async captureFromContext(
+    context: BrowserContext,
+    portal = 'unknown',
+  ): Promise<{
     encryptedCookies: string;
     encryptedStorage: string;
+    cookieCount: number;
   }> {
     const state = await context.storageState();
+    const cookies = state.cookies as Cookie[];
+    connectorLog(portal, 'cookie_capture', { cookieCount: cookies.length });
     return {
-      encryptedCookies: this.encryptCookies(state.cookies as Cookie[]),
+      encryptedCookies: this.encryptCookies(cookies, portal),
       encryptedStorage: this.encryptStorage({
-        cookies: state.cookies as Cookie[],
+        cookies,
         origins: state.origins,
       }),
+      cookieCount: cookies.length,
     };
   }
 }

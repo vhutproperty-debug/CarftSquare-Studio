@@ -69,6 +69,8 @@ export type ConnectorStatusCard = {
   workerId?: string;
   browserVersion?: string;
   provider?: BrowserProviderKind;
+  /** Exact last validation / connect failure (not a generic "error"). */
+  lastError?: string;
 };
 
 export type BrowserLaunchHandle = {
@@ -78,7 +80,11 @@ export type BrowserLaunchHandle = {
   /** Close remote/local browser resources. */
   close: () => Promise<void>;
   /** Capture encrypted cookies + storage from the live context. */
-  captureSecrets: () => Promise<{ encryptedCookies: string; encryptedStorage: string }>;
+  captureSecrets: () => Promise<{
+    encryptedCookies: string;
+    encryptedStorage: string;
+    cookieCount?: number;
+  }>;
   /** Current page URL for login detection. */
   currentUrl: () => Promise<string>;
   /** Page HTML snippet for login detection. */

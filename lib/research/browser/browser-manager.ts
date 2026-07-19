@@ -29,6 +29,7 @@ export class BrowserManager {
       await this.sessions.applyToContext(context, {
         encryptedCookies: session.encryptedCookies,
         encryptedStorage: session.encryptedStorage,
+        portal,
       });
       return await this.retries.run(() => fn(context), `context:${portal}`);
     } finally {
@@ -55,11 +56,12 @@ export class BrowserManager {
   async captureSessionSecrets(session: ResearchBrowserSession): Promise<{
     encryptedCookies: string;
     encryptedStorage: string;
+    cookieCount: number;
   }> {
     const portal = session.portal || session.portalKey || 'housing';
     const context = await researchBrowserPool.acquire(session.workspaceId, portal);
     try {
-      return await this.sessions.captureFromContext(context);
+      return await this.sessions.captureFromContext(context, portal);
     } finally {
       researchBrowserPool.release(session.workspaceId, portal);
     }

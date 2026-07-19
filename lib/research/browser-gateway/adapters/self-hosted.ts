@@ -37,10 +37,11 @@ export class SelfHostedBrowserAdapter implements BrowserProviderAdapter {
         await context.close().catch(() => undefined);
       },
       async captureSecrets() {
-        const secrets = await loader.captureFromContext(context);
+        const secrets = await loader.captureFromContext(context, input.portal);
         return {
           encryptedCookies: secrets.encryptedCookies,
           encryptedStorage: secrets.encryptedStorage,
+          cookieCount: secrets.cookieCount,
         };
       },
       async currentUrl() {

@@ -156,12 +156,14 @@ export async function processNextConnectJob(): Promise<boolean> {
       message: 'Capturing Session…',
     });
     const secrets = await handle.captureSecrets();
+    const cookieCount = secrets.cookieCount ?? 0;
+    pushWorkerLog('info', `cookie_capture cookieCount=${cookieCount}`);
 
     await updateConnectSession(session.id, {
       phase: 'encrypting',
       message: 'Encrypting…',
     });
-    pushWorkerLog('info', 'Encrypting cookies and storage');
+    pushWorkerLog('info', `encryption cookieCount=${cookieCount}`);
 
     // Close live browser before validation so the persistent profile is not locked.
     await handle.close();
@@ -182,19 +184,22 @@ export async function processNextConnectJob(): Promise<boolean> {
       message: 'Validating…',
       browserSessionId: browserSession.id,
     });
-    pushWorkerLog('info', `Validating ${session.portal} session`);
+    pushWorkerLog('info', `validation_request portal=${session.portal}`);
 
     const connector = requirePortalConnector(session.portal);
     const validation = await connector.validateSession(session.workspaceId);
 
     if (!validation.ok) {
+      const detail =
+        validation.message ||
+        `Validation failed after login (status=${validation.status})`;
       await updateConnectSession(session.id, {
         phase: 'failed',
-        errorMessage: validation.message || 'Validation failed after login',
+        errorMessage: detail,
         finishedAt: new Date().toISOString(),
       });
-      pushWorkerLog('error', validation.message || 'Validation failed');
-      setWorkerError(validation.message || 'Validation failed');
+      pushWorkerLog('error', detail);
+      setWorkerError(detail);
       markWorkerJobDone();
       return true;
     }
@@ -204,6 +209,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       portalKey: session.portal,
       portalName: session.portalName,
       status: 'connected',
+      lastError: null,
     });
 
     await updateConnectSession(session.id, {

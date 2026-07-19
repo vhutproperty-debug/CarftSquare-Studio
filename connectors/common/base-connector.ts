@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Page } from 'playwright';
+import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
 import { getPortalMeta } from '@/lib/research/browser/config';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
@@ -23,12 +24,14 @@ export abstract class BasePortalConnector implements PortalConnector {
   protected abstract parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]>;
 
   async connect(workspaceId: string): Promise<ResearchPortalConnection> {
+    connectorLog(this.key, 'connect', { workspaceId });
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
     const connection = await upsertPortalConnection({
       workspaceId,
       portalKey: this.key,
       portalName: this.displayName,
       status: session.encryptedCookies ? 'connected' : 'pending',
+      lastError: null,
     });
     return connection;
   }
@@ -38,16 +41,45 @@ export abstract class BasePortalConnector implements PortalConnector {
     status: string;
     message?: string;
     sessionId?: string;
+    httpStatus?: number | null;
+    responseKind?: string;
   }> {
+    connectorLog(this.key, 'validateSession', { workspaceId });
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
-    const result = await browserSessionManager.validateSession(session.id);
-    await upsertPortalConnection({
-      workspaceId,
-      portalKey: this.key,
-      portalName: this.displayName,
-      status: result.ok ? 'connected' : result.status === 'needs_login' ? 'pending' : 'error',
-    });
-    return { ...result, sessionId: session.id };
+    try {
+      const result = await browserSessionManager.validateSession(session.id);
+      const portalStatus = result.ok
+        ? 'connected'
+        : result.status === 'needs_login' || result.status === 'expired'
+          ? 'pending'
+          : 'error';
+      await upsertPortalConnection({
+        workspaceId,
+        portalKey: this.key,
+        portalName: this.displayName,
+        status: portalStatus,
+        lastError: result.ok ? null : result.message || `Validation failed (${result.status})`,
+      });
+      connectorLog(this.key, 'validateSession_result', {
+        ok: result.ok,
+        status: result.status,
+        httpStatus: result.httpStatus,
+        responseKind: result.responseKind,
+        message: result.message,
+      });
+      return { ...result, sessionId: session.id };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      connectorLog(this.key, 'validateSession_exception', { error: message }, 'error');
+      await upsertPortalConnection({
+        workspaceId,
+        portalKey: this.key,
+        portalName: this.displayName,
+        status: 'error',
+        lastError: message,
+      });
+      return { ok: false, status: 'error', message, sessionId: session.id };
+    }
   }
 
   async executeSearch(request: ConnectorSearchRequest): Promise<ConnectorSearchResponse> {

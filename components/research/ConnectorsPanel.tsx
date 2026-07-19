@@ -507,6 +507,12 @@ export default function ConnectorsPanel() {
                   </div>
                 </dl>
 
+                {c.lastError ? (
+                  <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800 whitespace-pre-wrap">
+                    {c.lastError}
+                  </p>
+                ) : null}
+
                 <div className="mt-4 flex flex-wrap gap-2">
                   {c.status === 'connected' ? (
                     <>

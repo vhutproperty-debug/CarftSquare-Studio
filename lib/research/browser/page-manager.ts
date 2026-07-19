@@ -12,8 +12,8 @@ export class PageManager {
     return page;
   }
 
-  async goto(page: Page, url: string): Promise<void> {
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+  async goto(page: Page, url: string): Promise<import('playwright').Response | null> {
+    return page.goto(url, { waitUntil: 'domcontentloaded' });
   }
 
   async safeClose(page: Page | null | undefined): Promise<void> {

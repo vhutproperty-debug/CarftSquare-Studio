@@ -15,6 +15,8 @@ export type ResearchPortalConnection = {
   portalName: string;
   status: ResearchPortalConnectionStatus;
   lastSyncedAt?: string;
+  /** Exact last connector/validation failure message for UI. */
+  lastError?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -95,6 +97,8 @@ export type ResearchBrowserSession = {
   lastVerified?: string;
   expiresAt?: string;
   lastUsed?: string;
+  /** Exact last validation failure (HTTP status / timeout / exception). */
+  lastValidationError?: string;
   createdAt: string;
   updatedAt: string;
 };

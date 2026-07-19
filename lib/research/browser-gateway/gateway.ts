@@ -137,7 +137,8 @@ export async function listConnectorStatuses(workspaceId: string): Promise<{
     let status: ConnectorStatusCard['status'] = c.status;
     if (active) status = 'connecting';
     else if (browser?.sessionStatus === 'needs_login') status = 'needs_login';
-    else if (browser?.sessionStatus === 'expired') status = 'expired';
+    else if (browser?.sessionStatus === 'expired') status = 'needs_login';
+    else if (browser?.sessionStatus === 'error') status = 'error';
     else if (browser?.sessionStatus === 'valid' && c.status === 'connected') status = 'connected';
 
     let health: ConnectorStatusCard['health'] = 'unknown';
@@ -167,6 +168,11 @@ export async function listConnectorStatuses(workspaceId: string): Promise<{
       workerId: active?.workerId,
       browserVersion: active?.browserVersion,
       provider: active?.provider || resolveBrowserProvider(),
+      lastError:
+        c.lastError ||
+        browser?.lastValidationError ||
+        active?.errorMessage ||
+        undefined,
     };
   });
 
