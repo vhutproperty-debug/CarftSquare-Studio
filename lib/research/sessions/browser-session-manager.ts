@@ -1,8 +1,9 @@
 import type { SessionManager } from '@/agents/session-manager';
 import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
-import { getPortalMeta } from '@/lib/research/browser/config';
+import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { PageManager } from '@/lib/research/browser/page-manager';
+import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import {
   findBrowserSession,
   getBrowserSessionById,
@@ -104,13 +105,17 @@ export class BrowserSessionManager implements SessionManager {
     });
   }
 
-  async validateSession(sessionId: string): Promise<{
+  async validateSession(
+    sessionId: string,
+    options?: { force?: boolean },
+  ): Promise<{
     ok: boolean;
     status: ResearchBrowserSessionStatus;
     message?: string;
     httpStatus?: number | null;
     responseKind?: ValidationProbe['kind'];
   }> {
+    const t0 = researchPerfNow();
     const session = await getBrowserSessionById(sessionId);
     if (!session) return { ok: false, status: 'error', message: 'Session not found.' };
 
@@ -143,6 +148,24 @@ export class BrowserSessionManager implements SessionManager {
         lastValidationError: 'Login required — no encrypted cookies',
       });
       return { ok: false, status: 'needs_login', message: 'Login required.' };
+    }
+
+    // Skip live browser validation when recently verified (eliminates duplicate navs).
+    if (
+      !options?.force &&
+      session.sessionStatus === 'valid' &&
+      session.lastVerified
+    ) {
+      const age = Date.now() - new Date(session.lastVerified).getTime();
+      if (age >= 0 && age < RESEARCH_BROWSER_CONFIG.validateFreshMs) {
+        researchPerfLog('session_validation', t0, {
+          portal,
+          skipped: true,
+          ageMs: age,
+        });
+        connectorLog(portal, 'validation_skipped_fresh', { ageMs: age });
+        return { ok: true, status: 'valid', responseKind: '200' };
+      }
     }
 
     const outcome = await researchBrowserManager.withPage(
@@ -287,6 +310,11 @@ export class BrowserSessionManager implements SessionManager {
       sessionStatus: 'valid',
       lastVerified: new Date().toISOString(),
       lastValidationError: '',
+    });
+    researchPerfLog('session_validation', t0, {
+      portal,
+      skipped: false,
+      httpStatus: probe.httpStatus,
     });
     connectorLog(portal, 'validation_ok', {
       httpStatus: probe.httpStatus,

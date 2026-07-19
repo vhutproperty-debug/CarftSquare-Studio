@@ -1,0 +1,26 @@
+# Standalone Prop/Research Browser Worker for Railway.
+# Uses Playwright's official image so Chromium + system deps are present.
+FROM mcr.microsoft.com/playwright:v1.61.1-jammy
+
+WORKDIR /app
+
+COPY package.json package-lock.json* yarn.lock* ./
+RUN if [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile --production=false; \
+    elif [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi
+
+COPY . .
+
+# Chromium is already installed in this image — do not install Firefox/WebKit.
+ENV NODE_ENV=production
+# Do NOT set RESEARCH_CONNECT_HEADLESS / RESEARCH_BROWSER_HEADLESS here.
+# Housing.com (Akamai) returns HTTP 406 to headless Chromium; defaults stay headed.
+# Railway has no real display — xvfb-run provides a virtual screen for headed mode.
+
+EXPOSE 4173
+
+CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1365x900x24", "npx", "tsx", "scripts/research-browser-worker.ts"]

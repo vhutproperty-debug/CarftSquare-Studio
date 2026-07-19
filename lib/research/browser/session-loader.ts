@@ -1,5 +1,7 @@
+import { createHash } from 'crypto';
 import type { BrowserContext, Cookie } from 'playwright';
 import { connectorLog } from '@/lib/research/browser/connector-log';
+import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import { decryptResearchPayload, encryptResearchPayload } from '@/lib/research/crypto';
 
 export type StorageStatePayload = {
@@ -9,6 +11,18 @@ export type StorageStatePayload = {
     localStorage: Array<{ name: string; value: string }>;
   }>;
 };
+
+export function secretsFingerprint(
+  encryptedCookies?: string,
+  encryptedStorage?: string,
+): string {
+  return createHash('sha256')
+    .update(encryptedCookies || '')
+    .update('|')
+    .update(encryptedStorage || '')
+    .digest('hex')
+    .slice(0, 24);
+}
 
 export class SessionLoader {
   encryptCookies(cookies: Cookie[], portal = 'unknown'): string {
@@ -22,7 +36,9 @@ export class SessionLoader {
       return [];
     }
     try {
+      const t0 = researchPerfNow();
       const cookies = decryptResearchPayload<Cookie[]>(encoded);
+      researchPerfLog('cookie_decrypt', t0, { portal, cookieCount: cookies.length });
       connectorLog(portal, 'decrypt', { ok: true, cookieCount: cookies.length });
       return cookies;
     } catch (error) {
@@ -53,26 +69,33 @@ export class SessionLoader {
     input: { encryptedCookies?: string; encryptedStorage?: string; portal?: string },
   ): Promise<void> {
     const portal = input.portal || 'unknown';
+    const t0 = researchPerfNow();
     const cookies = this.decryptCookies(input.encryptedCookies, portal);
     if (cookies.length) {
+      const tInject = researchPerfNow();
       await context.addCookies(cookies);
+      researchPerfLog('cookie_injection', tInject, { portal, cookieCount: cookies.length });
     }
 
     const storage = this.decryptStorage(input.encryptedStorage);
-    for (const originEntry of storage.origins || []) {
-      if (!originEntry.localStorage?.length) continue;
+    const origins = (storage.origins || []).filter((o) => o.localStorage?.length);
+    if (origins.length) {
+      // Reuse one page across origins instead of open/close per origin.
       const page = await context.newPage();
       try {
-        await page.goto(originEntry.origin, { waitUntil: 'domcontentloaded' });
-        await page.evaluate((items) => {
-          for (const item of items) {
-            window.localStorage.setItem(item.name, item.value);
-          }
-        }, originEntry.localStorage);
+        for (const originEntry of origins) {
+          await page.goto(originEntry.origin, { waitUntil: 'domcontentloaded' });
+          await page.evaluate((items) => {
+            for (const item of items) {
+              window.localStorage.setItem(item.name, item.value);
+            }
+          }, originEntry.localStorage);
+        }
       } finally {
         await page.close().catch(() => undefined);
       }
     }
+    researchPerfLog('session_apply', t0, { portal, origins: origins.length });
   }
 
   async captureFromContext(

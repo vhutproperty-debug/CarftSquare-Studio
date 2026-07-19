@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.research-profiles
+.research-screenshots
+*.md
+.env*
+!.env.example

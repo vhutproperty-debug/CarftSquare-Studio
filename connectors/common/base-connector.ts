@@ -2,7 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Page } from 'playwright';
 import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
-import { getPortalMeta } from '@/lib/research/browser/config';
+import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
+import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
 import {
   findPortalConnection,
@@ -15,6 +16,10 @@ import type {
   ResearchListing,
   ResearchPortalConnection,
 } from '@/lib/research/types';
+
+/** Prefer listing anchors over waiting for analytics-driven networkidle. */
+const LISTING_READY_SELECTOR =
+  'a[href*="property"], a[href*="/rent"], a[href*="/buy"], a[href*="flat"], a[href*="apartment"], a[href*="resale"]';
 
 export abstract class BasePortalConnector implements PortalConnector {
   abstract readonly key: string;
@@ -47,7 +52,8 @@ export abstract class BasePortalConnector implements PortalConnector {
     connectorLog(this.key, 'validateSession', { workspaceId });
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
     try {
-      const result = await browserSessionManager.validateSession(session.id);
+      // Explicit validate/connect must always hit the portal (never use fresh TTL cache).
+      const result = await browserSessionManager.validateSession(session.id, { force: true });
       const portalStatus = result.ok
         ? 'connected'
         : result.status === 'needs_login' || result.status === 'expired'
@@ -83,14 +89,25 @@ export abstract class BasePortalConnector implements PortalConnector {
   }
 
   async executeSearch(request: ConnectorSearchRequest): Promise<ConnectorSearchResponse> {
+    const tSearch = researchPerfNow();
     const session = await browserSessionManager.getOrCreate(request.workspaceId, this.key);
-    const validation = await browserSessionManager.validateSession(session.id);
-    if (!validation.ok) {
+
+    if (!request.skipValidation) {
+      const validation = await browserSessionManager.validateSession(session.id);
+      if (!validation.ok) {
+        return {
+          ok: false,
+          listings: [],
+          sessionStatus: validation.status,
+          message: validation.message || 'Portal session is not authenticated.',
+        };
+      }
+    } else if (session.sessionStatus !== 'valid' || !session.encryptedCookies) {
       return {
         ok: false,
         listings: [],
-        sessionStatus: validation.status,
-        message: validation.message || 'Portal session is not authenticated.',
+        sessionStatus: session.sessionStatus || 'needs_login',
+        message: 'Portal session is not authenticated.',
       };
     }
 
@@ -99,9 +116,20 @@ export abstract class BasePortalConnector implements PortalConnector {
       session,
       `search-${this.key}`,
       async (page) => {
+        const tNav = researchPerfNow();
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
-        await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => undefined);
-        return this.parseListingsFromPage(page, this.key);
+        // Targeted wait: listing anchors (≤2.5s) instead of networkidle (≤8s on trackers).
+        await page
+          .waitForSelector(LISTING_READY_SELECTOR, { timeout: 2_500 })
+          .catch(() => undefined);
+        researchPerfLog('search_navigation', tNav, { portal: this.key });
+        const tExtract = researchPerfNow();
+        const listings = await this.parseListingsFromPage(page, this.key);
+        researchPerfLog('result_extraction', tExtract, {
+          portal: this.key,
+          count: listings.length,
+        });
+        return listings;
       },
     );
 
@@ -115,7 +143,18 @@ export abstract class BasePortalConnector implements PortalConnector {
       };
     }
 
-    await browserSessionManager.renew(session.id).catch(() => undefined);
+    // Throttle renew — full storageState capture is expensive and usually unnecessary.
+    const lastVerifiedMs = session.lastVerified
+      ? Date.now() - new Date(session.lastVerified).getTime()
+      : Number.POSITIVE_INFINITY;
+    if (lastVerifiedMs >= RESEARCH_BROWSER_CONFIG.renewMinIntervalMs) {
+      await browserSessionManager.renew(session.id).catch(() => undefined);
+    }
+
+    researchPerfLog('execute_search_total', tSearch, {
+      portal: this.key,
+      listings: outcome.result?.length || 0,
+    });
     return {
       ok: true,
       listings: outcome.result || [],

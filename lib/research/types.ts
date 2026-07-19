@@ -300,6 +300,8 @@ export type ConnectorSearchRequest = {
   workspaceId: string;
   criteria: ResearchPlanCriteria;
   sessionId?: string;
+  /** When true, caller already validated — skip a second live browser check. */
+  skipValidation?: boolean;
 };
 
 export type ConnectorSearchResponse = {

@@ -6,7 +6,8 @@ export const RESEARCH_BROWSER_CONFIG = {
   headless: process.env.RESEARCH_BROWSER_HEADLESS === 'true',
   defaultTimeoutMs: Number(process.env.RESEARCH_BROWSER_TIMEOUT_MS || 45_000),
   navigationTimeoutMs: Number(process.env.RESEARCH_BROWSER_NAV_TIMEOUT_MS || 60_000),
-  maxPoolSize: Number(process.env.RESEARCH_BROWSER_POOL_SIZE || 2),
+  // Default covers all five portals for parallel AI search without cold relaunch thrash.
+  maxPoolSize: Number(process.env.RESEARCH_BROWSER_POOL_SIZE || 5),
   maxRetries: Number(process.env.RESEARCH_BROWSER_RETRIES || 2),
   profileRoot:
     process.env.RESEARCH_BROWSER_PROFILE_ROOT
@@ -15,6 +16,12 @@ export const RESEARCH_BROWSER_CONFIG = {
     process.env.RESEARCH_BROWSER_SCREENSHOT_ROOT
     || path.join(process.cwd(), '.research-screenshots'),
   sessionTtlMs: Number(process.env.RESEARCH_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000),
+  /** Skip live browser validation when lastVerified is newer than this (ms). */
+  validateFreshMs: Number(process.env.RESEARCH_VALIDATE_FRESH_MS || 10 * 60 * 1000),
+  /** Skip post-search cookie renew when lastVerified is newer than this (ms). */
+  renewMinIntervalMs: Number(process.env.RESEARCH_RENEW_MIN_INTERVAL_MS || 15 * 60 * 1000),
+  /** Block images/fonts/media/trackers on automation contexts (not login adapters). */
+  blockHeavyResources: process.env.RESEARCH_BROWSER_BLOCK_RESOURCES !== 'false',
 } as const;
 
 export type ResearchPortalKey =
@@ -62,6 +69,8 @@ export const RESEARCH_PORTALS: Array<{
   },
 ];
 
+const PORTAL_META_BY_KEY = new Map(RESEARCH_PORTALS.map((p) => [p.key, p]));
+
 export function getPortalMeta(portal: string) {
-  return RESEARCH_PORTALS.find((p) => p.key === portal);
+  return PORTAL_META_BY_KEY.get(portal as ResearchPortalKey);
 }

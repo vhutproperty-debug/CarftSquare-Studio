@@ -1,14 +1,19 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
+let cachedEncryptionKey: Buffer | null = null;
+
 function getEncryptionKey(): Buffer {
+  if (cachedEncryptionKey) return cachedEncryptionKey;
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || process.env.RESEARCH_ENCRYPTION_KEY;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('AUTH_SECRET is required to encrypt research browser sessions.');
     }
-    return createHash('sha256').update('dev-only-research-encryption-key').digest();
+    cachedEncryptionKey = createHash('sha256').update('dev-only-research-encryption-key').digest();
+    return cachedEncryptionKey;
   }
-  return createHash('sha256').update(secret).digest();
+  cachedEncryptionKey = createHash('sha256').update(secret).digest();
+  return cachedEncryptionKey;
 }
 
 /** Encrypt JSON-serializable payload (cookies / storage) for Mongo persistence. */

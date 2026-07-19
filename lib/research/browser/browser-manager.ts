@@ -2,8 +2,9 @@ import type { BrowserContext, Page } from 'playwright';
 import { BrowserFactory } from '@/lib/research/browser/browser-factory';
 import { researchBrowserPool } from '@/lib/research/browser/browser-pool';
 import { PageManager } from '@/lib/research/browser/page-manager';
+import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import { RetryManager } from '@/lib/research/browser/retry-manager';
-import { SessionLoader } from '@/lib/research/browser/session-loader';
+import { secretsFingerprint, SessionLoader } from '@/lib/research/browser/session-loader';
 import type { ResearchBrowserSession } from '@/lib/research/types';
 
 /**
@@ -24,14 +25,30 @@ export class BrowserManager {
     fn: (context: BrowserContext) => Promise<T>,
   ): Promise<T> {
     const portal = session.portal || session.portalKey || 'housing';
-    const context = await researchBrowserPool.acquire(session.workspaceId, portal);
+    const acquired = await researchBrowserPool.acquire(session.workspaceId, portal);
     try {
-      await this.sessions.applyToContext(context, {
-        encryptedCookies: session.encryptedCookies,
-        encryptedStorage: session.encryptedStorage,
-        portal,
-      });
-      return await this.retries.run(() => fn(context), `context:${portal}`);
+      const fingerprint = secretsFingerprint(
+        session.encryptedCookies,
+        session.encryptedStorage,
+      );
+      if (
+        session.encryptedCookies &&
+        acquired.secretsFingerprint &&
+        acquired.secretsFingerprint === fingerprint
+      ) {
+        researchPerfLog('session_apply_skipped', researchPerfNow(), {
+          portal,
+          reason: 'warm_fingerprint_match',
+        });
+      } else if (session.encryptedCookies || session.encryptedStorage) {
+        await this.sessions.applyToContext(acquired.context, {
+          encryptedCookies: session.encryptedCookies,
+          encryptedStorage: session.encryptedStorage,
+          portal,
+        });
+        researchBrowserPool.markSecretsApplied(session.workspaceId, portal, fingerprint);
+      }
+      return await this.retries.run(() => fn(acquired.context), `context:${portal}`);
     } finally {
       researchBrowserPool.release(session.workspaceId, portal);
     }
@@ -44,7 +61,13 @@ export class BrowserManager {
   ): Promise<{ result?: T; screenshotPath?: string; error?: Error }> {
     try {
       return await this.withSessionContext(session, async (context) => {
-        return this.pages.withPage(context, label, (page) => fn(page, context));
+        const portal = session.portal || session.portalKey || 'housing';
+        const page = await researchBrowserPool.acquireWarmPage(
+          session.workspaceId,
+          portal,
+          context,
+        );
+        return this.pages.withExistingPage(page, label, (p) => fn(p, context));
       });
     } catch (error) {
       return {
@@ -59,9 +82,12 @@ export class BrowserManager {
     cookieCount: number;
   }> {
     const portal = session.portal || session.portalKey || 'housing';
-    const context = await researchBrowserPool.acquire(session.workspaceId, portal);
+    const acquired = await researchBrowserPool.acquire(session.workspaceId, portal);
     try {
-      return await this.sessions.captureFromContext(context, portal);
+      const secrets = await this.sessions.captureFromContext(acquired.context, portal);
+      // Profile cookies changed — force re-apply on next acquire.
+      researchBrowserPool.clearSecretsFingerprint(session.workspaceId, portal);
+      return secrets;
     } finally {
       researchBrowserPool.release(session.workspaceId, portal);
     }

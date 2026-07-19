@@ -109,9 +109,30 @@ async function tick() {
   }
 }
 
+function resolveListenPort(): number {
+  // Railway injects PORT; keep RESEARCH_BROWSER_WORKER_PORT / --port for local.
+  const raw = arg('port', process.env.PORT || process.env.RESEARCH_BROWSER_WORKER_PORT || '4173');
+  const port = Number(raw);
+  if (!Number.isFinite(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid worker port: ${raw}`);
+  }
+  return port;
+}
+
+function resolveListenHost(): string {
+  // Explicit override wins. Railway (PORT set) must bind 0.0.0.0 for public health checks.
+  const explicit = process.env.RESEARCH_BROWSER_WORKER_HOST?.trim();
+  if (explicit) return explicit;
+  if (process.env.PORT || process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID) {
+    return '0.0.0.0';
+  }
+  return '127.0.0.1';
+}
+
 async function main() {
   const once = process.argv.includes('--once');
-  const port = Math.max(1024, Number(arg('port', process.env.RESEARCH_BROWSER_WORKER_PORT || '4173')));
+  const port = resolveListenPort();
+  const host = resolveListenHost();
   const intervalSec = Math.max(2, Number(arg('interval', '3')));
   const provider = resolveBrowserProvider();
   const workerId = `browser-${hostname()}-${process.pid}`;
@@ -124,7 +145,7 @@ async function main() {
   console.log(` workerId    : ${workerId}`);
   console.log(` provider    : ${provider}`);
   console.log(` listen port : ${port}`);
-  console.log(` bind        : 127.0.0.1 (local PC — Railway URL later)`);
+  console.log(` bind        : ${host}`);
   console.log(` interval    : ${intervalSec}s`);
   console.log('══════════════════════════════════════════════════════════');
   console.log('');
@@ -140,25 +161,40 @@ async function main() {
   }
 
   let httpServer: Awaited<ReturnType<typeof startWorkerHttpServer>> | null = null;
+  let stopping = false;
   try {
     httpServer = await startWorkerHttpServer({
+      host,
       port,
       getQueueStats,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
-      `[research-browser-worker] FAILED to bind port ${port}: ${message}\n` +
+      `[research-browser-worker] FAILED to bind ${host}:${port}: ${message}\n` +
         `Is another worker already running? Try --port=${port + 1}`,
     );
     process.exit(1);
   }
 
-  pushWorkerLog('info', `Worker healthy · http://127.0.0.1:${port}/status`);
-  pushWorkerLog('info', 'Next.js should use RESEARCH_BROWSER_WORKER_URL=http://127.0.0.1:' + port);
+  if (host === '0.0.0.0') {
+    pushWorkerLog('info', `Worker healthy · bound 0.0.0.0:${port} · GET /health`);
+    pushWorkerLog(
+      'info',
+      'Set Vercel RESEARCH_BROWSER_WORKER_URL to this service public HTTPS URL',
+    );
+  } else {
+    pushWorkerLog('info', `Worker healthy · http://127.0.0.1:${port}/status`);
+    pushWorkerLog(
+      'info',
+      `Next.js should use RESEARCH_BROWSER_WORKER_URL=http://127.0.0.1:${port}`,
+    );
+  }
   pushWorkerLog('info', 'Ready to claim connect sessions. Playwright will only run in this process.');
 
   const shutdown = async (signal: string) => {
+    if (stopping) return;
+    stopping = true;
     pushWorkerLog('warn', `Shutting down (${signal})…`);
     try {
       await httpServer?.close();
@@ -184,7 +220,9 @@ async function main() {
   }
 
   for (;;) {
+    if (stopping) break;
     await tick();
+    if (stopping) break;
     await new Promise((r) => setTimeout(r, intervalSec * 1000));
   }
 }

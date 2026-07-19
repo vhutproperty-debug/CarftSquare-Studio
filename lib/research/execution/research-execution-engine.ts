@@ -124,36 +124,54 @@ export class ResearchExecutionEngine {
       ),
     );
 
-    for (const portal of portals) {
-      try {
-        const connector = requirePortalConnector(portal);
-        const validation = await connector.validateSession(query.workspaceId);
-        if (!validation.ok) {
-          portalErrors.push({
-            portal,
-            message: validation.message || `Session ${validation.status}`,
+    // Independent portals run in parallel (same result set; dedupe below).
+    const portalResults = await Promise.all(
+      portals.map(async (portal) => {
+        try {
+          const connector = requirePortalConnector(portal);
+          const validation = await connector.validateSession(query.workspaceId);
+          if (!validation.ok) {
+            return {
+              listings: [] as ResearchListing[],
+              error: {
+                portal,
+                message: validation.message || `Session ${validation.status}`,
+              },
+            };
+          }
+          const response = await connector.executeSearch({
+            workspaceId: query.workspaceId,
+            criteria: plan.criteria,
+            sessionId: validation.sessionId,
+            skipValidation: true,
           });
-          continue;
+          if (!response.ok) {
+            return {
+              listings: [] as ResearchListing[],
+              error: {
+                portal,
+                message: response.message || 'Search failed',
+              },
+            };
+          }
+          return {
+            listings: filterListings(response.listings, plan.criteria),
+            error: null as null | { portal: string; message: string },
+          };
+        } catch (error) {
+          return {
+            listings: [] as ResearchListing[],
+            error: {
+              portal,
+              message: error instanceof Error ? error.message : String(error),
+            },
+          };
         }
-        const response = await connector.executeSearch({
-          workspaceId: query.workspaceId,
-          criteria: plan.criteria,
-          sessionId: validation.sessionId,
-        });
-        if (!response.ok) {
-          portalErrors.push({
-            portal,
-            message: response.message || 'Search failed',
-          });
-          continue;
-        }
-        allListings.push(...filterListings(response.listings, plan.criteria));
-      } catch (error) {
-        portalErrors.push({
-          portal,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
+      }),
+    );
+    for (const row of portalResults) {
+      if (row.error) portalErrors.push(row.error);
+      allListings.push(...row.listings);
     }
 
     const unique = dedupeListings(allListings);
