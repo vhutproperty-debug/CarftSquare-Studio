@@ -16,6 +16,9 @@ export type BrowserWorkerStatus = {
   workerId: string | null;
   healthy: boolean;
   source: 'http' | 'offline';
+  /** Hostname:port from RESEARCH_BROWSER_WORKER_URL (no path/secrets). */
+  workerHost: string;
+  workerUrlIsLocalhost: boolean;
 };
 
 /** Default local worker URL — Railway can override with RESEARCH_BROWSER_WORKER_URL. */
@@ -24,6 +27,23 @@ export function getBrowserWorkerBaseUrl(): string {
     process.env.RESEARCH_BROWSER_WORKER_URL?.trim() ||
     `http://127.0.0.1:${process.env.RESEARCH_BROWSER_WORKER_PORT || '4173'}`
   );
+}
+
+export function describeBrowserWorkerUrl(baseUrl = getBrowserWorkerBaseUrl()): {
+  workerHost: string;
+  workerUrlIsLocalhost: boolean;
+} {
+  try {
+    const u = new URL(baseUrl);
+    const workerHost = u.port ? `${u.hostname}:${u.port}` : u.hostname;
+    const workerUrlIsLocalhost =
+      u.hostname === '127.0.0.1' ||
+      u.hostname === 'localhost' ||
+      u.hostname === '::1';
+    return { workerHost, workerUrlIsLocalhost };
+  } catch {
+    return { workerHost: 'invalid', workerUrlIsLocalhost: true };
+  }
 }
 
 export async function countConnectQueue(): Promise<{
@@ -59,6 +79,7 @@ export async function countConnectQueue(): Promise<{
 export async function fetchBrowserWorkerStatus(): Promise<BrowserWorkerStatus> {
   const queue = await countConnectQueue().catch(() => ({ queueSize: 0, activeSessions: 0 }));
   const base = getBrowserWorkerBaseUrl();
+  const urlMeta = describeBrowserWorkerUrl(base);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2_500);
 
@@ -94,6 +115,7 @@ export async function fetchBrowserWorkerStatus(): Promise<BrowserWorkerStatus> {
       workerId: (json.workerId as string | null) ?? null,
       healthy: json.healthy !== false,
       source: 'http',
+      ...urlMeta,
     };
   } catch (error) {
     clearTimeout(timeout);
@@ -171,5 +193,6 @@ function offlineStatus(
     workerId: null,
     healthy: false,
     source: 'offline',
+    ...describeBrowserWorkerUrl(),
   };
 }

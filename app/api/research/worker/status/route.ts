@@ -36,5 +36,7 @@ export async function GET(request: Request) {
     workerId: status.workerId,
     healthy: status.healthy,
     source: status.source,
+    workerHost: status.workerHost,
+    workerUrlIsLocalhost: status.workerUrlIsLocalhost,
   });
 }

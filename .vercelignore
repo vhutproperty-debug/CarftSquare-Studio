@@ -1,0 +1,9 @@
+﻿.research-profiles
+.research-screenshots
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+scripts/tmp-*
