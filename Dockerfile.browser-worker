@@ -31,4 +31,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 4173
 
-CMD ["./scripts/railway-browser-worker-entrypoint.sh"]
+CMD ["bash", "scripts/railway-browser-worker-entrypoint.sh"]

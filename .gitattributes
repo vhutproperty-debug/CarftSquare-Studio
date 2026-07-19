@@ -1,0 +1,2 @@
+*.sh text eol=lf
+scripts/railway-browser-worker-entrypoint.sh text eol=lf
