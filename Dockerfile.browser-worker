@@ -1,8 +1,14 @@
 # Standalone Prop/Research Browser Worker for Railway.
-# Playwright image + Xvfb + x11vnc + noVNC for secure remote login.
+# Must ship Playwright Chromium inside the image — Connect cannot download browsers at runtime.
+#
+# Base image tag MUST match package.json playwright version (currently 1.61.1).
 FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 WORKDIR /app
+
+# Official image stores browsers here; keep npm Playwright pointed at the same tree.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 
 # Headed Chromium on Railway needs a virtual display + VNC/noVNC gateway.
 RUN apt-get update \
@@ -25,11 +31,16 @@ RUN if [ -f yarn.lock ]; then \
       npm install; \
     fi
 
+# After npm install, Playwright looks for chromium-NNNN matching the npm package.
+# Re-install Chromium (+ OS deps) into PLAYWRIGHT_BROWSERS_PATH so the path always exists.
+RUN npx playwright install --with-deps chromium \
+  && node -e "const p=require('playwright/package.json'); const {chromium}=require('playwright'); const fs=require('fs'); const exe=chromium.executablePath(); console.log('[docker-build] playwright='+p.version); console.log('[docker-build] executablePath='+exe); console.log('[docker-build] browserExists='+fs.existsSync(exe)); if(!fs.existsSync(exe)) process.exit(1);"
+
 COPY . .
 
-RUN chmod +x scripts/railway-browser-worker-entrypoint.sh
+RUN chmod +x scripts/railway-browser-worker-entrypoint.sh scripts/verify-playwright-chromium.mjs \
+  && node scripts/verify-playwright-chromium.mjs
 
-# Chromium is already installed in this image — do not install Firefox/WebKit.
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
 # Always use writable temp for Chromium profiles (never read-only app roots).

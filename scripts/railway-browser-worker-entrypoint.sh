@@ -5,6 +5,23 @@ set -euo pipefail
 echo "[boot] starting Prop/Research Browser Worker"
 echo "[boot] node=$(node -v 2>/dev/null || echo missing) pwd=$(pwd) PORT=${PORT:-unset}"
 echo "[boot] RAILWAY_SERVICE_NAME=${RAILWAY_SERVICE_NAME:-unset}"
+echo "[boot] dockerfile=Dockerfile.browser-worker (expect railway.json builder=DOCKERFILE)"
+
+# Keep npm Playwright and image browsers on the same tree (matches Dockerfile ENV).
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}"
+echo "[boot] PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH}"
+
+# Fail immediately if Chromium is missing — do not wait for a Connect job.
+if [ -f scripts/verify-playwright-chromium.mjs ]; then
+  echo "[boot] verifying Playwright Chromium…"
+  node scripts/verify-playwright-chromium.mjs || {
+    echo "[boot] FATAL: Playwright Chromium missing. Redeploy with Dockerfile.browser-worker build that runs: npx playwright install --with-deps chromium"
+    exit 1
+  }
+else
+  echo "[boot] FATAL: scripts/verify-playwright-chromium.mjs missing from image"
+  exit 1
+fi
 
 # Internal worker port (proxy owns Railway PORT).
 export RESEARCH_BROWSER_WORKER_PORT="${RESEARCH_BROWSER_WORKER_PORT:-4173}"

@@ -84,6 +84,24 @@ async function validateConfig(provider: string) {
     throw new Error('RESEARCH_BROWSER_PROVIDER=browserbase requires RESEARCH_BROWSERBASE_WS.');
   }
 
+  // Self-hosted / Docker: Chromium must already be on disk (image build + entrypoint check).
+  if (provider === 'self_hosted' || provider === 'docker_worker') {
+    const { chromium } = await import('playwright');
+    const fs = await import('fs');
+    const executablePath = chromium.executablePath();
+    const exists = Boolean(executablePath) && fs.existsSync(executablePath);
+    pushWorkerLog(
+      'info',
+      `playwright_chromium executablePath=${executablePath} browserExists=${exists} PLAYWRIGHT_BROWSERS_PATH=${process.env.PLAYWRIGHT_BROWSERS_PATH || 'default'}`,
+    );
+    if (!exists) {
+      throw new Error(
+        `Playwright Chromium executable missing at ${executablePath || '(empty)'}. ` +
+          'Rebuild Railway with Dockerfile.browser-worker (npx playwright install --with-deps chromium).',
+      );
+    }
+  }
+
   // Verify Mongo connectivity early
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
