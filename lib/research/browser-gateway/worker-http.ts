@@ -8,20 +8,24 @@ import {
 } from '@/lib/research/browser-gateway/worker-state';
 
 export type WorkerHttpServer = {
+  host: string;
   port: number;
   close: () => Promise<void>;
 };
 
 /**
- * Lightweight HTTP control plane for the local Browser Worker.
+ * Lightweight HTTP control plane for the Browser Worker.
  * Next.js talks to this — Playwright stays in the worker process only.
+ * Binds 0.0.0.0 on Railway (PORT set); 127.0.0.1 for local-only by default.
  */
 export async function startWorkerHttpServer(input: {
+  host?: string;
   port: number;
   getQueueStats: () => Promise<{ queueSize: number; activeSessions: number }>;
 }): Promise<WorkerHttpServer> {
+  const host = input.host || '127.0.0.1';
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url || '/', `http://127.0.0.1:${input.port}`);
+    const url = new URL(req.url || '/', `http://${host}:${input.port}`);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-research-worker-secret');
@@ -78,12 +82,13 @@ export async function startWorkerHttpServer(input: {
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(input.port, '127.0.0.1', () => resolve());
+    server.listen(input.port, host, () => resolve());
   });
 
-  pushWorkerLog('info', `HTTP control plane listening on http://127.0.0.1:${input.port}`);
+  pushWorkerLog('info', `HTTP control plane listening on http://${host}:${input.port}`);
 
   return {
+    host,
     port: input.port,
     close: () =>
       new Promise((resolve, reject) => {

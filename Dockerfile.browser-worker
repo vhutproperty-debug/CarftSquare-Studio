@@ -1,0 +1,26 @@
+# Standalone Prop/Research Browser Worker for Railway.
+# Uses Playwright's official image so Chromium + system deps are present.
+FROM mcr.microsoft.com/playwright:v1.61.1-jammy
+
+WORKDIR /app
+
+COPY package.json package-lock.json* yarn.lock* ./
+RUN if [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile --production=false; \
+    elif [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi
+
+COPY . .
+
+# Chromium is already installed in this image — do not install Firefox/WebKit.
+ENV NODE_ENV=production
+# Railway has no display; headed Chromium cannot run in this service.
+ENV RESEARCH_BROWSER_HEADLESS=true
+ENV RESEARCH_CONNECT_HEADLESS=true
+
+EXPOSE 4173
+
+CMD ["npx", "tsx", "scripts/research-browser-worker.ts"]
