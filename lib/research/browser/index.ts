@@ -5,6 +5,7 @@ export { SessionLoader } from '@/lib/research/browser/session-loader';
 export { PageManager } from '@/lib/research/browser/page-manager';
 export { ScreenshotManager } from '@/lib/research/browser/screenshot-manager';
 export { RetryManager } from '@/lib/research/browser/retry-manager';
+export { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 export {
   RESEARCH_BROWSER_CONFIG,
   RESEARCH_PORTALS,

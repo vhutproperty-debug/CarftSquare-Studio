@@ -262,7 +262,7 @@ async function runValidateOnly(workspaceId: string, portal: string, connectId: s
       });
       return;
     }
-    const result = await browserSessionManager.validateSession(session.id);
+    const result = await browserSessionManager.validateSession(session.id, { force: true });
     if (!result.ok) {
       await notifySessionNeedsLogin({ workspaceId, portal });
       await updateConnectSession(connectId, {
@@ -314,7 +314,7 @@ export async function validateDueSessions(workspaceId?: string): Promise<number>
   for (const s of sessions) {
     const last = s.lastVerified ? new Date(s.lastVerified).getTime() : 0;
     if (now - last < VALIDATE_EVERY_MS) continue;
-    const result = await browserSessionManager.validateSession(s.id);
+    const result = await browserSessionManager.validateSession(s.id, { force: true });
     checked += 1;
     if (!result.ok) {
       await notifySessionNeedsLogin({

@@ -48,6 +48,7 @@ export async function searchPortalsInParallel(input: {
           workspaceId: input.workspaceId,
           criteria: input.criteria,
           sessionId: validation.sessionId,
+          skipValidation: true,
         });
         done += 1;
         await input.onPortalDone?.(done, portals.length, portal);
