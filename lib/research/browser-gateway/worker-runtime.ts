@@ -11,7 +11,11 @@ import {
   getConnectSessionById,
   updateConnectSession,
 } from '@/lib/research/browser-gateway/connect-session-store';
-import { looksAuthenticated } from '@/lib/research/browser-gateway/login-detect';
+import {
+  looksAuthenticated,
+  observeLoginSignals,
+  type LoginDetectState,
+} from '@/lib/research/browser-gateway/login-detect';
 import { notifySessionNeedsLogin } from '@/lib/research/browser-gateway/gateway';
 import type { BrowserLaunchHandle, ConnectSession } from '@/lib/research/browser-gateway/types';
 import {
@@ -277,6 +281,7 @@ async function waitForManualLogin(input: {
   const { session, handle, previewFile } = input;
   const deadline = Date.now() + LOGIN_TIMEOUT_MS;
   let poll = 0;
+  let detectState: LoginDetectState = { sawLoginSurface: false };
 
   while (Date.now() < deadline) {
     const current = await getConnectSessionById(session.id);
@@ -299,17 +304,21 @@ async function waitForManualLogin(input: {
     }
 
     const signals = await handle.pageSignals();
-    const authenticated = looksAuthenticated({
-      ...signals,
-      loginUrl: session.loginUrl,
-    });
+    detectState = observeLoginSignals(
+      { ...signals, loginUrl: session.loginUrl },
+      detectState,
+    );
+    const authenticated = looksAuthenticated(
+      { ...signals, loginUrl: session.loginUrl },
+      detectState,
+    );
 
     if (poll % 5 === 0) {
       pushWorkerLog(
         'info',
         `login_wait_poll portal=${session.portal} n=${poll} url=${signals.url} cookies=${
           signals.cookieCount ?? 'n/a'
-        } authenticated=${authenticated}`,
+        } sawLoginSurface=${detectState.sawLoginSurface} authenticated=${authenticated}`,
       );
     }
 
@@ -318,7 +327,7 @@ async function waitForManualLogin(input: {
         'info',
         `login_wait_success portal=${session.portal} url=${signals.url} cookies=${
           signals.cookieCount ?? 'n/a'
-        }`,
+        } sawLoginSurface=${detectState.sawLoginSurface}`,
       );
       return true;
     }

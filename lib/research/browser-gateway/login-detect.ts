@@ -5,6 +5,10 @@
  * pages (e.g. Housing → https://housing.com/user-profile). Matching those paths
  * alone must NOT count as authenticated or the worker will capture+close before
  * the user can type credentials.
+ *
+ * For portals where login URL == profile URL, we require a two-phase signal:
+ * 1) observe a login/OTP surface at least once, then
+ * 2) observe strong post-login chrome (logout) with cookies.
  */
 
 export type LoginDetectSignals = {
@@ -13,6 +17,11 @@ export type LoginDetectSignals = {
   /** Portal login URL the connect flow navigated to. */
   loginUrl?: string;
   cookieCount?: number;
+};
+
+export type LoginDetectState = {
+  /** True after we have seen a login/OTP/security-challenge surface this session. */
+  sawLoginSurface: boolean;
 };
 
 function normalizePath(raw: string): string {
@@ -27,7 +36,7 @@ function normalizePath(raw: string): string {
   }
 }
 
-function isSecurityChallenge(url: string, body: string): boolean {
+export function isSecurityChallenge(url: string, body: string): boolean {
   return (
     body.includes('security alert') ||
     body.includes('access denied') ||
@@ -38,7 +47,7 @@ function isSecurityChallenge(url: string, body: string): boolean {
   );
 }
 
-function hasLoginForm(body: string): boolean {
+export function hasLoginForm(body: string): boolean {
   return (
     body.includes('enter otp') ||
     body.includes('enter password') ||
@@ -53,12 +62,11 @@ function hasLoginForm(body: string): boolean {
     body.includes('verify otp') ||
     body.includes('type="password"') ||
     body.includes('name="password"') ||
-    body.includes('otp')
+    /\botp\b/.test(body)
   );
 }
 
 function hasStrongLoggedInSignal(url: string, body: string): boolean {
-  // Prefer explicit logout / signed-in chrome over bare profile paths.
   const strongBody = [
     'log out',
     'sign out',
@@ -69,16 +77,34 @@ function hasStrongLoggedInSignal(url: string, body: string): boolean {
     'account settings',
   ];
   if (strongBody.some((h) => body.includes(h))) return true;
-
-  // URL alone is never enough when it equals/contains the portal login path.
   if (url.includes('/dashboard') && body.includes('welcome')) return true;
   return false;
 }
 
 /**
- * Returns true only when the page clearly shows a post-login authenticated state.
+ * Update detect state from the latest page signals.
+ * Call every poll; then call looksAuthenticated(signals, state).
  */
-export function looksAuthenticated(signals: LoginDetectSignals): boolean {
+export function observeLoginSignals(
+  signals: LoginDetectSignals,
+  state: LoginDetectState,
+): LoginDetectState {
+  const url = signals.url.toLowerCase();
+  const body = signals.bodySnippet.toLowerCase();
+  if (hasLoginForm(body) || isSecurityChallenge(url, body)) {
+    return { ...state, sawLoginSurface: true };
+  }
+  return state;
+}
+
+/**
+ * Returns true only when the page clearly shows a post-login authenticated state.
+ * When loginUrl is provided and equals a profile URL, requires prior login surface.
+ */
+export function looksAuthenticated(
+  signals: LoginDetectSignals,
+  state?: LoginDetectState,
+): boolean {
   const url = signals.url.toLowerCase();
   const body = signals.bodySnippet.toLowerCase();
   const loginPath = signals.loginUrl ? normalizePath(signals.loginUrl) : '';
@@ -87,23 +113,29 @@ export function looksAuthenticated(signals: LoginDetectSignals): boolean {
   if (isSecurityChallenge(url, body)) return false;
   if (hasLoginForm(body)) return false;
 
-  // Still on (or redirected within) the configured login URL → not done yet
-  // unless strong logout chrome is present AND login form is gone.
   const onConfiguredLoginSurface =
     Boolean(loginPath) &&
     (currentPath === loginPath ||
       currentPath.startsWith(`${loginPath}/`) ||
       url.includes(loginPath.replace(/^https?:\/\//, '')));
 
+  // Profile-as-login portals (Housing /user-profile): never accept auth until we
+  // have observed a login/OTP/challenge surface first in this connect session.
+  // This blocks false positives from stale profile HTML / leftover "log out" chrome.
   if (onConfiguredLoginSurface) {
-    // Housing /user-profile is BOTH the login entry and the post-login page.
-    // Require strong logout/account chrome + enough cookies before accepting.
+    if (state && !state.sawLoginSurface) return false;
     const cookieOk = typeof signals.cookieCount !== 'number' || signals.cookieCount >= 3;
     return hasStrongLoggedInSignal(url, body) && cookieOk;
   }
 
   const loginUrlHints = ['/login', '/signin', '/sign-in', '/otp', '/verify'];
   if (loginUrlHints.some((h) => url.includes(h))) return false;
+
+  if (state && !state.sawLoginSurface) {
+    // Off login URL but never saw a login form — still require strong signals + cookies.
+    const cookieOk = typeof signals.cookieCount !== 'number' || signals.cookieCount >= 3;
+    return hasStrongLoggedInSignal(url, body) && cookieOk;
+  }
 
   return hasStrongLoggedInSignal(url, body);
 }
