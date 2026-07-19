@@ -110,8 +110,12 @@ async function tick() {
 }
 
 function resolveListenPort(): number {
-  // Railway injects PORT; keep RESEARCH_BROWSER_WORKER_PORT / --port for local.
-  const raw = arg('port', process.env.PORT || process.env.RESEARCH_BROWSER_WORKER_PORT || '4173');
+  // Prefer explicit worker port (Railway proxy mode sets RESEARCH_BROWSER_WORKER_PORT=4173
+  // while PORT stays on the edge proxy). Fall back to Railway PORT, then local default.
+  const raw = arg(
+    'port',
+    process.env.RESEARCH_BROWSER_WORKER_PORT || process.env.PORT || '4173',
+  );
   const port = Number(raw);
   if (!Number.isFinite(port) || port < 1 || port > 65535) {
     throw new Error(`Invalid worker port: ${raw}`);
@@ -120,7 +124,7 @@ function resolveListenPort(): number {
 }
 
 function resolveListenHost(): string {
-  // Explicit override wins. Railway (PORT set) must bind 0.0.0.0 for public health checks.
+  // Explicit override wins (Railway proxy mode uses 127.0.0.1 behind the edge proxy).
   const explicit = process.env.RESEARCH_BROWSER_WORKER_HOST?.trim();
   if (explicit) return explicit;
   if (process.env.PORT || process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID) {
