@@ -88,11 +88,22 @@ export type BrowserLaunchHandle = {
   /** Current page URL for login detection. */
   currentUrl: () => Promise<string>;
   /** Page HTML + DOM auth signals for login detection. */
-  pageSignals: () => Promise<{
+  pageSignals: (opts?: {
+    settle?: boolean;
+    settleTimeoutMs?: number;
+    artifactDir?: string;
+    pollIndex?: number;
+    log?: (line: string) => void;
+  }) => Promise<{
     url: string;
+    title?: string;
     bodySnippet: string;
     cookieCount?: number;
     readyState?: string;
+    settled?: boolean;
+    networkIdleMs?: number;
+    iframeCount?: number;
+    shadowHostCount?: number;
     hasAvatar?: boolean;
     hasAccountName?: boolean;
     hasEditProfile?: boolean;
@@ -100,6 +111,16 @@ export type BrowserLaunchHandle = {
     hasProfileLink?: boolean;
     hasLoginForm?: boolean;
     profileSelectors?: string[];
+    attemptedSelectors?: string[];
+    candidates?: {
+      avatars: string[];
+      names: string[];
+      editProfile: string[];
+      links: string[];
+    };
+    evaluateError?: string;
+    htmlSnapshotPath?: string;
+    screenshotPath?: string;
   }>;
   /** Write a JPEG/PNG preview frame for UI polling. */
   writePreview?: (absolutePath: string) => Promise<void>;

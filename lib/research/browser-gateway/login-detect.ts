@@ -11,6 +11,12 @@ export type LoginDetectSignals = {
   loginUrl?: string;
   cookieCount?: number;
   readyState?: string;
+  title?: string;
+  /** False until readyState=complete and network idle window satisfied. */
+  settled?: boolean;
+  networkIdleMs?: number;
+  iframeCount?: number;
+  shadowHostCount?: number;
   hasAvatar?: boolean;
   hasAccountName?: boolean;
   hasEditProfile?: boolean;
@@ -18,6 +24,8 @@ export type LoginDetectSignals = {
   hasProfileLink?: boolean;
   hasLoginForm?: boolean;
   profileSelectors?: string[];
+  attemptedSelectors?: string[];
+  evaluateError?: string;
 };
 
 export type LoginDetectState = {
@@ -38,6 +46,8 @@ export type AuthScoreResult = {
   threshold: number;
   signals: AuthSignalScore[];
   summary: string;
+  /** True when page was not settled — caller should keep polling. */
+  skipped?: boolean;
 };
 
 /** Minimum weighted score to treat the page as authenticated. */
@@ -108,6 +118,30 @@ export function scoreAuthentication(
   const url = signals.url.toLowerCase();
   const body = (signals.bodySnippet || '').toLowerCase();
   const cookieCount = Number(signals.cookieCount || 0);
+
+  // Do not score until the page has settled (readyState complete + network idle).
+  if (signals.settled === false || (signals.readyState && signals.readyState !== 'complete')) {
+    const skippedSignals: AuthSignalScore[] = [
+      {
+        name: 'Page settled',
+        pass: false,
+        weight: 0,
+        detail: `readyState=${signals.readyState ?? 'n/a'} settled=${signals.settled} networkIdleMs=${signals.networkIdleMs ?? 0}`,
+      },
+    ];
+    return {
+      authenticated: false,
+      score: 0,
+      threshold: AUTH_SCORE_THRESHOLD,
+      signals: skippedSignals,
+      skipped: true,
+      summary: [
+        'Authentication score:',
+        `Page settled: FAIL (${skippedSignals[0].detail})`,
+        'Decision: SKIPPED (waiting for readyState=complete and network idle)',
+      ].join('\n'),
+    };
+  }
 
   if (isSecurityChallenge(url, body)) {
     const signalsOut: AuthSignalScore[] = [

@@ -293,9 +293,16 @@ async function waitForManualLogin(input: {
   const deadline = Date.now() + LOGIN_TIMEOUT_MS;
   let poll = 0;
   let detectState: LoginDetectState = { sawLoginSurface: false };
+  const artifactDir = path.join(path.dirname(previewFile), 'auth-probe');
 
   const evaluateOnce = async (label: string) => {
-    const signals = await handle.pageSignals();
+    const signals = await handle.pageSignals({
+      settle: true,
+      settleTimeoutMs: 20_000,
+      artifactDir,
+      pollIndex: poll,
+      log: (line) => pushWorkerLog('info', line),
+    });
     const merged = { ...signals, loginUrl: session.loginUrl };
     detectState = observeLoginSignals(merged, detectState);
     const result = scoreAuthentication(merged, detectState);
@@ -305,7 +312,12 @@ async function waitForManualLogin(input: {
       [
         `login_wait_poll portal=${session.portal} label=${label} n=${poll}`,
         `url=${signals.url}`,
+        `title=${JSON.stringify(signals.title ?? '')}`,
         `readyState=${signals.readyState ?? 'n/a'}`,
+        `settled=${signals.settled}`,
+        `networkIdleMs=${signals.networkIdleMs ?? 'n/a'}`,
+        `iframes=${signals.iframeCount ?? 'n/a'}`,
+        `shadowHosts=${signals.shadowHostCount ?? 'n/a'}`,
         `cookies=${signals.cookieCount ?? 'n/a'}`,
         `loginSurface=${detectState.sawLoginSurface || signals.hasLoginForm === true}`,
         `avatar=${Boolean(signals.hasAvatar)}`,
@@ -315,12 +327,30 @@ async function waitForManualLogin(input: {
         `profileLink=${Boolean(signals.hasProfileLink)}`,
         `loginForm=${Boolean(signals.hasLoginForm)}`,
         `profileSelectors=${(signals.profileSelectors || []).join('|') || 'none'}`,
+        `html=${signals.htmlSnapshotPath ?? 'n/a'}`,
+        `screenshot=${signals.screenshotPath ?? 'n/a'}`,
         `score=${result.score}/${result.threshold}`,
         `remainingMs=${remainingMs}`,
-        `decision=${result.authenticated ? 'AUTHENTICATED' : 'NOT_AUTHENTICATED'}`,
+        `decision=${result.skipped ? 'SKIPPED' : result.authenticated ? 'AUTHENTICATED' : 'NOT_AUTHENTICATED'}`,
       ].join(' '),
     );
-    // Multi-line breakdown for Railway log readability
+    if (signals.evaluateError) {
+      pushWorkerLog('error', `page_evaluate_error ${signals.evaluateError}`);
+    }
+    // When visible auth chrome is expected but selectors miss, dump attempts.
+    if (
+      !result.skipped &&
+      !result.authenticated &&
+      (!signals.hasAvatar || !signals.hasAccountName || !signals.hasEditProfile)
+    ) {
+      pushWorkerLog(
+        'warn',
+        [
+          'auth_selector_mismatch — screenshot/HTML saved but DOM signals incomplete.',
+          `attemptedSelectors=${(signals.attemptedSelectors || []).join(',') || 'none'}`,
+        ].join(' '),
+      );
+    }
     for (const line of result.summary.split('\n')) {
       pushWorkerLog('info', `auth_score ${line}`);
     }

@@ -218,6 +218,13 @@ export class RemoteBrowserSessionManager {
     entry.context = context;
     entry.page = page;
 
+    context.on('page', (newPage) => {
+      entry.page = newPage;
+      pushWorkerLog(
+        'info',
+        `browser_new_page portal=${input.portal} url=${newPage.url()} pages=${context.pages().length}`,
+      );
+    });
     context.on('close', () => {
       auditRemote('browser_context_closed', { connectSessionId: input.connectSessionId }, 'warn');
     });
@@ -262,17 +269,26 @@ export class RemoteBrowserSessionManager {
       async currentUrl() {
         return (entry.page || page).url();
       },
-      async pageSignals() {
+      async pageSignals(opts) {
         const { collectPageAuthProbe } = await import(
           '@/lib/research/browser-gateway/page-auth-probe'
         );
-        const p = entry.page || page;
         const ctx = entry.context || context;
-        return collectPageAuthProbe(p, ctx);
+        const openPages = ctx.pages().filter((p) => !p.isClosed());
+        pushWorkerLog(
+          'info',
+          `page_inventory portal=${input.portal} count=${openPages.length} urls=${openPages.map((p) => p.url()).join(' | ') || 'none'}`,
+        );
+        const p = pickInspectPage(ctx, entry.page || page);
+        entry.page = p;
+        page = p;
+        return collectPageAuthProbe(p, ctx, opts);
       },
       async writePreview(absolutePath: string) {
         await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-        const p = entry.page || page;
+        const ctx = entry.context || context;
+        const p = pickInspectPage(ctx, entry.page || page);
+        entry.page = p;
         await p.screenshot({ path: absolutePath, type: 'jpeg', quality: 55 });
       },
       async gotoLogin(loginUrl: string) {
@@ -388,6 +404,27 @@ export class RemoteBrowserSessionManager {
       },
     });
   }
+}
+
+/** Prefer the tab that looks like the portal profile/login surface. */
+function pickInspectPage(ctx: BrowserContext, preferred: Page | null): Page {
+  const open = ctx.pages().filter((p) => !p.isClosed());
+  if (!open.length) {
+    if (preferred && !preferred.isClosed()) return preferred;
+    throw new Error('No open browser pages to inspect');
+  }
+  const ranked = open
+    .map((p) => {
+      const u = p.url().toLowerCase();
+      let score = 0;
+      if (/user-profile|my-profile|\/profile|account/.test(u)) score += 6;
+      if (/housing\.com|99acres|magicbricks/.test(u)) score += 3;
+      if (u && u !== 'about:blank' && !u.startsWith('chrome')) score += 1;
+      if (preferred && p === preferred) score += 1;
+      return { p, score, u };
+    })
+    .sort((a, b) => b.score - a.score);
+  return ranked[0].p;
 }
 
 async function resolveNovncWebRoot(): Promise<string | null> {

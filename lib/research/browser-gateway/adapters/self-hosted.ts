@@ -90,11 +90,11 @@ async function launchLocalFallback(input: {
     async currentUrl() {
       return page.url();
     },
-    async pageSignals() {
+    async pageSignals(opts) {
       const { collectPageAuthProbe } = await import(
         '@/lib/research/browser-gateway/page-auth-probe'
       );
-      return collectPageAuthProbe(page, context);
+      return collectPageAuthProbe(page, context, opts);
     },
     async writePreview(absolutePath: string) {
       await fs.mkdir(path.dirname(absolutePath), { recursive: true });
