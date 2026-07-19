@@ -1,7 +1,7 @@
 /**
  * Railway edge proxy for the Browser Worker.
  * Binds process.env.PORT immediately so /health passes while tsx/Playwright warm up.
- * Forwards other traffic to the internal worker on 127.0.0.1:WORKER_PORT.
+ * Forwards HTTP + WebSocket (noVNC) to the internal worker on 127.0.0.1:WORKER_PORT.
  */
 import http from 'node:http';
 
@@ -18,7 +18,7 @@ function send(res, status, body) {
   res.end(payload);
 }
 
-function proxy(req, res) {
+function proxyHttp(req, res) {
   const upstream = http.request(
     {
       hostname: workerHost,
@@ -26,7 +26,7 @@ function proxy(req, res) {
       path: req.url,
       method: req.method,
       headers: { ...req.headers, host: `${workerHost}:${workerPort}` },
-      timeout: 30_000,
+      timeout: 120_000,
     },
     (up) => {
       res.writeHead(up.statusCode || 502, up.headers);
@@ -50,10 +50,45 @@ function proxy(req, res) {
   req.pipe(upstream);
 }
 
+function proxyUpgrade(req, socket, head) {
+  const upstream = http.request({
+    hostname: workerHost,
+    port: workerPort,
+    path: req.url,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: `${workerHost}:${workerPort}`,
+    },
+  });
+
+  upstream.on('upgrade', (upRes, upSocket, upHead) => {
+    const headerLines = Object.entries(upRes.headers)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+      .join('\r\n');
+    socket.write(`HTTP/1.1 101 Switching Protocols\r\n${headerLines}\r\n\r\n`);
+    if (upHead?.length) socket.write(upHead);
+    upSocket.pipe(socket);
+    socket.pipe(upSocket);
+  });
+
+  upstream.on('error', (err) => {
+    console.error('[proxy] upgrade error', err.message);
+    try {
+      socket.write('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n');
+    } catch {
+      /* ignore */
+    }
+    socket.destroy();
+  });
+
+  socket.on('error', () => upstream.destroy());
+  upstream.end(head);
+}
+
 const server = http.createServer((req, res) => {
-  const path = (req.url || '/').split('?')[0];
-  if (req.method === 'GET' && path === '/health') {
-    // Always 200 so Railway healthcheck is not blocked by Playwright warmup.
+  const pathName = (req.url || '/').split('?')[0];
+  if (req.method === 'GET' && pathName === '/health') {
     send(res, 200, {
       ok: true,
       online: true,
@@ -63,11 +98,15 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  proxy(req, res);
+  proxyHttp(req, res);
+});
+
+server.on('upgrade', (req, socket, head) => {
+  proxyUpgrade(req, socket, head);
 });
 
 server.listen(listenPort, '0.0.0.0', () => {
-  console.log(`[proxy] listening 0.0.0.0:${listenPort} → ${workerHost}:${workerPort}`);
+  console.log(`[proxy] listening 0.0.0.0:${listenPort} → ${workerHost}:${workerPort} (http+ws)`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

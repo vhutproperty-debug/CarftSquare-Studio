@@ -102,5 +102,7 @@ export interface BrowserProviderAdapter {
     portal: string;
     loginUrl: string;
     profileDir: string;
+    /** Connect session id — used to bind remote noVNC view to this job. */
+    connectSessionId?: string;
   }): Promise<BrowserLaunchHandle>;
 }

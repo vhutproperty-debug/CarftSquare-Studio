@@ -1,5 +1,9 @@
 import http from 'http';
 import {
+  handleRemoteHttp,
+  handleRemoteUpgrade,
+} from '@/lib/research/browser-gateway/remote-display/remote-http';
+import {
   buildWorkerStatusPayload,
   getWorkerLogs,
   getWorkerState,
@@ -16,7 +20,7 @@ export type WorkerHttpServer = {
 /**
  * Lightweight HTTP control plane for the Browser Worker.
  * Next.js talks to this — Playwright stays in the worker process only.
- * Binds 0.0.0.0 on Railway (PORT set); 127.0.0.1 for local-only by default.
+ * Also serves signed noVNC remote-view routes under /remote/:viewId/*.
  */
 export async function startWorkerHttpServer(input: {
   host?: string;
@@ -37,6 +41,8 @@ export async function startWorkerHttpServer(input: {
     }
 
     try {
+      if (handleRemoteHttp(req, res, url)) return;
+
       if (url.pathname === '/health' && req.method === 'GET') {
         const state = getWorkerState();
         json(res, 200, {
@@ -78,6 +84,11 @@ export async function startWorkerHttpServer(input: {
       pushWorkerLog('error', `HTTP handler failed: ${message}`);
       json(res, 500, { error: message });
     }
+  });
+
+  server.on('upgrade', (req, socket, head) => {
+    if (handleRemoteUpgrade(req, socket, head)) return;
+    socket.destroy();
   });
 
   await new Promise<void>((resolve, reject) => {

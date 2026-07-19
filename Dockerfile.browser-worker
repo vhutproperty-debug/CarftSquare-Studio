@@ -1,13 +1,20 @@
 # Standalone Prop/Research Browser Worker for Railway.
-# Uses Playwright's official image so Chromium + system deps are present.
+# Playwright image + Xvfb + x11vnc + noVNC for secure remote login.
 FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 WORKDIR /app
 
-# Headed Chromium on Railway needs a virtual display.
+# Headed Chromium on Railway needs a virtual display + VNC/noVNC gateway.
 RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb \
-  && rm -rf /var/lib/apt/lists/*
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    python3 \
+    python3-numpy \
+  && rm -rf /var/lib/apt/lists/* \
+  && (test -f /usr/share/novnc/vnc.html || test -f /usr/share/novnc/vnc_lite.html || true)
 
 COPY package.json package-lock.json* yarn.lock* ./
 RUN if [ -f yarn.lock ]; then \
@@ -27,7 +34,6 @@ ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
 # Do NOT set RESEARCH_CONNECT_HEADLESS / RESEARCH_BROWSER_HEADLESS here.
 # Housing.com (Akamai) returns HTTP 406 to headless Chromium; defaults stay headed.
-# Railway has no real display — xvfb-run provides a virtual screen for headed mode.
 
 EXPOSE 4173
 

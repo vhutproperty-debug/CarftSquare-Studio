@@ -102,7 +102,7 @@ export async function processNextConnectJob(): Promise<boolean> {
 
       await updateConnectSession(session.id, {
         phase: 'opening_browser',
-        message: 'Opening Browser…',
+        message: 'Opening Secure Browser…',
         workerId: WORKER_ID,
       });
       const connectHeadless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
@@ -116,19 +116,28 @@ export async function processNextConnectJob(): Promise<boolean> {
         portal: session.portal,
         loginUrl: session.loginUrl,
         profileDir,
+        connectSessionId: session.id,
       });
 
       await updateConnectSession(session.id, {
         phase: 'waiting_for_login',
-        message:
-          validationAttempt > 0
-            ? 'Validation failed — please log in again in the browser window…'
-            : 'Waiting for Login… Enter your credentials in the browser window.',
+        message: handle.liveViewUrl
+          ? validationAttempt > 0
+            ? 'Browser Ready — reopen the secure login window and sign in again.'
+            : 'Browser Ready — open the secure login window to continue.'
+          : validationAttempt > 0
+            ? 'Validation failed — please log in again…'
+            : 'Waiting for Login…',
         browserVersion: handle.browserVersion,
         liveViewUrl: handle.liveViewUrl,
         previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
       });
-      pushWorkerLog('info', `login_wait_start portal=${session.portal} url=${session.loginUrl}`);
+      pushWorkerLog(
+        'info',
+        `login_wait_start portal=${session.portal} url=${session.loginUrl} liveView=${
+          handle.liveViewUrl ? 'yes' : 'no'
+        }`,
+      );
 
       await handle.gotoLogin(session.loginUrl);
 
@@ -148,7 +157,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       pushWorkerLog('info', `login_detected portal=${session.portal} — capturing session`);
       await updateConnectSession(session.id, {
         phase: 'capturing',
-        message: 'Capturing Session…',
+        message: 'Authenticating — capturing session…',
       });
       const secrets = await handle.captureSecrets();
       const cookieCount = secrets.cookieCount ?? 0;
@@ -187,10 +196,12 @@ export async function processNextConnectJob(): Promise<boolean> {
 
       const connector = requirePortalConnector(session.portal);
       const validation = await connector.validateSession(session.workspaceId);
+      const validationHttp =
+        'httpStatus' in validation ? (validation as { httpStatus?: number | null }).httpStatus : undefined;
       pushWorkerLog(
         validation.ok ? 'info' : 'warn',
         `validation_result portal=${session.portal} ok=${validation.ok} status=${validation.status} httpStatus=${
-          validation.httpStatus ?? 'n/a'
+          validationHttp ?? 'n/a'
         } message=${validation.message || ''}`,
       );
 
@@ -350,10 +361,14 @@ async function waitForManualLogin(input: {
 
 function isRecoverableValidationFailure(
   detail: string,
-  validation: { status?: string; httpStatus?: number | null; responseKind?: string },
+  validation: { status?: string; httpStatus?: number | null; responseKind?: string; message?: string },
 ): boolean {
   const text = detail.toLowerCase();
-  if (validation.httpStatus === 406) return true;
+  const httpStatus =
+    typeof validation.httpStatus === 'number'
+      ? validation.httpStatus
+      : undefined;
+  if (httpStatus === 406) return true;
   if (validation.responseKind === '406') return true;
   if (text.includes('security challenge') || text.includes('security alert')) return true;
   if (text.includes('406')) return true;

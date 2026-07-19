@@ -9,18 +9,45 @@ import type {
 } from '@/lib/research/browser-gateway/types';
 
 const PHASE_LABEL: Record<ConnectFlowPhase, string> = {
-  queued: 'Queueing…',
-  connecting: 'Worker Connected',
-  opening_browser: 'Opening Browser…',
-  waiting_for_login: 'Waiting for Login…',
-  capturing: 'Capturing Session…',
-  encrypting: 'Encrypting…',
-  validating: 'Validating…',
+  queued: 'Preparing Browser',
+  connecting: 'Preparing Browser',
+  opening_browser: 'Opening Secure Browser…',
+  waiting_for_login: 'Waiting for Login',
+  capturing: 'Capturing Session',
+  encrypting: 'Encrypting',
+  validating: 'Validating',
   connected: 'Connected',
   failed: 'Failed',
   expired: 'Expired',
   cancelled: 'Cancelled',
 };
+
+/** Stepper labels shown during a live connect (includes Browser Ready). */
+const CONNECT_STEPS = [
+  'Preparing Browser',
+  'Browser Ready',
+  'Waiting for Login',
+  'Authenticating',
+  'Capturing Session',
+  'Encrypting',
+  'Validating',
+  'Connected',
+] as const;
+
+function activeConnectStepIndex(session: PublicConnectSession): number {
+  if (session.phase === 'queued' || session.phase === 'connecting' || session.phase === 'opening_browser') {
+    return 0; // Preparing Browser
+  }
+  if (session.phase === 'waiting_for_login') {
+    // Light Browser Ready + Waiting for Login once the signed remote URL exists.
+    return session.liveViewUrl ? 2 : 0;
+  }
+  if (session.phase === 'capturing') return 4;
+  if (session.phase === 'encrypting') return 5;
+  if (session.phase === 'validating') return 6;
+  if (session.phase === 'connected') return 7;
+  return 0;
+}
 
 const WORKER_OFFLINE_MSG =
   'Browser Worker is not running. Start it using:\nnpm run research:browser-worker';
@@ -295,8 +322,8 @@ export default function ConnectorsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Connect portals in-browser. The local Browser Worker opens Chromium, captures encrypted
-          cookies, and validates automatically.
+          Connect portals via a secure remote browser on Railway. Open the login window, sign in,
+          and the worker captures encrypted cookies automatically.
         </p>
         <div className="flex items-center gap-2">
           <span
@@ -359,80 +386,78 @@ export default function ConnectorsPanel() {
           </div>
 
           <ol className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-2 text-[11px] dark:border-slate-800">
-            {(
-              [
-                'queued',
-                'connecting',
-                'opening_browser',
-                'waiting_for_login',
-                'capturing',
-                'encrypting',
-                'validating',
-                'connected',
-              ] as ConnectFlowPhase[]
-            ).map((phase) => {
-              const order = [
-                'queued',
-                'connecting',
-                'opening_browser',
-                'waiting_for_login',
-                'capturing',
-                'encrypting',
-                'validating',
-                'connected',
-              ];
-              const currentIdx = order.indexOf(liveSession.phase);
-              const idx = order.indexOf(phase);
-              const active = idx <= currentIdx && currentIdx >= 0;
+            {CONNECT_STEPS.map((label, idx) => {
+              const currentIdx = activeConnectStepIndex(liveSession);
+              const active = idx <= currentIdx;
               return (
                 <li
-                  key={phase}
+                  key={label}
                   className={`rounded px-2 py-0.5 ${
                     active
                       ? 'bg-orange-100 font-medium text-orange-900'
                       : 'bg-slate-50 text-slate-400'
                   }`}
                 >
-                  {PHASE_LABEL[phase]}
+                  {label}
                 </li>
               );
             })}
           </ol>
 
           <div className="grid gap-0 lg:grid-cols-[1.4fr_1fr]">
-            <div className="bg-slate-950 p-2">
-              {liveSession.liveViewUrl ? (
-                <iframe
-                  title="Remote browser"
-                  src={liveSession.liveViewUrl}
-                  className="h-[420px] w-full rounded-md border-0 bg-white"
-                  allow="clipboard-read; clipboard-write"
-                />
-              ) : liveSession.previewUrl &&
-                liveSession.phase !== 'queued' &&
-                liveSession.phase !== 'connecting' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={previewKey}
-                  src={`${liveSession.previewUrl}&t=${previewKey}`}
-                  alt="Live browser preview"
-                  className="mx-auto max-h-[420px] w-auto rounded-md"
-                />
+            <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 bg-slate-950 p-6 text-center">
+              {liveSession.phase === 'queued' ||
+              liveSession.phase === 'connecting' ||
+              liveSession.phase === 'opening_browser' ? (
+                <div className="space-y-2 text-sm text-slate-300">
+                  <p className="text-base font-medium text-white">Opening Secure Browser…</p>
+                  <p className="text-xs text-slate-400">
+                    Preparing an isolated remote Chromium session on Railway.
+                  </p>
+                </div>
+              ) : liveSession.liveViewUrl && liveSession.phase === 'waiting_for_login' ? (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-base font-medium text-white">Browser Ready</p>
+                    <p className="text-xs text-slate-400">
+                      Sign in inside the secure remote window. This tab stays on CraftSquare.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(
+                        liveSession.liveViewUrl,
+                        `cs-remote-${liveSession.id}`,
+                        'noopener,noreferrer',
+                      );
+                    }}
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-orange-500 px-5 text-sm font-semibold text-white hover:bg-orange-600"
+                  >
+                    Open Secure Login Window
+                  </button>
+                  <p className="text-[11px] text-slate-500">
+                    Session expires automatically. Cookies never pass through the remote view.
+                  </p>
+                </div>
               ) : (
-                <div className="flex h-64 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-400">
-                  {liveSession.phase === 'queued' ? (
-                    <>
-                      <p>Queueing… waiting for Browser Worker</p>
-                      <p className="text-xs">
-                        If this stays here, ensure the worker is running:
-                        <code className="mx-1 rounded bg-slate-800 px-1">
-                          npm run research:browser-worker
-                        </code>
-                      </p>
-                    </>
-                  ) : (
-                    <p>{PHASE_LABEL[liveSession.phase]}</p>
-                  )}
+                <div className="space-y-2 text-sm text-slate-300">
+                  <p className="text-base font-medium text-white">
+                    {PHASE_LABEL[liveSession.phase]}
+                  </p>
+                  {liveSession.message ? (
+                    <p className="text-xs text-slate-400">{liveSession.message}</p>
+                  ) : null}
+                  {liveSession.previewUrl &&
+                  !['queued', 'connecting', 'opening_browser'].includes(liveSession.phase) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={previewKey}
+                      src={`${liveSession.previewUrl}&t=${previewKey}`}
+                      alt="Browser preview"
+                      className="mx-auto mt-2 max-h-[240px] w-auto rounded-md border border-slate-800"
+                    />
+                  ) : null}
                 </div>
               )}
             </div>

@@ -1,0 +1,421 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { chromium, type BrowserContext, type Page } from 'playwright';
+import { SessionLoader } from '@/lib/research/browser/session-loader';
+import { auditRemote } from '@/lib/research/browser-gateway/remote-display/audit';
+import {
+  allocateDisplayNumber,
+  allocatePort,
+} from '@/lib/research/browser-gateway/remote-display/ports';
+import {
+  commandExists,
+  killProcessTree,
+  spawnDetached,
+  waitForPortOpen,
+} from '@/lib/research/browser-gateway/remote-display/process-utils';
+import {
+  registerRemoteSession,
+  unregisterRemoteSession,
+  getRemoteSessionByConnectId,
+} from '@/lib/research/browser-gateway/remote-display/registry';
+import {
+  buildLiveViewUrl,
+  createViewId,
+  signRemoteViewToken,
+  tokenFingerprint,
+} from '@/lib/research/browser-gateway/remote-display/signed-url';
+import {
+  REMOTE_VIEW_TTL_MS,
+  type RemoteDisplaySession,
+} from '@/lib/research/browser-gateway/remote-display/types';
+import type { BrowserLaunchHandle } from '@/lib/research/browser-gateway/types';
+import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
+
+export type CreateRemoteSessionInput = {
+  connectSessionId: string;
+  workspaceId: string;
+  portal: string;
+  loginUrl: string;
+  profileDir: string;
+};
+
+/**
+ * Browser Session Manager — presentation layer for Railway remote login.
+ * Owns per-connect Xvfb + x11vnc + websockify + headed Chromium.
+ * Does not change connector encryption/validation contracts.
+ */
+export class RemoteBrowserSessionManager {
+  private readonly active = new Map<string, {
+    remote: RemoteDisplaySession;
+    context: BrowserContext | null;
+    page: Page | null;
+    browserCrashRecovered: boolean;
+  }>();
+
+  async createSession(input: CreateRemoteSessionInput): Promise<RemoteDisplaySession> {
+    const viewId = createViewId();
+    const { token, expiresAt, payload } = signRemoteViewToken({
+      viewId,
+      connectSessionId: input.connectSessionId,
+      ttlMs: REMOTE_VIEW_TTL_MS,
+    });
+    const liveViewUrl = buildLiveViewUrl(viewId, token);
+    const displayNum = allocateDisplayNumber();
+    const vncPort = await allocatePort();
+    const websockifyPort = await allocatePort();
+
+    const remote: RemoteDisplaySession = {
+      viewId,
+      connectSessionId: input.connectSessionId,
+      workspaceId: input.workspaceId,
+      portal: input.portal,
+      display: `:${displayNum}`,
+      xvfbPid: null,
+      x11vncPid: null,
+      websockifyPid: null,
+      vncPort,
+      websockifyPort,
+      liveViewUrl,
+      tokenFingerprint: tokenFingerprint(token),
+      createdAt: new Date().toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      destroyed: false,
+    };
+
+    registerRemoteSession(remote);
+    this.active.set(input.connectSessionId, {
+      remote,
+      context: null,
+      page: null,
+      browserCrashRecovered: false,
+    });
+
+    auditRemote('session_created', {
+      viewId,
+      connectSessionId: input.connectSessionId,
+      portal: input.portal,
+      exp: payload.exp,
+      tokenFp: remote.tokenFingerprint,
+    });
+
+    // Auto-expire cleanup
+    const ttl = expiresAt.getTime() - Date.now();
+    setTimeout(() => {
+      void this.cleanup(input.connectSessionId, 'ttl_expired');
+    }, Math.max(1_000, ttl + 500));
+
+    return remote;
+  }
+
+  async launchDisplay(connectSessionId: string): Promise<void> {
+    const entry = this.active.get(connectSessionId);
+    if (!entry) throw new Error('Remote session not found');
+    if (!commandExists('Xvfb')) {
+      throw new Error('Xvfb is not installed — required for remote headed Chromium');
+    }
+
+    const { remote } = entry;
+    pushWorkerLog('info', `display_launch display=${remote.display} portal=${remote.portal}`);
+    const xvfb = spawnDetached(
+      'Xvfb',
+      [remote.display, '-screen', '0', '1365x900x24', '-ac', '+extension', 'GLX', '+render', '-noreset'],
+      {},
+      `xvfb-${remote.viewId}`,
+    );
+    remote.xvfbPid = xvfb.pid ?? null;
+    await sleep(500);
+    if (xvfb.exitCode !== null) {
+      throw new Error(`Xvfb exited early with code ${xvfb.exitCode}`);
+    }
+    auditRemote('display_ready', { viewId: remote.viewId, display: remote.display, pid: remote.xvfbPid });
+  }
+
+  async createVncEndpoint(connectSessionId: string): Promise<void> {
+    const entry = this.active.get(connectSessionId);
+    if (!entry) throw new Error('Remote session not found');
+    const { remote } = entry;
+
+    if (!commandExists('x11vnc')) {
+      throw new Error('x11vnc is not installed — required for remote browser view');
+    }
+    if (!commandExists('websockify') && !commandExists('novnc_proxy')) {
+      // Debian/Ubuntu often ship websockify as a python module script
+      if (!commandExists('python3')) {
+        throw new Error('websockify/python3 missing — required for noVNC');
+      }
+    }
+
+    pushWorkerLog(
+      'info',
+      `vnc_launch display=${remote.display} vncPort=${remote.vncPort} wsPort=${remote.websockifyPort}`,
+    );
+
+    const x11vnc = spawnDetached(
+      'x11vnc',
+      [
+        '-display',
+        remote.display,
+        '-rfbport',
+        String(remote.vncPort),
+        '-localhost',
+        '-nopw',
+        '-shared',
+        '-forever',
+        '-noxdamage',
+        '-wait',
+        '10',
+        '-defer',
+        '10',
+      ],
+      { DISPLAY: remote.display },
+      `x11vnc-${remote.viewId}`,
+    );
+    remote.x11vncPid = x11vnc.pid ?? null;
+    await waitForPortOpen('127.0.0.1', remote.vncPort, 20_000);
+
+    const webRoot = await resolveNovncWebRoot();
+    const wsArgs = webRoot
+      ? ['--web', webRoot, String(remote.websockifyPort), `localhost:${remote.vncPort}`]
+      : [String(remote.websockifyPort), `localhost:${remote.vncPort}`];
+
+    let wsProc;
+    if (commandExists('websockify')) {
+      wsProc = spawnDetached('websockify', wsArgs, {}, `websockify-${remote.viewId}`);
+    } else {
+      wsProc = spawnDetached(
+        'python3',
+        ['-m', 'websockify', ...wsArgs],
+        {},
+        `websockify-${remote.viewId}`,
+      );
+    }
+    remote.websockifyPid = wsProc.pid ?? null;
+    await waitForPortOpen('127.0.0.1', remote.websockifyPort, 20_000);
+
+    auditRemote('vnc_ready', {
+      viewId: remote.viewId,
+      vncPort: remote.vncPort,
+      websockifyPort: remote.websockifyPort,
+      webRoot: webRoot || 'none',
+    });
+  }
+
+  async launchBrowser(input: CreateRemoteSessionInput): Promise<BrowserLaunchHandle> {
+    const entry = this.active.get(input.connectSessionId);
+    if (!entry) throw new Error('Remote session not found — call createSession first');
+
+    await fs.mkdir(input.profileDir, { recursive: true });
+    const headless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+    const display = entry.remote.display;
+
+    pushWorkerLog(
+      'info',
+      `browser_launch portal=${input.portal} headless=${headless} display=${display} profile=${input.profileDir}`,
+    );
+
+    const context = await this.openContext(input.profileDir, display, headless);
+    let page = context.pages()[0] || (await context.newPage());
+    entry.context = context;
+    entry.page = page;
+
+    context.on('close', () => {
+      auditRemote('browser_context_closed', { connectSessionId: input.connectSessionId }, 'warn');
+    });
+
+    const loader = new SessionLoader();
+    const browserVersion = context.browser()?.version() || 'chromium';
+    const liveViewUrl = entry.remote.liveViewUrl;
+
+    pushWorkerLog(
+      'info',
+      `browser_launch_ok portal=${input.portal} headless=${headless} liveView=${liveViewUrl ? 'yes' : 'no'}`,
+    );
+    auditRemote('browser_ready', {
+      viewId: entry.remote.viewId,
+      portal: input.portal,
+      browserVersion,
+    });
+
+    const self = this;
+
+    return {
+      provider: 'self_hosted',
+      browserVersion,
+      liveViewUrl,
+      async close() {
+        await self.cleanup(input.connectSessionId, 'browser_handle_close');
+      },
+      async captureSecrets() {
+        const ctx = entry.context;
+        if (!ctx) throw new Error('Browser context missing during capture');
+        const secrets = await loader.captureFromContext(ctx, input.portal);
+        pushWorkerLog(
+          'info',
+          `capture_secrets portal=${input.portal} cookieCount=${secrets.cookieCount ?? 0}`,
+        );
+        return {
+          encryptedCookies: secrets.encryptedCookies,
+          encryptedStorage: secrets.encryptedStorage,
+          cookieCount: secrets.cookieCount,
+        };
+      },
+      async currentUrl() {
+        return (entry.page || page).url();
+      },
+      async pageSignals() {
+        const p = entry.page || page;
+        const url = p.url();
+        const body = await p.content().catch(() => '');
+        const cookies = await (entry.context || context).cookies().catch(() => []);
+        return {
+          url,
+          bodySnippet: body.slice(0, 4000).toLowerCase(),
+          cookieCount: cookies.length,
+        };
+      },
+      async writePreview(absolutePath: string) {
+        await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+        const p = entry.page || page;
+        await p.screenshot({ path: absolutePath, type: 'jpeg', quality: 55 });
+      },
+      async gotoLogin(loginUrl: string) {
+        pushWorkerLog('info', `navigation_start portal=${input.portal} url=${loginUrl}`);
+        try {
+          const response = await (entry.page || page).goto(loginUrl, {
+            waitUntil: 'domcontentloaded',
+          });
+          pushWorkerLog(
+            'info',
+            `navigation_done portal=${input.portal} status=${response?.status() ?? 'n/a'} finalUrl=${(entry.page || page).url()}`,
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!entry.browserCrashRecovered) {
+            entry.browserCrashRecovered = true;
+            auditRemote(
+              'browser_crash_recover',
+              { connectSessionId: input.connectSessionId, error: message },
+              'warn',
+            );
+            await entry.context?.close().catch(() => undefined);
+            const fresh = await self.openContext(input.profileDir, display, headless);
+            entry.context = fresh;
+            entry.page = fresh.pages()[0] || (await fresh.newPage());
+            page = entry.page;
+            const response = await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
+            pushWorkerLog(
+              'info',
+              `navigation_done_after_recover portal=${input.portal} status=${response?.status() ?? 'n/a'}`,
+            );
+            return;
+          }
+          throw error;
+        }
+      },
+    };
+  }
+
+  /** Full bring-up: display → VNC → browser. */
+  async startRemoteLogin(input: CreateRemoteSessionInput): Promise<BrowserLaunchHandle> {
+    await this.createSession(input);
+    try {
+      await this.launchDisplay(input.connectSessionId);
+      await this.createVncEndpoint(input.connectSessionId);
+      return await this.launchBrowser(input);
+    } catch (error) {
+      await this.cleanup(input.connectSessionId, 'start_failed');
+      throw error;
+    }
+  }
+
+  /**
+   * Login wait / capture / validate remain in worker-runtime so existing
+   * login-detect + connector.validateSession contracts are unchanged.
+   * These methods exist so the presentation manager owns the full lifecycle API.
+   */
+  async waitForLogin(): Promise<never> {
+    throw new Error('waitForLogin is orchestrated by worker-runtime (login-detect).');
+  }
+
+  async captureSession(handle: BrowserLaunchHandle) {
+    return handle.captureSecrets();
+  }
+
+  async validateSession(
+    validate: () => Promise<{ ok: boolean; status: string; message?: string }>,
+  ) {
+    return validate();
+  }
+
+  async cleanup(connectSessionId: string, reason: string): Promise<void> {
+    const entry = this.active.get(connectSessionId);
+    const remote = entry?.remote || getRemoteSessionByConnectId(connectSessionId);
+    if (!remote || remote.destroyed) {
+      this.active.delete(connectSessionId);
+      return;
+    }
+    remote.destroyed = true;
+    auditRemote('session_cleanup', {
+      viewId: remote.viewId,
+      connectSessionId,
+      reason,
+    });
+
+    if (entry?.context) {
+      pushWorkerLog('info', `browser_close portal=${remote.portal} reason=${reason}`);
+      await entry.context.close().catch(() => undefined);
+      entry.context = null;
+      entry.page = null;
+    }
+
+    killProcessTree(remote.websockifyPid, `websockify-${remote.viewId}`);
+    killProcessTree(remote.x11vncPid, `x11vnc-${remote.viewId}`);
+    killProcessTree(remote.xvfbPid, `xvfb-${remote.viewId}`);
+
+    unregisterRemoteSession(remote.viewId);
+    this.active.delete(connectSessionId);
+  }
+
+  private async openContext(
+    profileDir: string,
+    display: string,
+    headless: boolean,
+  ): Promise<BrowserContext> {
+    return chromium.launchPersistentContext(profileDir, {
+      headless,
+      viewport: { width: 1365, height: 900 },
+      args: ['--disable-blink-features=AutomationControlled'],
+      env: {
+        ...process.env,
+        DISPLAY: display,
+      },
+    });
+  }
+}
+
+async function resolveNovncWebRoot(): Promise<string | null> {
+  const candidates = [
+    '/usr/share/novnc',
+    '/usr/share/novnc/web',
+    '/usr/share/webapps/novnc',
+  ];
+  for (const dir of candidates) {
+    try {
+      await fs.access(path.join(dir, 'vnc.html'));
+      return dir;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Singleton used by the self-hosted adapter + HTTP remote routes. */
+export const remoteBrowserSessionManager = new RemoteBrowserSessionManager();
+
+/** Spec alias — presentation-layer session manager (not cookie validation manager). */
+export { RemoteBrowserSessionManager as BrowserSessionManager };
