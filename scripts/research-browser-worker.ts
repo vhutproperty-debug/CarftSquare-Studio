@@ -152,14 +152,7 @@ async function main() {
 
   initWorkerState({ workerId, provider, port });
 
-  try {
-    await validateConfig(provider);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`[research-browser-worker] CONFIG ERROR: ${message}`);
-    process.exit(1);
-  }
-
+  // Bind HTTP before Mongo/config so Railway /health can pass while deps warm up.
   let httpServer: Awaited<ReturnType<typeof startWorkerHttpServer>> | null = null;
   let stopping = false;
   try {
@@ -178,19 +171,36 @@ async function main() {
   }
 
   if (host === '0.0.0.0') {
-    pushWorkerLog('info', `Worker healthy · bound 0.0.0.0:${port} · GET /health`);
+    pushWorkerLog('info', `HTTP listening · bound 0.0.0.0:${port} · GET /health`);
     pushWorkerLog(
       'info',
       'Set Vercel RESEARCH_BROWSER_WORKER_URL to this service public HTTPS URL',
     );
   } else {
-    pushWorkerLog('info', `Worker healthy · http://127.0.0.1:${port}/status`);
+    pushWorkerLog('info', `HTTP listening · http://127.0.0.1:${port}/status`);
     pushWorkerLog(
       'info',
       `Next.js should use RESEARCH_BROWSER_WORKER_URL=http://127.0.0.1:${port}`,
     );
   }
-  pushWorkerLog('info', 'Ready to claim connect sessions. Playwright will only run in this process.');
+
+  // Retry config/Mongo so a missing secret or brief Atlas blip does not leave PORT unbound.
+  for (let attempt = 1; ; attempt += 1) {
+    if (stopping) break;
+    try {
+      await validateConfig(provider);
+      setWorkerError(null);
+      pushWorkerLog('info', 'Ready to claim connect sessions. Playwright will only run in this process.');
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setWorkerError(message);
+      console.error(`[research-browser-worker] CONFIG ERROR (attempt ${attempt}): ${message}`);
+      pushWorkerLog('error', `CONFIG ERROR (attempt ${attempt}): ${message}`);
+      if (once) process.exit(1);
+      await new Promise((r) => setTimeout(r, Math.min(30_000, 2_000 * attempt)));
+    }
+  }
 
   const shutdown = async (signal: string) => {
     if (stopping) return;

@@ -4,6 +4,11 @@ FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 WORKDIR /app
 
+# Headed Chromium on Railway needs a virtual display.
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json* yarn.lock* ./
 RUN if [ -f yarn.lock ]; then \
       yarn install --frozen-lockfile --production=false; \
@@ -15,12 +20,15 @@ RUN if [ -f yarn.lock ]; then \
 
 COPY . .
 
+RUN chmod +x scripts/railway-browser-worker-entrypoint.sh
+
 # Chromium is already installed in this image — do not install Firefox/WebKit.
 ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
 # Do NOT set RESEARCH_CONNECT_HEADLESS / RESEARCH_BROWSER_HEADLESS here.
 # Housing.com (Akamai) returns HTTP 406 to headless Chromium; defaults stay headed.
 # Railway has no real display — xvfb-run provides a virtual screen for headed mode.
 
 EXPOSE 4173
 
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1365x900x24", "npx", "tsx", "scripts/research-browser-worker.ts"]
+CMD ["./scripts/railway-browser-worker-entrypoint.sh"]
