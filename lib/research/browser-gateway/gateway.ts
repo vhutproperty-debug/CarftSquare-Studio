@@ -50,12 +50,24 @@ export async function startRemoteConnect(input: {
     );
   }
 
+  // Clear any stale Connected status from a previous session before queueing.
   await upsertPortalConnection({
     workspaceId: input.workspaceId,
     portalKey: input.portal,
     portalName: meta.displayName,
     status: 'pending',
+    lastError: null,
   });
+
+  // Invalidate cached browser session validity so UI cannot show Connected from old cookies.
+  const priorBrowser = await findBrowserSession(input.workspaceId, input.portal);
+  if (priorBrowser) {
+    await touchBrowserSession(priorBrowser.id, {
+      sessionStatus: 'needs_login',
+      status: 'needs_login',
+      lastValidationError: 'New Connect started — previous session invalidated until re-validated',
+    });
+  }
 
   const session = await createConnectSession({
     workspaceId: input.workspaceId,

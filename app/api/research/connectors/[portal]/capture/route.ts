@@ -11,7 +11,10 @@ export const maxDuration = 120;
 
 type Ctx = { params: { portal: string } };
 
-/** Capture cookies/storage from the persistent browser profile after human login. */
+/**
+ * Capture cookies/storage from the persistent browser profile after human login.
+ * Connected is ONLY set when validateSession() succeeds afterward.
+ */
 export async function POST(request: Request, { params }: Ctx) {
   const auth = await requireResearchEditAccess(request);
   const denied = authResultToResponse(auth);
@@ -39,17 +42,37 @@ export async function POST(request: Request, { params }: Ctx) {
       workspaceId,
       portal,
     });
+    const validation = await browserSessionManager.validateSession(updated.id, { force: true });
+    if (!validation.ok) {
+      await upsertPortalConnection({
+        workspaceId,
+        portalKey: portal,
+        portalName: meta.displayName,
+        status: 'pending',
+        lastError: validation.message || 'Validation failed after capture',
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: validation.message || 'Captured cookies failed validation — not Connected.',
+          session: updated,
+          previousSessionId: session.id,
+        },
+        { status: 400 },
+      );
+    }
     await upsertPortalConnection({
       workspaceId,
       portalKey: portal,
       portalName: meta.displayName,
       status: 'connected',
+      lastError: null,
     });
     return NextResponse.json({
       ok: true,
       session: updated,
       previousSessionId: session.id,
-      message: 'Encrypted cookies and storage captured from browser profile.',
+      message: 'Encrypted cookies captured and validated — Connected.',
     });
   } catch (error) {
     console.error('[research] capture_failed', error);

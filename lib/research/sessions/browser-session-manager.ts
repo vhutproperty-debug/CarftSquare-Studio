@@ -229,6 +229,23 @@ export class BrowserSessionManager implements SessionManager {
             } satisfies ValidationProbe;
           }
 
+          // Do NOT default to authenticated. Housing /user-profile is also the login entry
+          // URL — require explicit post-login chrome (never treat bare 200 as Connected).
+          const looksAuthenticated = /edit\s*profile|log\s*out|sign\s*out/.test(body);
+
+          if (!looksAuthenticated) {
+            return {
+              httpStatus,
+              finalUrl,
+              title,
+              bodySnippet,
+              kind: kind === '200' ? '200' : kind,
+              authenticated: false,
+              message:
+                'Validation did not find authenticated profile chrome (Edit Profile / Log out).',
+            } satisfies ValidationProbe;
+          }
+
           return {
             httpStatus,
             finalUrl,

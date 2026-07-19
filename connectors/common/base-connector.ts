@@ -30,12 +30,13 @@ export abstract class BasePortalConnector implements PortalConnector {
 
   async connect(workspaceId: string): Promise<ResearchPortalConnection> {
     connectorLog(this.key, 'connect', { workspaceId });
-    const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
+    // Never mark Connected from stale encrypted cookies alone — requires validateSession().
+    await browserSessionManager.getOrCreate(workspaceId, this.key);
     const connection = await upsertPortalConnection({
       workspaceId,
       portalKey: this.key,
       portalName: this.displayName,
-      status: session.encryptedCookies ? 'connected' : 'pending',
+      status: 'pending',
       lastError: null,
     });
     return connection;

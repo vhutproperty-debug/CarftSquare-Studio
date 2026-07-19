@@ -222,9 +222,14 @@ export default function ConnectorsPanel() {
         const json = await res.json();
         if (!res.ok || cancelled) return;
         const next = json.connectSession as PublicConnectSession;
+        // Backend is the only source of truth — never advance phase locally.
         setLiveSession(next);
         setPreviewKey((k) => k + 1);
         if (next.phase === 'connected') {
+          console.info(
+            '[connectors] Connected from backend',
+            { id: next.id, phase: next.phase, message: next.message },
+          );
           setMessage(`${next.portalName} connected successfully.`);
           setQueuedSince(null);
           await refresh();
