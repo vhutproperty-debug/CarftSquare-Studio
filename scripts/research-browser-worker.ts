@@ -180,6 +180,12 @@ async function main() {
       'info',
       'Set Vercel RESEARCH_BROWSER_WORKER_URL to this service public HTTPS URL',
     );
+  } else if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID) {
+    pushWorkerLog('info', `HTTP listening · ${host}:${port} (behind Railway edge proxy)`);
+    pushWorkerLog(
+      'info',
+      'Set Vercel RESEARCH_BROWSER_WORKER_URL to this service public HTTPS URL (not 127.0.0.1)',
+    );
   } else {
     pushWorkerLog('info', `HTTP listening · http://127.0.0.1:${port}/status`);
     pushWorkerLog(
