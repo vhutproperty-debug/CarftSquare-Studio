@@ -13,6 +13,7 @@ import {
 } from '@/lib/research/browser-gateway/connect-session-store';
 import { looksAuthenticated } from '@/lib/research/browser-gateway/login-detect';
 import { notifySessionNeedsLogin } from '@/lib/research/browser-gateway/gateway';
+import type { BrowserLaunchHandle, ConnectSession } from '@/lib/research/browser-gateway/types';
 import {
   markWorkerJobDone,
   pushWorkerLog,
@@ -32,6 +33,7 @@ import { upsertPortalConnection } from '@/lib/research/store/portal-connections'
 const WORKER_ID = `browser-${hostname()}-${process.pid}`;
 const LOGIN_TIMEOUT_MS = Number(process.env.RESEARCH_CONNECT_TIMEOUT_MS || 12 * 60 * 1000);
 const VALIDATE_EVERY_MS = Number(process.env.RESEARCH_SESSION_VALIDATE_MS || 3 * 60 * 60 * 1000);
+const MAX_VALIDATION_RETRIES = Number(process.env.RESEARCH_CONNECT_VALIDATION_RETRIES || 2);
 
 /**
  * Process one queued remote-connect (or validate-only) job.
@@ -84,145 +86,164 @@ export async function processNextConnectJob(): Promise<boolean> {
   );
   const previewFile = path.join(previewDir, 'live.jpg');
 
-  let handle: Awaited<ReturnType<typeof adapter.launchLoginSession>> | null = null;
+  let handle: BrowserLaunchHandle | null = null;
+  let validationAttempt = 0;
 
   try {
-    await updateConnectSession(session.id, {
-      phase: 'opening_browser',
-      message: 'Opening Browser…',
-      workerId: WORKER_ID,
-    });
-    pushWorkerLog('info', `Opening Chromium for ${session.portal} (${session.provider})`);
+    // Outer loop: wait for login → capture → validate. On recoverable validation
+    // failures (e.g. HTTP 406), reopen the browser and let the user log in again.
+    while (true) {
+      const stopped = await ensureCancelled(session.id, handle);
+      if (stopped) return true;
 
-    handle = await adapter.launchLoginSession({
-      workspaceId: session.workspaceId,
-      portal: session.portal,
-      loginUrl: session.loginUrl,
-      profileDir,
-    });
+      await updateConnectSession(session.id, {
+        phase: 'opening_browser',
+        message: 'Opening Browser…',
+        workerId: WORKER_ID,
+      });
+      const connectHeadless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+      pushWorkerLog(
+        'info',
+        `Opening Chromium for ${session.portal} (${session.provider}) headless=${connectHeadless} RESEARCH_BROWSER_HEADLESS=${process.env.RESEARCH_BROWSER_HEADLESS || 'unset'}`,
+      );
 
-    await updateConnectSession(session.id, {
-      phase: 'waiting_for_login',
-      message: 'Waiting for Login…',
-      browserVersion: handle.browserVersion,
-      liveViewUrl: handle.liveViewUrl,
-      previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
-    });
-    pushWorkerLog('info', `Chromium ready — waiting for login on ${session.loginUrl}`);
+      handle = await adapter.launchLoginSession({
+        workspaceId: session.workspaceId,
+        portal: session.portal,
+        loginUrl: session.loginUrl,
+        profileDir,
+      });
 
-    await handle.gotoLogin(session.loginUrl);
+      await updateConnectSession(session.id, {
+        phase: 'waiting_for_login',
+        message:
+          validationAttempt > 0
+            ? 'Validation failed — please log in again in the browser window…'
+            : 'Waiting for Login… Enter your credentials in the browser window.',
+        browserVersion: handle.browserVersion,
+        liveViewUrl: handle.liveViewUrl,
+        previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
+      });
+      pushWorkerLog('info', `login_wait_start portal=${session.portal} url=${session.loginUrl}`);
 
-    const deadline = Date.now() + LOGIN_TIMEOUT_MS;
-    let authenticated = false;
-    while (Date.now() < deadline) {
-      const current = await getConnectSessionById(session.id);
-      if (!current || current.phase === 'cancelled' || current.phase === 'expired') {
-        await handle.close();
+      await handle.gotoLogin(session.loginUrl);
+
+      const authenticated = await waitForManualLogin({
+        session,
+        handle,
+        previewFile,
+      });
+
+      if (!authenticated) {
+        // waitForManualLogin already closed + marked failed/cancelled
+        handle = null;
+        markWorkerJobDone();
         return true;
       }
 
-      if (handle.writePreview) {
-        await handle.writePreview(previewFile).catch(() => undefined);
-        await updateConnectSession(session.id, {
-          previewUpdatedAt: new Date().toISOString(),
-          previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
-        });
-      }
-
-      const signals = await handle.pageSignals();
-      if (looksAuthenticated(signals)) {
-        authenticated = true;
-        break;
-      }
-      await sleep(2000);
-    }
-
-    if (!authenticated) {
+      pushWorkerLog('info', `login_detected portal=${session.portal} — capturing session`);
       await updateConnectSession(session.id, {
-        phase: 'failed',
-        errorMessage: 'Login timed out before authentication was detected',
-        finishedAt: new Date().toISOString(),
+        phase: 'capturing',
+        message: 'Capturing Session…',
       });
-      pushWorkerLog('error', `Login timed out for ${session.portal}`);
-      setWorkerError(`Login timed out for ${session.portal}`);
+      const secrets = await handle.captureSecrets();
+      const cookieCount = secrets.cookieCount ?? 0;
+      pushWorkerLog('info', `cookie_capture portal=${session.portal} cookieCount=${cookieCount}`);
+
+      await updateConnectSession(session.id, {
+        phase: 'encrypting',
+        message: 'Encrypting…',
+      });
+      pushWorkerLog('info', `encryption portal=${session.portal} cookieCount=${cookieCount}`);
+
+      // Close live browser before validation so the persistent profile is not locked.
+      pushWorkerLog('info', `browser_close_before_validation portal=${session.portal}`);
       await handle.close();
-      markWorkerJobDone();
-      return true;
-    }
+      handle = null;
 
-    pushWorkerLog('info', `Login detected for ${session.portal} — capturing session`);
-    await updateConnectSession(session.id, {
-      phase: 'capturing',
-      message: 'Capturing Session…',
-    });
-    const secrets = await handle.captureSecrets();
-    const cookieCount = secrets.cookieCount ?? 0;
-    pushWorkerLog('info', `cookie_capture cookieCount=${cookieCount}`);
+      const browserSession = await upsertBrowserSession({
+        workspaceId: session.workspaceId,
+        portal: session.portal,
+        browserProfile: profileDir,
+        encryptedCookies: secrets.encryptedCookies,
+        encryptedStorage: secrets.encryptedStorage,
+        sessionStatus: 'valid',
+        lastVerified: new Date().toISOString(),
+      });
 
-    await updateConnectSession(session.id, {
-      phase: 'encrypting',
-      message: 'Encrypting…',
-    });
-    pushWorkerLog('info', `encryption cookieCount=${cookieCount}`);
+      await updateConnectSession(session.id, {
+        phase: 'validating',
+        message: 'Validating…',
+        browserSessionId: browserSession.id,
+      });
+      pushWorkerLog(
+        'info',
+        `validation_start portal=${session.portal} attempt=${validationAttempt + 1} sessionId=${browserSession.id}`,
+      );
 
-    // Close live browser before validation so the persistent profile is not locked.
-    await handle.close();
-    handle = null;
+      const connector = requirePortalConnector(session.portal);
+      const validation = await connector.validateSession(session.workspaceId);
+      pushWorkerLog(
+        validation.ok ? 'info' : 'warn',
+        `validation_result portal=${session.portal} ok=${validation.ok} status=${validation.status} httpStatus=${
+          validation.httpStatus ?? 'n/a'
+        } message=${validation.message || ''}`,
+      );
 
-    const browserSession = await upsertBrowserSession({
-      workspaceId: session.workspaceId,
-      portal: session.portal,
-      browserProfile: profileDir,
-      encryptedCookies: secrets.encryptedCookies,
-      encryptedStorage: secrets.encryptedStorage,
-      sessionStatus: 'valid',
-      lastVerified: new Date().toISOString(),
-    });
+      if (validation.ok) {
+        await upsertPortalConnection({
+          workspaceId: session.workspaceId,
+          portalKey: session.portal,
+          portalName: session.portalName,
+          status: 'connected',
+          lastError: null,
+        });
 
-    await updateConnectSession(session.id, {
-      phase: 'validating',
-      message: 'Validating…',
-      browserSessionId: browserSession.id,
-    });
-    pushWorkerLog('info', `validation_request portal=${session.portal}`);
+        await updateConnectSession(session.id, {
+          phase: 'connected',
+          message: 'Connected',
+          finishedAt: new Date().toISOString(),
+          browserSessionId: browserSession.id,
+        });
+        pushWorkerLog('info', `${session.portal} Connected`);
+        setWorkerError(null);
+        markWorkerJobDone();
+        return true;
+      }
 
-    const connector = requirePortalConnector(session.portal);
-    const validation = await connector.validateSession(session.workspaceId);
-
-    if (!validation.ok) {
       const detail =
         validation.message ||
         `Validation failed after login (status=${validation.status})`;
+      const recoverable = isRecoverableValidationFailure(detail, validation);
+
+      if (!recoverable || validationAttempt + 1 >= MAX_VALIDATION_RETRIES) {
+        await updateConnectSession(session.id, {
+          phase: 'failed',
+          errorMessage: detail,
+          finishedAt: new Date().toISOString(),
+        });
+        pushWorkerLog('error', detail);
+        setWorkerError(detail);
+        markWorkerJobDone();
+        return true;
+      }
+
+      // Keep connect session alive — reopen headed browser for another manual login.
+      validationAttempt += 1;
+      pushWorkerLog(
+        'warn',
+        `validation_retry portal=${session.portal} attempt=${validationAttempt}/${MAX_VALIDATION_RETRIES} reason=${detail}`,
+      );
       await updateConnectSession(session.id, {
-        phase: 'failed',
+        phase: 'waiting_for_login',
+        message:
+          'Validation was blocked (portal security). Browser reopening — please log in again.',
         errorMessage: detail,
-        finishedAt: new Date().toISOString(),
+        finishedAt: undefined,
       });
-      pushWorkerLog('error', detail);
       setWorkerError(detail);
-      markWorkerJobDone();
-      return true;
+      // loop continues → reopen browser
     }
-
-    await upsertPortalConnection({
-      workspaceId: session.workspaceId,
-      portalKey: session.portal,
-      portalName: session.portalName,
-      status: 'connected',
-      lastError: null,
-    });
-
-    await updateConnectSession(session.id, {
-      phase: 'connected',
-      message: 'Connected',
-      finishedAt: new Date().toISOString(),
-      browserSessionId: browserSession.id,
-    });
-    pushWorkerLog('info', `${session.portal} Connected`);
-    setWorkerError(null);
-    markWorkerJobDone();
-
-    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await updateConnectSession(session.id, {
@@ -232,7 +253,10 @@ export async function processNextConnectJob(): Promise<boolean> {
     });
     pushWorkerLog('error', message);
     setWorkerError(message);
-    if (handle) await handle.close().catch(() => undefined);
+    if (handle) {
+      pushWorkerLog('info', `browser_close_on_error portal=${session.portal}`);
+      await handle.close().catch(() => undefined);
+    }
     markWorkerJobDone();
     return true;
   } finally {
@@ -243,6 +267,101 @@ export async function processNextConnectJob(): Promise<boolean> {
       workspaceId: session.workspaceId,
     });
   }
+}
+
+async function waitForManualLogin(input: {
+  session: ConnectSession;
+  handle: BrowserLaunchHandle;
+  previewFile: string;
+}): Promise<boolean> {
+  const { session, handle, previewFile } = input;
+  const deadline = Date.now() + LOGIN_TIMEOUT_MS;
+  let poll = 0;
+
+  while (Date.now() < deadline) {
+    const current = await getConnectSessionById(session.id);
+    if (!current || current.phase === 'cancelled' || current.phase === 'expired') {
+      pushWorkerLog(
+        'info',
+        `login_wait_aborted portal=${session.portal} phase=${current?.phase || 'missing'}`,
+      );
+      pushWorkerLog('info', `browser_close portal=${session.portal} reason=cancelled_or_expired`);
+      await handle.close();
+      return false;
+    }
+
+    if (handle.writePreview) {
+      await handle.writePreview(previewFile).catch(() => undefined);
+      await updateConnectSession(session.id, {
+        previewUpdatedAt: new Date().toISOString(),
+        previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
+      });
+    }
+
+    const signals = await handle.pageSignals();
+    const authenticated = looksAuthenticated({
+      ...signals,
+      loginUrl: session.loginUrl,
+    });
+
+    if (poll % 5 === 0) {
+      pushWorkerLog(
+        'info',
+        `login_wait_poll portal=${session.portal} n=${poll} url=${signals.url} cookies=${
+          signals.cookieCount ?? 'n/a'
+        } authenticated=${authenticated}`,
+      );
+    }
+
+    if (authenticated) {
+      pushWorkerLog(
+        'info',
+        `login_wait_success portal=${session.portal} url=${signals.url} cookies=${
+          signals.cookieCount ?? 'n/a'
+        }`,
+      );
+      return true;
+    }
+
+    poll += 1;
+    await sleep(2000);
+  }
+
+  await updateConnectSession(session.id, {
+    phase: 'failed',
+    errorMessage: 'Login timed out before authentication was detected',
+    finishedAt: new Date().toISOString(),
+  });
+  pushWorkerLog('error', `Login timed out for ${session.portal}`);
+  setWorkerError(`Login timed out for ${session.portal}`);
+  pushWorkerLog('info', `browser_close portal=${session.portal} reason=login_timeout`);
+  await handle.close();
+  return false;
+}
+
+function isRecoverableValidationFailure(
+  detail: string,
+  validation: { status?: string; httpStatus?: number | null; responseKind?: string },
+): boolean {
+  const text = detail.toLowerCase();
+  if (validation.httpStatus === 406) return true;
+  if (validation.responseKind === '406') return true;
+  if (text.includes('security challenge') || text.includes('security alert')) return true;
+  if (text.includes('406')) return true;
+  if (validation.status === 'needs_login') return true;
+  return false;
+}
+
+async function ensureCancelled(
+  sessionId: string,
+  handle: BrowserLaunchHandle | null,
+): Promise<boolean> {
+  const current = await getConnectSessionById(sessionId);
+  if (!current || current.phase === 'cancelled' || current.phase === 'expired') {
+    if (handle) await handle.close().catch(() => undefined);
+    return true;
+  }
+  return false;
 }
 
 async function runValidateOnly(workspaceId: string, portal: string, connectId: string) {

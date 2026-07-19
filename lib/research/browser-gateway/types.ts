@@ -87,8 +87,8 @@ export type BrowserLaunchHandle = {
   }>;
   /** Current page URL for login detection. */
   currentUrl: () => Promise<string>;
-  /** Page HTML snippet for login detection. */
-  pageSignals: () => Promise<{ url: string; bodySnippet: string }>;
+  /** Page HTML snippet (+ optional cookie count) for login detection. */
+  pageSignals: () => Promise<{ url: string; bodySnippet: string; cookieCount?: number }>;
   /** Write a JPEG/PNG preview frame for UI polling. */
   writePreview?: (absolutePath: string) => Promise<void>;
   /** Navigate to login URL. */
