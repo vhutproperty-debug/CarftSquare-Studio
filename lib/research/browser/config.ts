@@ -1,4 +1,7 @@
-import path from 'path';
+import {
+  getResearchProfileRoot,
+  getResearchScreenshotRoot,
+} from '@/lib/research/browser/runtime-paths';
 
 export const RESEARCH_BROWSER_CONFIG = {
   // Default headed: Housing.com (Akamai) returns HTTP 406 "Security Alert" to headless Chromium.
@@ -9,12 +12,14 @@ export const RESEARCH_BROWSER_CONFIG = {
   // Default covers all five portals for parallel AI search without cold relaunch thrash.
   maxPoolSize: Number(process.env.RESEARCH_BROWSER_POOL_SIZE || 5),
   maxRetries: Number(process.env.RESEARCH_BROWSER_RETRIES || 2),
-  profileRoot:
-    process.env.RESEARCH_BROWSER_PROFILE_ROOT
-    || path.join(process.cwd(), '.research-profiles'),
-  screenshotRoot:
-    process.env.RESEARCH_BROWSER_SCREENSHOT_ROOT
-    || path.join(process.cwd(), '.research-screenshots'),
+  /** Writable profile root (resolved at access time — never `/var/task`). */
+  get profileRoot() {
+    return getResearchProfileRoot();
+  },
+  /** Writable screenshot root (resolved at access time). */
+  get screenshotRoot() {
+    return getResearchScreenshotRoot();
+  },
   sessionTtlMs: Number(process.env.RESEARCH_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000),
   /** Skip live browser validation when lastVerified is newer than this (ms). */
   validateFreshMs: Number(process.env.RESEARCH_VALIDATE_FRESH_MS || 10 * 60 * 1000),
@@ -22,7 +27,7 @@ export const RESEARCH_BROWSER_CONFIG = {
   renewMinIntervalMs: Number(process.env.RESEARCH_RENEW_MIN_INTERVAL_MS || 15 * 60 * 1000),
   /** Block images/fonts/media/trackers on automation contexts (not login adapters). */
   blockHeavyResources: process.env.RESEARCH_BROWSER_BLOCK_RESOURCES !== 'false',
-} as const;
+};
 
 export type ResearchPortalKey =
   | 'housing'

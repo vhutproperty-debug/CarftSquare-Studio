@@ -22,8 +22,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Preview not available.' }, { status: 404 });
   }
 
-  const absolute = path.resolve(process.cwd(), session.previewPath);
   const allowedRoot = path.resolve(RESEARCH_BROWSER_CONFIG.screenshotRoot);
+  const absolute = path.isAbsolute(session.previewPath)
+    ? path.resolve(session.previewPath)
+    : path.resolve(allowedRoot, session.previewPath);
   if (!absolute.startsWith(allowedRoot)) {
     return NextResponse.json({ error: 'Invalid preview path.' }, { status: 400 });
   }

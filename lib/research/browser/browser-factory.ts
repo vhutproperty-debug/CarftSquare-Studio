@@ -1,8 +1,7 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { chromium, type BrowserContext } from 'playwright';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
+import { ensureDir, poolProfileDir } from '@/lib/research/browser/runtime-paths';
 
 const HEAVY_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
 const TRACKER_HOST_RE =
@@ -29,12 +28,12 @@ export async function installAutomationResourceBlocks(context: BrowserContext): 
 
 export class BrowserFactory {
   profileDir(workspaceId: string, portal: string): string {
-    return path.join(RESEARCH_BROWSER_CONFIG.profileRoot, workspaceId, portal);
+    return poolProfileDir(workspaceId, portal);
   }
 
   async ensureProfileDir(workspaceId: string, portal: string): Promise<string> {
     const dir = this.profileDir(workspaceId, portal);
-    await fs.mkdir(dir, { recursive: true });
+    await ensureDir(dir);
     return dir;
   }
 

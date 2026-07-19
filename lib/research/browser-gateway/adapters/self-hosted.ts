@@ -60,6 +60,7 @@ async function launchLocalFallback(input: {
   loginUrl: string;
   profileDir: string;
 }): Promise<BrowserLaunchHandle> {
+  // Caller prepares a fresh profileDir; ensure parents exist.
   await fs.mkdir(input.profileDir, { recursive: true });
   const headless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
   const context: BrowserContext = await chromium.launchPersistentContext(input.profileDir, {
@@ -69,6 +70,18 @@ async function launchLocalFallback(input: {
   });
   const page: Page = context.pages()[0] || (await context.newPage());
   const browserVersion = context.browser()?.version() || 'chromium';
+  const browserPid = (() => {
+    try {
+      const b = context.browser() as { process?: () => { pid?: number } | null } | null;
+      return typeof b?.process === 'function' ? b.process()?.pid ?? null : null;
+    } catch {
+      return null;
+    }
+  })();
+  pushWorkerLog(
+    'info',
+    `browser_launch_ok portal=${input.portal} browserPid=${browserPid ?? 'n/a'} workerPid=${process.pid} profileDir=${input.profileDir} mode=local_fallback`,
+  );
   const loader = new SessionLoader();
 
   return {

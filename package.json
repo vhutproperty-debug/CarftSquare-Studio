@@ -16,7 +16,8 @@
         "research:monitor:once": "npx tsx scripts/research-monitor-worker.ts --once",
         "research:browser-worker": "npx tsx scripts/research-browser-worker.ts",
         "research:browser-worker:once": "npx tsx scripts/research-browser-worker.ts --once",
-        "research:browser-worker:install-chromium": "npx playwright install chromium"
+        "research:browser-worker:install-chromium": "npx playwright install chromium",
+        "test:housing-connect": "npx tsx scripts/housing-connect-integration.test.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

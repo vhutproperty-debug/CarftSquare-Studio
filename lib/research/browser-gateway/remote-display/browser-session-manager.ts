@@ -210,13 +210,18 @@ export class RemoteBrowserSessionManager {
 
     pushWorkerLog(
       'info',
-      `browser_launch portal=${input.portal} headless=${headless} display=${display} profile=${input.profileDir}`,
+      `browser_launch portal=${input.portal} connectSessionId=${input.connectSessionId} headless=${headless} display=${display} profile=${input.profileDir} workerPid=${process.pid}`,
     );
 
     const context = await this.openContext(input.profileDir, display, headless);
     let page = context.pages()[0] || (await context.newPage());
     entry.context = context;
     entry.page = page;
+    const browserPid = safeBrowserPid(context);
+    pushWorkerLog(
+      'info',
+      `browser_launch_ok connectSessionId=${input.connectSessionId} portal=${input.portal} browserPid=${browserPid ?? 'n/a'} workerPid=${process.pid} profileDir=${input.profileDir}`,
+    );
 
     context.on('page', (newPage) => {
       entry.page = newPage;
@@ -235,7 +240,7 @@ export class RemoteBrowserSessionManager {
 
     pushWorkerLog(
       'info',
-      `browser_launch_ok portal=${input.portal} headless=${headless} liveView=${liveViewUrl ? 'yes' : 'no'}`,
+      `browser_live_view connectSessionId=${input.connectSessionId} portal=${input.portal} headless=${headless} liveView=${liveViewUrl ? 'yes' : 'no'}`,
     );
     auditRemote('browser_ready', {
       viewId: entry.remote.viewId,
@@ -330,6 +335,11 @@ export class RemoteBrowserSessionManager {
 
   /** Full bring-up: display → VNC → browser. */
   async startRemoteLogin(input: CreateRemoteSessionInput): Promise<BrowserLaunchHandle> {
+    if (this.active.has(input.connectSessionId)) {
+      throw new Error(
+        `Connect session already active — refusing duplicate browser for ${input.connectSessionId}`,
+      );
+    }
     await this.createSession(input);
     try {
       await this.launchDisplay(input.connectSessionId);
@@ -403,6 +413,16 @@ export class RemoteBrowserSessionManager {
         DISPLAY: display,
       },
     });
+  }
+}
+
+function safeBrowserPid(context: BrowserContext): number | null {
+  try {
+    const b = context.browser() as { process?: () => { pid?: number } | null } | null;
+    if (!b || typeof b.process !== 'function') return null;
+    return b.process()?.pid ?? null;
+  } catch {
+    return null;
   }
 }
 

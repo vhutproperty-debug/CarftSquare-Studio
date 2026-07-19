@@ -3,8 +3,16 @@ import path from 'path';
 import { hostname } from 'os';
 import { requirePortalConnector } from '@/connectors/registry';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
-import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
+import { acquireProfileLock } from '@/lib/research/browser/profile-lock';
+import {
+  prepareConnectProfileDir,
+  removeConnectProfileDir,
+} from '@/lib/research/browser/runtime-paths';
 import { getBrowserProviderAdapter } from '@/lib/research/browser-gateway/adapters';
+import {
+  CONNECT_USER_MESSAGES,
+  friendlyConnectError,
+} from '@/lib/research/browser-gateway/connect-messages';
 import {
   claimNextConnectSession,
   expireStaleConnectSessions,
@@ -63,10 +71,13 @@ export async function processNextConnectJob(): Promise<boolean> {
   }
 
   setWorkerActiveJob(session.id, session.portal);
-  pushWorkerLog('info', `Claimed connect session ${session.id} for ${session.portal}`);
+  pushWorkerLog(
+    'info',
+    `connect_claimed sessionId=${session.id} portal=${session.portal} workerId=${WORKER_ID} pid=${process.pid}`,
+  );
   await updateConnectSession(session.id, {
     phase: 'connecting',
-    message: 'Worker Connected — preparing browser…',
+    message: CONNECT_USER_MESSAGES.preparing,
     workerId: WORKER_ID,
   });
 
@@ -82,61 +93,119 @@ export async function processNextConnectJob(): Promise<boolean> {
   }
 
   const adapter = getBrowserProviderAdapter(session.provider);
-  const profileDir = researchBrowserManager.profilePath(session.workspaceId, session.portal);
   const previewDir = path.join(
     RESEARCH_BROWSER_CONFIG.screenshotRoot,
     'connect',
     session.id,
   );
   const previewFile = path.join(previewDir, 'live.jpg');
+  await fs.mkdir(previewDir, { recursive: true }).catch(() => undefined);
 
   let handle: BrowserLaunchHandle | null = null;
   let validationAttempt = 0;
+  let profileDir = '';
+  let profileLock: { release: () => Promise<void> } | null = null;
 
   try {
+    // Exclusive lock: one browser per Connect session across workers/processes.
+    profileLock = await acquireProfileLock(`connect:${session.id}`);
+
     // Outer loop: wait for login → capture → validate. On recoverable validation
     // failures (e.g. HTTP 406), reopen the browser and let the user log in again.
     while (true) {
       const stopped = await ensureCancelled(session.id, handle);
-      if (stopped) return true;
+      if (stopped) {
+        pushWorkerLog(
+          'info',
+          `connect_done sessionId=${session.id} reason=cancelled_or_expired`,
+        );
+        return true;
+      }
 
       await updateConnectSession(session.id, {
         phase: 'opening_browser',
-        message: 'Opening Secure Browser…',
+        message: CONNECT_USER_MESSAGES.opening,
         workerId: WORKER_ID,
       });
+
+      try {
+        profileDir = await prepareConnectProfileDir(session.id, session.portal);
+      } catch (error) {
+        const friendly = friendlyConnectError(error);
+        pushWorkerLog(
+          'warn',
+          `profile_dir_unavailable sessionId=${session.id} error=${
+            error instanceof Error ? error.message : String(error)
+          } — ${friendly}`,
+        );
+        await updateConnectSession(session.id, {
+          message: CONNECT_USER_MESSAGES.profileUnavailable,
+        });
+        profileDir = await prepareConnectProfileDir(session.id, session.portal);
+      }
+
+      pushWorkerLog(
+        'info',
+        `connect_profile sessionId=${session.id} portal=${session.portal} profileDir=${profileDir} workerPid=${process.pid}`,
+      );
+      await updateConnectSession(session.id, {
+        message: CONNECT_USER_MESSAGES.profileReady,
+      });
+
       const connectHeadless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
       pushWorkerLog(
         'info',
-        `Opening Chromium for ${session.portal} (${session.provider}) headless=${connectHeadless} RESEARCH_BROWSER_HEADLESS=${process.env.RESEARCH_BROWSER_HEADLESS || 'unset'}`,
+        `browser_launch_start sessionId=${session.id} portal=${session.portal} provider=${session.provider} headless=${connectHeadless} profileDir=${profileDir}`,
       );
 
-      handle = await adapter.launchLoginSession({
-        workspaceId: session.workspaceId,
-        portal: session.portal,
-        loginUrl: session.loginUrl,
-        profileDir,
-        connectSessionId: session.id,
-      });
+      try {
+        handle = await adapter.launchLoginSession({
+          workspaceId: session.workspaceId,
+          portal: session.portal,
+          loginUrl: session.loginUrl,
+          profileDir,
+          connectSessionId: session.id,
+        });
+      } catch (error) {
+        pushWorkerLog(
+          'warn',
+          `browser_launch_failed sessionId=${session.id} — ${friendlyConnectError(error)} raw=${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        await updateConnectSession(session.id, {
+          message: CONNECT_USER_MESSAGES.browserRetry,
+        });
+        // One immediate retry with a brand-new profile directory.
+        await removeConnectProfileDir(profileDir);
+        profileDir = await prepareConnectProfileDir(`${session.id}-retry`, session.portal);
+        handle = await adapter.launchLoginSession({
+          workspaceId: session.workspaceId,
+          portal: session.portal,
+          loginUrl: session.loginUrl,
+          profileDir,
+          connectSessionId: session.id,
+        });
+      }
+
+      const previewRel = path
+        .relative(RESEARCH_BROWSER_CONFIG.screenshotRoot, previewFile)
+        .replace(/\\/g, '/');
 
       await updateConnectSession(session.id, {
         phase: 'waiting_for_login',
         message: handle.liveViewUrl
-          ? validationAttempt > 0
-            ? 'Browser Ready — reopen the secure login window and sign in again.'
-            : 'Browser Ready — open the secure login window to continue.'
-          : validationAttempt > 0
-            ? 'Validation failed — please log in again…'
-            : 'Waiting for Login…',
+          ? CONNECT_USER_MESSAGES.browserReady
+          : CONNECT_USER_MESSAGES.waitingLogin,
         browserVersion: handle.browserVersion,
         liveViewUrl: handle.liveViewUrl,
-        previewPath: path.relative(process.cwd(), previewFile).replace(/\\/g, '/'),
+        previewPath: previewRel,
       });
       pushWorkerLog(
         'info',
-        `login_wait_start portal=${session.portal} url=${session.loginUrl} liveView=${
+        `login_wait_start sessionId=${session.id} portal=${session.portal} url=${session.loginUrl} liveView=${
           handle.liveViewUrl ? 'yes' : 'no'
-        }`,
+        } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'}`,
       );
 
       await handle.gotoLogin(session.loginUrl);
@@ -145,39 +214,55 @@ export async function processNextConnectJob(): Promise<boolean> {
         session,
         handle,
         previewFile,
+        profileDir,
       });
 
       if (!authenticated) {
-        // waitForManualLogin already closed + marked failed/cancelled
         handle = null;
+        pushWorkerLog(
+          'error',
+          `connect_failed sessionId=${session.id} reason=login_not_detected profileDir=${profileDir}`,
+        );
         markWorkerJobDone();
         return true;
       }
 
-      pushWorkerLog('info', `login_detected portal=${session.portal} — capturing session`);
+      pushWorkerLog(
+        'info',
+        `connect_authenticated sessionId=${session.id} portal=${session.portal} — ${CONNECT_USER_MESSAGES.authenticated}`,
+      );
       await updateConnectSession(session.id, {
         phase: 'capturing',
-        message: 'Authenticating — capturing session…',
+        message: CONNECT_USER_MESSAGES.capturing,
       });
       const secrets = await handle.captureSecrets();
       const cookieCount = secrets.cookieCount ?? 0;
-      pushWorkerLog('info', `cookie_capture portal=${session.portal} cookieCount=${cookieCount}`);
+      pushWorkerLog(
+        'info',
+        `cookie_capture sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount}`,
+      );
 
       await updateConnectSession(session.id, {
         phase: 'encrypting',
-        message: 'Encrypting…',
+        message: CONNECT_USER_MESSAGES.encrypting,
       });
-      pushWorkerLog('info', `encryption portal=${session.portal} cookieCount=${cookieCount}`);
+      pushWorkerLog(
+        'info',
+        `encryption sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount}`,
+      );
 
-      // Close live browser before validation so the persistent profile is not locked.
-      pushWorkerLog('info', `browser_close_before_validation portal=${session.portal}`);
+      pushWorkerLog(
+        'info',
+        `browser_close_before_validation sessionId=${session.id} portal=${session.portal}`,
+      );
       await handle.close();
       handle = null;
+      await removeConnectProfileDir(profileDir);
 
       const browserSession = await upsertBrowserSession({
         workspaceId: session.workspaceId,
         portal: session.portal,
-        browserProfile: profileDir,
+        browserProfile: `encrypted:${session.portal}`,
         encryptedCookies: secrets.encryptedCookies,
         encryptedStorage: secrets.encryptedStorage,
         sessionStatus: 'valid',
@@ -186,12 +271,12 @@ export async function processNextConnectJob(): Promise<boolean> {
 
       await updateConnectSession(session.id, {
         phase: 'validating',
-        message: 'Validating…',
+        message: CONNECT_USER_MESSAGES.validating,
         browserSessionId: browserSession.id,
       });
       pushWorkerLog(
         'info',
-        `validation_start portal=${session.portal} attempt=${validationAttempt + 1} sessionId=${browserSession.id}`,
+        `validation_start sessionId=${session.id} portal=${session.portal} attempt=${validationAttempt + 1} browserSessionId=${browserSession.id}`,
       );
 
       const connector = requirePortalConnector(session.portal);
@@ -200,7 +285,7 @@ export async function processNextConnectJob(): Promise<boolean> {
         'httpStatus' in validation ? (validation as { httpStatus?: number | null }).httpStatus : undefined;
       pushWorkerLog(
         validation.ok ? 'info' : 'warn',
-        `validation_result portal=${session.portal} ok=${validation.ok} status=${validation.status} httpStatus=${
+        `validation_result sessionId=${session.id} portal=${session.portal} ok=${validation.ok} status=${validation.status} httpStatus=${
           validationHttp ?? 'n/a'
         } message=${validation.message || ''}`,
       );
@@ -216,11 +301,14 @@ export async function processNextConnectJob(): Promise<boolean> {
 
         await updateConnectSession(session.id, {
           phase: 'connected',
-          message: 'Connected',
+          message: CONNECT_USER_MESSAGES.connected,
           finishedAt: new Date().toISOString(),
           browserSessionId: browserSession.id,
         });
-        pushWorkerLog('info', `${session.portal} Connected`);
+        pushWorkerLog(
+          'info',
+          `connect_success sessionId=${session.id} portal=${session.portal} reason=validated cookieCount=${cookieCount}`,
+        );
         setWorkerError(null);
         markWorkerJobDone();
         return true;
@@ -232,49 +320,68 @@ export async function processNextConnectJob(): Promise<boolean> {
       const recoverable = isRecoverableValidationFailure(detail, validation);
 
       if (!recoverable || validationAttempt + 1 >= MAX_VALIDATION_RETRIES) {
+        const friendly = friendlyConnectError(detail);
         await updateConnectSession(session.id, {
           phase: 'failed',
-          errorMessage: detail,
+          errorMessage: friendly,
+          message: friendly,
           finishedAt: new Date().toISOString(),
         });
-        pushWorkerLog('error', detail);
-        setWorkerError(detail);
+        pushWorkerLog(
+          'error',
+          `connect_failed sessionId=${session.id} reason=validation_failed detail=${detail}`,
+        );
+        setWorkerError(friendly);
         markWorkerJobDone();
         return true;
       }
 
-      // Keep connect session alive — reopen headed browser for another manual login.
       validationAttempt += 1;
       pushWorkerLog(
         'warn',
-        `validation_retry portal=${session.portal} attempt=${validationAttempt}/${MAX_VALIDATION_RETRIES} reason=${detail}`,
+        `validation_retry sessionId=${session.id} portal=${session.portal} attempt=${validationAttempt}/${MAX_VALIDATION_RETRIES} reason=${detail}`,
       );
       await updateConnectSession(session.id, {
         phase: 'waiting_for_login',
-        message:
-          'Validation was blocked (portal security). Browser reopening — please log in again.',
-        errorMessage: detail,
+        message: CONNECT_USER_MESSAGES.browserRetry,
+        errorMessage: friendlyConnectError(detail),
         finishedAt: undefined,
       });
-      setWorkerError(detail);
-      // loop continues → reopen browser
+      setWorkerError(friendlyConnectError(detail));
+      // Fresh profile on retry — never reuse Chromium user-data-dir.
+      await removeConnectProfileDir(profileDir);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const friendly = friendlyConnectError(error);
+    const raw = error instanceof Error ? error.message : String(error);
     await updateConnectSession(session.id, {
       phase: 'failed',
-      errorMessage: message,
+      errorMessage: friendly,
+      message: friendly,
       finishedAt: new Date().toISOString(),
     });
-    pushWorkerLog('error', message);
-    setWorkerError(message);
+    pushWorkerLog(
+      'error',
+      `connect_failed sessionId=${session.id} reason=exception friendly=${friendly} raw=${raw}`,
+    );
+    setWorkerError(friendly);
     if (handle) {
-      pushWorkerLog('info', `browser_close_on_error portal=${session.portal}`);
+      pushWorkerLog('info', `browser_close_on_error sessionId=${session.id} portal=${session.portal}`);
       await handle.close().catch(() => undefined);
     }
     markWorkerJobDone();
     return true;
   } finally {
+    if (profileDir) {
+      await removeConnectProfileDir(profileDir);
+      pushWorkerLog(
+        'info',
+        `connect_cleanup sessionId=${session.id} profileDir=${profileDir} removed=true`,
+      );
+    }
+    if (profileLock) {
+      await profileLock.release().catch(() => undefined);
+    }
     await recordWorkerHeartbeat({
       workerId: WORKER_ID,
       workerType: 'browser_crawl',
@@ -288,12 +395,17 @@ async function waitForManualLogin(input: {
   session: ConnectSession;
   handle: BrowserLaunchHandle;
   previewFile: string;
+  profileDir: string;
 }): Promise<boolean> {
-  const { session, handle, previewFile } = input;
+  const { session, handle, previewFile, profileDir } = input;
   const deadline = Date.now() + LOGIN_TIMEOUT_MS;
   let poll = 0;
   let detectState: LoginDetectState = { sawLoginSurface: false };
   const artifactDir = path.join(path.dirname(previewFile), 'auth-probe');
+
+  await updateConnectSession(session.id, {
+    message: CONNECT_USER_MESSAGES.waitingLogin,
+  });
 
   const evaluateOnce = async (label: string) => {
     const signals = await handle.pageSignals({
@@ -310,7 +422,9 @@ async function waitForManualLogin(input: {
     pushWorkerLog(
       'info',
       [
-        `login_wait_poll portal=${session.portal} label=${label} n=${poll}`,
+        `login_wait_poll sessionId=${session.id} portal=${session.portal} label=${label} n=${poll}`,
+        `profileDir=${profileDir}`,
+        `workerPid=${process.pid}`,
         `url=${signals.url}`,
         `title=${JSON.stringify(signals.title ?? '')}`,
         `readyState=${signals.readyState ?? 'n/a'}`,
@@ -329,7 +443,7 @@ async function waitForManualLogin(input: {
         `profileSelectors=${(signals.profileSelectors || []).join('|') || 'none'}`,
         `html=${signals.htmlSnapshotPath ?? 'n/a'}`,
         `screenshot=${signals.screenshotPath ?? 'n/a'}`,
-        `score=${result.score}/${result.threshold}`,
+        `authScore=${result.score}/${result.threshold}`,
         `remainingMs=${remainingMs}`,
         `decision=${result.skipped ? 'SKIPPED' : result.authenticated ? 'AUTHENTICATED' : 'NOT_AUTHENTICATED'}`,
       ].join(' '),
@@ -381,8 +495,11 @@ async function waitForManualLogin(input: {
     if (result.authenticated) {
       pushWorkerLog(
         'info',
-        `login_wait_success portal=${session.portal} score=${result.score}/${result.threshold}`,
+        `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} reason=threshold_met`,
       );
+      await updateConnectSession(session.id, {
+        message: CONNECT_USER_MESSAGES.authenticated,
+      });
       return true;
     }
 
@@ -408,12 +525,16 @@ async function waitForManualLogin(input: {
 
   await updateConnectSession(session.id, {
     phase: 'failed',
-    errorMessage: 'Login timed out before authentication was detected',
+    errorMessage: CONNECT_USER_MESSAGES.loginTimeout,
+    message: CONNECT_USER_MESSAGES.loginTimeout,
     finishedAt: new Date().toISOString(),
   });
-  pushWorkerLog('error', `Login timed out for ${session.portal}`);
-  setWorkerError(`Login timed out for ${session.portal}`);
-  pushWorkerLog('info', `browser_close portal=${session.portal} reason=login_timeout`);
+  pushWorkerLog(
+    'error',
+    `connect_failed sessionId=${session.id} portal=${session.portal} reason=login_timeout profileDir=${profileDir}`,
+  );
+  setWorkerError(CONNECT_USER_MESSAGES.loginTimeout);
+  pushWorkerLog('info', `browser_close sessionId=${session.id} reason=login_timeout`);
   await handle.close();
   return false;
 }
