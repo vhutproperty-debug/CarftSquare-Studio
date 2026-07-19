@@ -263,15 +263,12 @@ export class RemoteBrowserSessionManager {
         return (entry.page || page).url();
       },
       async pageSignals() {
+        const { collectPageAuthProbe } = await import(
+          '@/lib/research/browser-gateway/page-auth-probe'
+        );
         const p = entry.page || page;
-        const url = p.url();
-        const body = await p.content().catch(() => '');
-        const cookies = await (entry.context || context).cookies().catch(() => []);
-        return {
-          url,
-          bodySnippet: body.slice(0, 4000).toLowerCase(),
-          cookieCount: cookies.length,
-        };
+        const ctx = entry.context || context;
+        return collectPageAuthProbe(p, ctx);
       },
       async writePreview(absolutePath: string) {
         await fs.mkdir(path.dirname(absolutePath), { recursive: true });

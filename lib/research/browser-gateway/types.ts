@@ -87,8 +87,20 @@ export type BrowserLaunchHandle = {
   }>;
   /** Current page URL for login detection. */
   currentUrl: () => Promise<string>;
-  /** Page HTML snippet (+ optional cookie count) for login detection. */
-  pageSignals: () => Promise<{ url: string; bodySnippet: string; cookieCount?: number }>;
+  /** Page HTML + DOM auth signals for login detection. */
+  pageSignals: () => Promise<{
+    url: string;
+    bodySnippet: string;
+    cookieCount?: number;
+    readyState?: string;
+    hasAvatar?: boolean;
+    hasAccountName?: boolean;
+    hasEditProfile?: boolean;
+    hasLogout?: boolean;
+    hasProfileLink?: boolean;
+    hasLoginForm?: boolean;
+    profileSelectors?: string[];
+  }>;
   /** Write a JPEG/PNG preview frame for UI polling. */
   writePreview?: (absolutePath: string) => Promise<void>;
   /** Navigate to login URL. */

@@ -12,8 +12,8 @@ import {
   updateConnectSession,
 } from '@/lib/research/browser-gateway/connect-session-store';
 import {
-  looksAuthenticated,
   observeLoginSignals,
+  scoreAuthentication,
   type LoginDetectState,
 } from '@/lib/research/browser-gateway/login-detect';
 import { notifySessionNeedsLogin } from '@/lib/research/browser-gateway/gateway';
@@ -294,6 +294,39 @@ async function waitForManualLogin(input: {
   let poll = 0;
   let detectState: LoginDetectState = { sawLoginSurface: false };
 
+  const evaluateOnce = async (label: string) => {
+    const signals = await handle.pageSignals();
+    const merged = { ...signals, loginUrl: session.loginUrl };
+    detectState = observeLoginSignals(merged, detectState);
+    const result = scoreAuthentication(merged, detectState);
+    const remainingMs = Math.max(0, deadline - Date.now());
+    pushWorkerLog(
+      'info',
+      [
+        `login_wait_poll portal=${session.portal} label=${label} n=${poll}`,
+        `url=${signals.url}`,
+        `readyState=${signals.readyState ?? 'n/a'}`,
+        `cookies=${signals.cookieCount ?? 'n/a'}`,
+        `loginSurface=${detectState.sawLoginSurface || signals.hasLoginForm === true}`,
+        `avatar=${Boolean(signals.hasAvatar)}`,
+        `accountName=${Boolean(signals.hasAccountName)}`,
+        `editProfile=${Boolean(signals.hasEditProfile)}`,
+        `logout=${Boolean(signals.hasLogout)}`,
+        `profileLink=${Boolean(signals.hasProfileLink)}`,
+        `loginForm=${Boolean(signals.hasLoginForm)}`,
+        `profileSelectors=${(signals.profileSelectors || []).join('|') || 'none'}`,
+        `score=${result.score}/${result.threshold}`,
+        `remainingMs=${remainingMs}`,
+        `decision=${result.authenticated ? 'AUTHENTICATED' : 'NOT_AUTHENTICATED'}`,
+      ].join(' '),
+    );
+    // Multi-line breakdown for Railway log readability
+    for (const line of result.summary.split('\n')) {
+      pushWorkerLog('info', `auth_score ${line}`);
+    }
+    return result;
+  };
+
   while (Date.now() < deadline) {
     const current = await getConnectSessionById(session.id);
     if (!current || current.phase === 'cancelled' || current.phase === 'expired') {
@@ -314,37 +347,33 @@ async function waitForManualLogin(input: {
       });
     }
 
-    const signals = await handle.pageSignals();
-    detectState = observeLoginSignals(
-      { ...signals, loginUrl: session.loginUrl },
-      detectState,
-    );
-    const authenticated = looksAuthenticated(
-      { ...signals, loginUrl: session.loginUrl },
-      detectState,
-    );
-
-    if (poll % 5 === 0) {
+    const result = await evaluateOnce('poll');
+    if (result.authenticated) {
       pushWorkerLog(
         'info',
-        `login_wait_poll portal=${session.portal} n=${poll} url=${signals.url} cookies=${
-          signals.cookieCount ?? 'n/a'
-        } sawLoginSurface=${detectState.sawLoginSurface} authenticated=${authenticated}`,
-      );
-    }
-
-    if (authenticated) {
-      pushWorkerLog(
-        'info',
-        `login_wait_success portal=${session.portal} url=${signals.url} cookies=${
-          signals.cookieCount ?? 'n/a'
-        } sawLoginSurface=${detectState.sawLoginSurface}`,
+        `login_wait_success portal=${session.portal} score=${result.score}/${result.threshold}`,
       );
       return true;
     }
 
     poll += 1;
     await sleep(2000);
+  }
+
+  // Grace poll: if auth is visible after deadline but before cleanup, capture anyway.
+  try {
+    const late = await evaluateOnce('post_timeout_grace');
+    if (late.authenticated) {
+      pushWorkerLog(
+        'warn',
+        `login_wait_success_after_deadline portal=${session.portal} score=${late.score}/${late.threshold}`,
+      );
+      return true;
+    }
+    pushWorkerLog('error', `login_wait_timeout portal=${session.portal}\n${late.summary}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    pushWorkerLog('error', `login_wait_timeout_probe_failed portal=${session.portal} error=${message}`);
   }
 
   await updateConnectSession(session.id, {

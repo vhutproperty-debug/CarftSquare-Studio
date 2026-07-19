@@ -91,10 +91,10 @@ async function launchLocalFallback(input: {
       return page.url();
     },
     async pageSignals() {
-      const url = page.url();
-      const body = await page.content().catch(() => '');
-      const cookies = await context.cookies().catch(() => []);
-      return { url, bodySnippet: body.slice(0, 4000).toLowerCase(), cookieCount: cookies.length };
+      const { collectPageAuthProbe } = await import(
+        '@/lib/research/browser-gateway/page-auth-probe'
+      );
+      return collectPageAuthProbe(page, context);
     },
     async writePreview(absolutePath: string) {
       await fs.mkdir(path.dirname(absolutePath), { recursive: true });
