@@ -253,6 +253,8 @@ export async function enrichKnowledgeGraph(input: {
         rent: listing.rent,
         salePrice: listing.salePrice,
         furnishing: listing.furnishing,
+        listedBy: listing.listedBy || 'unknown',
+        localityName: localityName || locality?.name,
         status: 'active',
         portalKeys: portals.map((p) => p.portal),
         portalUrls: portals.map((p) => p.url).filter(Boolean) as string[],
@@ -526,6 +528,11 @@ export async function enrichKnowledgeGraph(input: {
         rent: listing.rent ?? property.rent,
         salePrice: listing.salePrice ?? property.salePrice,
         furnishing: listing.furnishing || property.furnishing,
+        listedBy:
+          listing.listedBy && listing.listedBy !== 'unknown'
+            ? listing.listedBy
+            : property.listedBy || listing.listedBy || 'unknown',
+        localityName: localityName || locality?.name || property.localityName,
         status: 'active',
         portalKeys: Array.from(new Set([...property.portalKeys, ...portals.map((p) => p.portal)])),
         portalUrls: Array.from(

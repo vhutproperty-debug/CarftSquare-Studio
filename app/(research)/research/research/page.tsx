@@ -10,14 +10,14 @@ export default async function ResearchWorkspacePage() {
   return (
     <ResearchShell
       title="Research"
-      subtitle="Executive AI property research analyst"
+      subtitle="Conversational AI property research"
       userLabel={userLabel}
       actions={
         <Link
           href="/research/connectors"
           className="inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
         >
-          Review connectors
+          Connectors
         </Link>
       }
     >

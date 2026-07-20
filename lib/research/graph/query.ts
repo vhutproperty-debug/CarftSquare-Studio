@@ -90,7 +90,9 @@ export function kgPropertiesToListings(properties: KgProperty[]): ResearchScored
     scoreBreakdown: { knowledgeGraph: 10 },
     explanation: `Known from knowledge graph (first seen ${p.firstSeenAt.slice(0, 10)}, last seen ${p.lastSeenAt.slice(0, 10)}, ${p.observationCount} observation(s)).`,
     duplicateGroupId: p.identity.fingerprint,
-    listingSource: 'unknown' as const,
+    listingSource:
+      p.listedBy === 'owner' ? ('owner' as const) : p.listedBy === 'broker' ? ('broker' as const) : ('unknown' as const),
+    listedBy: p.listedBy || 'unknown',
   }));
 }
 

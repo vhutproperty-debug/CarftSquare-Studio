@@ -31,6 +31,13 @@ export type KgProperty = {
   rent?: number;
   salePrice?: number;
   furnishing?: string;
+  /**
+   * Who posted the listing on the portal (owner / broker-dealer / builder).
+   * Optional — older records omit this field; treat missing as unknown.
+   */
+  listedBy?: 'owner' | 'broker' | 'builder' | 'unknown';
+  /** Denormalized locality label when known (optional; older records may omit). */
+  localityName?: string;
   status: KgPropertyStatus;
   portalKeys: string[];
   portalUrls: string[];
@@ -326,6 +333,8 @@ export type KgAdvancedSearchQuery = {
   projectName?: string;
   localityName?: string;
   bhk?: number;
+  /** Optional filter — omit or 'any' means do not filter by poster type. */
+  listedBy?: 'owner' | 'broker' | 'builder' | 'unknown' | 'any';
   status?: KgPropertyStatus;
   limit?: number;
 };

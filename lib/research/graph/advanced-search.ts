@@ -110,6 +110,40 @@ export async function advancedKnowledgeSearch(
   if (query.projectName) {
     filter.projectName = { $regex: query.projectName, $options: 'i' };
   }
+  if (query.listedBy && query.listedBy !== 'any') {
+    // Include legacy docs missing listedBy only when filtering for 'unknown'
+    if (query.listedBy === 'unknown') {
+      filter.$or = [
+        { listedBy: 'unknown' },
+        { listedBy: { $exists: false } },
+      ];
+    } else {
+      filter.listedBy = query.listedBy;
+    }
+  }
+  if (query.localityName?.trim()) {
+    const localityRe = query.localityName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const localities = await db
+      .collection(RESEARCH_COLLECTIONS.kgLocalities)
+      .find({
+        workspaceId: query.workspaceId,
+        name: { $regex: localityRe, $options: 'i' },
+      })
+      .project({ id: 1 })
+      .limit(50)
+      .toArray();
+    const localityIds = localities.map((l) => l.id as string);
+    const localityClauses: Filter<KgProperty>[] = [
+      { localityName: { $regex: localityRe, $options: 'i' } },
+      { title: { $regex: localityRe, $options: 'i' } },
+      { projectName: { $regex: localityRe, $options: 'i' } },
+    ];
+    if (localityIds.length) {
+      localityClauses.push({ localityId: { $in: localityIds } });
+    }
+    const existingAnd = Array.isArray(filter.$and) ? filter.$and : [];
+    filter.$and = [...existingAnd, { $or: localityClauses }];
+  }
 
   if (query.increasingInventoryProjects) {
     const projects = await db

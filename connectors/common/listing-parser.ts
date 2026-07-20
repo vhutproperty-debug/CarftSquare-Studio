@@ -1,6 +1,8 @@
-import type { Page } from 'playwright';
+﻿import type { Page } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 import type { ResearchListing } from '@/lib/research/types';
+
+export type ListedByKind = 'owner' | 'broker' | 'builder' | 'unknown';
 
 function parseMoney(raw?: string | null): number | undefined {
   if (!raw) return undefined;
@@ -19,6 +21,51 @@ function parseBhk(raw?: string | null): number | undefined {
   if (!raw) return undefined;
   const m = raw.match(/(\d(?:\.\d)?)\s*bhk/i);
   return m ? Number(m[1]) : undefined;
+}
+
+/**
+ * Detect poster type from listing card / detail text.
+ *
+ * Reliable phrases seen across Housing / MagicBricks / 99acres search cards:
+ *   "Posted by Owner", "Posted by Dealer", "Posted by Builder", "Posted by Agent"
+ * NoBroker is owner-direct by product model but cards often omit an explicit label —
+ * we only mark owner when the text says so (never guess from portal key alone).
+ * Square Yards signals are less consistent in card text — often returns unknown.
+ */
+export function detectListedBy(raw?: string | null): ListedByKind {
+  const text = String(raw || '').toLowerCase().replace(/\s+/g, ' ');
+  if (!text.trim()) return 'unknown';
+
+  // Prefer explicit "posted by …" phrases (portal search cards).
+  if (
+    /posted\s+by\s+owner|by\s+owner|owner\s+property|seller\s*:\s*owner|listed\s+by\s+owner/.test(
+      text,
+    )
+  ) {
+    return 'owner';
+  }
+  if (
+    /posted\s+by\s+builder|by\s+builder|listed\s+by\s+builder|seller\s*:\s*builder/.test(text)
+  ) {
+    return 'builder';
+  }
+  if (
+    /posted\s+by\s+(?:dealer|agent|broker)|by\s+(?:dealer|agent|broker)|listed\s+by\s+(?:dealer|agent|broker)|seller\s*:\s*(?:dealer|agent|broker)/.test(
+      text,
+    )
+  ) {
+    return 'broker';
+  }
+
+  // Weaker single-token signals — only when not conflicting.
+  const hasOwner = /\bowner\b/.test(text);
+  const hasBroker = /\b(?:dealer|broker|agent)\b/.test(text);
+  const hasBuilder = /\bbuilder\b/.test(text);
+  if (hasOwner && !hasBroker && !hasBuilder) return 'owner';
+  if (hasBuilder && !hasOwner && !hasBroker) return 'builder';
+  if (hasBroker && !hasOwner) return 'broker';
+
+  return 'unknown';
 }
 
 /**
@@ -62,6 +109,7 @@ export async function collectGenericListings(
   return rows.map((row) => {
     const rent = parseMoney(row.text.match(/(?:₹|rs\.?)\s*[\d,.]+(?:\s*(?:k|lakh|lac|l))?/i)?.[0]);
     const bhk = parseBhk(row.text);
+    const listedBy = detectListedBy(row.text);
     return {
       id: `${portal}:${row.url || uuidv4()}`,
       portal,
@@ -71,6 +119,7 @@ export async function collectGenericListings(
       rent,
       url: row.url,
       rawText: row.text,
+      listedBy,
     } satisfies ResearchListing;
   });
 }

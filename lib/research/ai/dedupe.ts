@@ -102,6 +102,7 @@ function enrichListing(listing: ResearchListing): ResearchListing & {
   amenities?: string[];
   facing?: string;
   listingSource?: 'owner' | 'broker' | 'unknown';
+  listedBy?: 'owner' | 'broker' | 'builder' | 'unknown';
   rentPerSqft?: number;
 } {
   const text = `${listing.title || ''} ${listing.rawText || ''}`.toLowerCase();
@@ -109,8 +110,17 @@ function enrichListing(listing: ResearchListing): ResearchListing & {
   const carpetArea = carpetMatch ? Number(carpetMatch[1]) : undefined;
   const price = listing.rent ?? listing.salePrice;
   const facingMatch = text.match(/\b(west|east|north|south)[-\s]?facing\b/i);
-  const owner = /\bowner\b/.test(text);
-  const broker = /\bbroker\b|\bagent\b/.test(text);
+  const listedBy =
+    listing.listedBy
+    || (/\bowner\b/.test(text)
+      ? 'owner'
+      : /\bbroker\b|\bagent\b|\bdealer\b/.test(text)
+        ? 'broker'
+        : /\bbuilder\b/.test(text)
+          ? 'builder'
+          : 'unknown');
+  const listingSource: 'owner' | 'broker' | 'unknown' =
+    listedBy === 'owner' ? 'owner' : listedBy === 'broker' ? 'broker' : 'unknown';
   return {
     ...listing,
     carpetArea,
@@ -124,6 +134,7 @@ function enrichListing(listing: ResearchListing): ResearchListing & {
     parking: /\bparking\b/.test(text) ? 'mentioned' : undefined,
     amenities: [],
     facing: facingMatch ? facingMatch[1].toLowerCase() : undefined,
-    listingSource: owner ? 'owner' : broker ? 'broker' : 'unknown',
+    listedBy,
+    listingSource,
   };
 }

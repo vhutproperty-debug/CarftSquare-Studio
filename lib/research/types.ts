@@ -189,6 +189,7 @@ export type ResearchScoredListing = ResearchListing & {
   amenities?: string[];
   facing?: string;
   listingSource?: 'owner' | 'broker' | 'unknown';
+  listedBy?: 'owner' | 'broker' | 'builder' | 'unknown';
   freshnessHours?: number;
 };
 
@@ -294,6 +295,11 @@ export type ResearchListing = {
   postedAt?: string;
   rawText?: string;
   extracted?: Record<string, unknown>;
+  /**
+   * Poster type detected from portal card/detail text.
+   * Optional — omit when the portal signal is unclear.
+   */
+  listedBy?: 'owner' | 'broker' | 'builder' | 'unknown';
 };
 
 export type ConnectorSearchRequest = {
