@@ -526,21 +526,32 @@ async function waitForManualLogin(input: {
 
     const result = await evaluateOnce('poll');
     if (result.authenticated) {
-      // Guard: Housing login URL == profile URL. Prefer having observed a login surface
-      // this session, OR require strong multi-signal DOM (avatar+name+edit) together.
-      const strongDom =
-        Boolean(result.signals.find((s) => s.name === 'Avatar')?.pass) &&
-        Boolean(result.signals.find((s) => s.name === 'Profile name')?.pass) &&
-        Boolean(result.signals.find((s) => s.name === 'Edit profile')?.pass);
-      if (!detectState.sawLoginSurface && !strongDom) {
+      // Guard: Housing login URL == profile URL. Accept when:
+      // 1) we observed a login/OTP surface this session, OR
+      // 2) strong profile chrome (avatar+name+edit), OR
+      // 3) established session: profile URL + cookies + no login form + ≥2 DOM signals
+      //    (covers already-authenticated browsers that never show a login form).
+      const pass = (name: string) =>
+        Boolean(result.signals.find((s) => s.name === name)?.pass);
+      const avatar = pass('Avatar');
+      const accountName = pass('Profile name');
+      const editProfile = pass('Edit profile');
+      const logoutOrLink = pass('Logout/profile link');
+      const strongDom = avatar && accountName && editProfile;
+      const establishedSession =
+        pass('URL') &&
+        pass('Cookies') &&
+        pass('Login form absent') &&
+        [avatar, accountName, editProfile, logoutOrLink].filter(Boolean).length >= 2;
+      if (!detectState.sawLoginSurface && !strongDom && !establishedSession) {
         pushWorkerLog(
           'warn',
-          `login_wait_reject_premature sessionId=${session.id} score=${result.score} sawLoginSurface=false strongDom=false — keep waiting`,
+          `login_wait_reject_premature sessionId=${session.id} score=${result.score} sawLoginSurface=false strongDom=false establishedSession=false — keep waiting`,
         );
       } else {
         pushWorkerLog(
           'info',
-          `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} sawLoginSurface=${detectState.sawLoginSurface} strongDom=${strongDom}`,
+          `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} sawLoginSurface=${detectState.sawLoginSurface} strongDom=${strongDom} establishedSession=${establishedSession}`,
         );
         await updateConnectSession(session.id, {
           message: CONNECT_USER_MESSAGES.authenticated,
@@ -608,6 +619,14 @@ function isRecoverableValidationFailure(
   if (text.includes('security challenge') || text.includes('security alert')) return true;
   if (text.includes('406')) return true;
   if (validation.status === 'needs_login') return true;
+  // Stale Chromium SingletonLock on Railway volume after redeploy.
+  if (
+    text.includes('profile appears to be in use') ||
+    text.includes('singletonlock') ||
+    text.includes('target page, context or browser has been closed')
+  ) {
+    return true;
+  }
   return false;
 }
 

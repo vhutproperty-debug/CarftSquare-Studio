@@ -195,6 +195,15 @@ export function scoreAuthentication(
     (hasEditProfile && (hasAvatar || hasAccountName)) ||
     (hasLogout && (hasAvatar || hasAccountName || hasEditProfile));
 
+  // Any two distinct profile DOM signals (common when already logged-in on /user-profile).
+  const profileDomCount = [
+    hasAvatar,
+    hasAccountName,
+    hasEditProfile,
+    hasLogout || hasProfileLink,
+  ].filter(Boolean).length;
+  const multiProfileDom = profileDomCount >= 2;
+
   const scored: AuthSignalScore[] = [
     { name: 'URL', pass: onUserProfile, weight: 1, detail: signals.url },
     { name: 'Avatar', pass: hasAvatar, weight: 2 },
@@ -213,12 +222,13 @@ export function scoreAuthentication(
   const score = scored.reduce((sum, s) => sum + (s.pass ? s.weight : 0), 0);
 
   // Hard veto: visible login/OTP form means not done, regardless of score.
-  // Profile route + cookies + no login form + any strong DOM signal is enough
-  // even when individual weights are just under threshold.
+  // Profile route + cookies + no login form + multi DOM signals is enough when
+  // the browser is already authenticated (never shows a login form this session).
   const authenticated =
     loginFormAbsent &&
     (score >= AUTH_SCORE_THRESHOLD ||
-      (onUserProfile && cookiesOk && strongProfileDom));
+      (onUserProfile && cookiesOk && strongProfileDom) ||
+      (onUserProfile && cookiesOk && multiProfileDom));
 
   return {
     authenticated,

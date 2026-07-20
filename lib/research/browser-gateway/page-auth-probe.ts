@@ -1,6 +1,48 @@
-import fs from 'fs/promises';
+import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 import type { Page, BrowserContext, Frame } from 'playwright';
+
+/**
+ * Load browser-side DOM scanner source without createRequire (breaks Next webpack)
+ * and without importing a TS closure (tsx injects `__name` → Chromium ReferenceError).
+ */
+function loadScanFrameDomSource(): string {
+  const candidates = [
+    typeof __dirname !== 'undefined'
+      ? path.join(__dirname, 'page-auth-probe-dom.cjs')
+      : '',
+    path.join(
+      process.cwd(),
+      'lib/research/browser-gateway/page-auth-probe-dom.cjs',
+    ),
+  ].filter(Boolean);
+  let src = '';
+  for (const file of candidates) {
+    try {
+      src = fs.readFileSync(file, 'utf8');
+      break;
+    } catch {
+      /* try next */
+    }
+  }
+  if (!src) {
+    throw new Error(
+      'page-auth-probe-dom.cjs not found (needed for browser-safe login DOM scan)',
+    );
+  }
+  const mod: { exports: { scanFrameDomInBrowser?: (...args: unknown[]) => unknown } } = {
+    exports: {},
+  };
+  // Evaluate plain CJS in Node only — never ship this Function into Chromium.
+  // eslint-disable-next-line no-new-func
+  new Function('module', 'exports', src)(mod, mod.exports);
+  const fn = mod.exports.scanFrameDomInBrowser;
+  if (typeof fn !== 'function') {
+    throw new Error('scanFrameDomInBrowser not exported from page-auth-probe-dom.cjs');
+  }
+  return fn.toString();
+}
 
 /** Rich DOM/cookie signals collected each login-wait poll. */
 export type PageAuthProbe = {
@@ -103,7 +145,7 @@ export async function waitForPageSettled(
   const log = opts.log;
 
   await page
-    .waitForFunction(() => document.readyState === 'complete', {
+    .waitForFunction('document.readyState === "complete"', {
       timeout: Math.max(1_000, timeoutMs - 2_000),
     })
     .catch(() => undefined);
@@ -127,7 +169,7 @@ export async function waitForPageSettled(
   let quietSince = Date.now();
   try {
     while (Date.now() < deadline) {
-      const readyState = await page.evaluate(() => document.readyState).catch(() => 'unknown');
+      const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
       if (pending > 0) {
         quietSince = Date.now();
       }
@@ -146,7 +188,7 @@ export async function waitForPageSettled(
     page.off('requestfailed', onDone);
   }
 
-  const readyState = await page.evaluate(() => document.readyState).catch(() => 'unknown');
+  const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
   // Soft settle: Housing analytics can keep sockets busy; if the document is
   // complete after the full wait, allow scoring rather than stalling forever.
   const soft = readyState === 'complete';
@@ -183,236 +225,17 @@ type FrameDomScan = {
 async function scanFrameDom(frame: Frame): Promise<FrameDomScan> {
   const frameUrl = frame.url();
   try {
-    return await frame.evaluate(
-      ({ avatarSelectors, editSelectors, logoutSelectors, nameSelectors }) => {
-        const attemptedSelectors: string[] = [
-          ...avatarSelectors.map((s) => `avatar:${s}`),
-          ...editSelectors.map((s) => `edit:${s}`),
-          ...logoutSelectors.map((s) => `logout:${s}`),
-          ...nameSelectors.map((s) => `name:${s}`),
-          'text:edit profile',
-          'text:logout',
-          'heuristic:img-profile',
-          'heuristic:account-name-lines',
-          'shadow:walk',
-          'iframe:count',
-        ];
-
-        const candidates = {
-          avatars: [] as string[],
-          names: [] as string[],
-          editProfile: [] as string[],
-          links: [] as string[],
-        };
-        const matchedSelectors: string[] = [];
-
-        const hasSel = (root: ParentNode, sel: string) => {
-          try {
-            return Boolean(root.querySelector(sel));
-          } catch {
-            return false;
-          }
-        };
-
-        /** Collect open shadow roots recursively. */
-        const roots: ParentNode[] = [document];
-        let shadowHostCount = 0;
-        const walkShadows = (node: ParentNode) => {
-          const els = (node as Document | ShadowRoot).querySelectorAll
-            ? Array.from((node as Document | Element).querySelectorAll('*'))
-            : [];
-          for (const el of els) {
-            const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-            if (sr) {
-              shadowHostCount += 1;
-              roots.push(sr);
-              walkShadows(sr);
-            }
-          }
-        };
-        walkShadows(document);
-
-        const iframeCount = document.querySelectorAll('iframe').length;
-
-        const collectText = (root: ParentNode) => {
-          try {
-            if (root === document) return (document.body?.innerText || '').toLowerCase();
-            return ((root as ShadowRoot).textContent || '').toLowerCase();
-          } catch {
-            return '';
-          }
-        };
-
-        let text = '';
-        for (const root of roots) text += `\n${collectText(root)}`;
-        text = text.toLowerCase();
-
-        let hasAvatar = false;
-        for (const sel of avatarSelectors) {
-          for (const root of roots) {
-            if (hasSel(root, sel)) {
-              hasAvatar = true;
-              matchedSelectors.push(`avatar:${sel}`);
-              break;
-            }
-          }
-          if (hasAvatar) break;
-        }
-
-        // Candidate dump: first N images across roots
-        for (const root of roots) {
-          const imgs = Array.from(root.querySelectorAll('img')).slice(0, 25);
-          for (const img of imgs) {
-            const alt = img.getAttribute('alt') || '';
-            const cls = img.getAttribute('class') || '';
-            const src = (img.getAttribute('src') || '').slice(0, 120);
-            const w = (img as HTMLImageElement).width || 0;
-            const h = (img as HTMLImageElement).height || 0;
-            candidates.avatars.push(`alt="${alt}" class="${cls.slice(0, 80)}" src="${src}" ${w}x${h}`);
-            if (!hasAvatar) {
-              const blob = `${alt} ${cls} ${src}`.toLowerCase();
-              if (
-                /avatar|profile|user|photo|picture/.test(blob) ||
-                (w > 0 && w <= 128 && h > 0 && h <= 128 && /user-profile|profile|account/.test(location.pathname))
-              ) {
-                hasAvatar = true;
-                matchedSelectors.push('heuristic:img-profile');
-              }
-            }
-          }
-        }
-        candidates.avatars = candidates.avatars.slice(0, 12);
-
-        let hasEditProfile = /edit\s*profile|update\s*profile|manage\s*profile/.test(text);
-        if (hasEditProfile) matchedSelectors.push('text:edit profile');
-        for (const sel of editSelectors) {
-          for (const root of roots) {
-            if (hasSel(root, sel)) {
-              hasEditProfile = true;
-              matchedSelectors.push(`edit:${sel}`);
-            }
-          }
-        }
-        // Candidate dump: anchors/buttons mentioning edit/profile
-        for (const root of roots) {
-          const nodes = Array.from(root.querySelectorAll('a,button,[role="button"]')).slice(0, 80);
-          for (const el of nodes) {
-            const label = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80);
-            const href = (el as HTMLAnchorElement).getAttribute?.('href') || '';
-            if (/edit|profile/i.test(`${label} ${href}`)) {
-              candidates.editProfile.push(`"${label}" href=${href.slice(0, 100)}`);
-            }
-          }
-        }
-        candidates.editProfile = candidates.editProfile.slice(0, 12);
-
-        let hasLogout = /log\s*out|sign\s*out|signout/.test(text);
-        if (hasLogout) matchedSelectors.push('text:logout');
-        for (const sel of logoutSelectors) {
-          for (const root of roots) {
-            if (hasSel(root, sel)) {
-              hasLogout = true;
-              matchedSelectors.push(`logout:${sel}`);
-            }
-          }
-        }
-
-        let hasProfileLink =
-          /my\s*profile|user\s*profile|view\s*profile|account\s*settings/.test(text);
-        for (const root of roots) {
-          if (hasSel(root, 'a[href*="user-profile"]') || hasSel(root, 'a[href*="/my-profile"]')) {
-            hasProfileLink = true;
-            matchedSelectors.push('profile-link');
-          }
-          const links = Array.from(root.querySelectorAll('a[href]')).slice(0, 40);
-          for (const a of links) {
-            const href = a.getAttribute('href') || '';
-            const label = (a.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
-            if (/profile|account|logout|login/i.test(`${href} ${label}`)) {
-              candidates.links.push(`"${label}" href=${href.slice(0, 100)}`);
-            }
-          }
-        }
-        candidates.links = candidates.links.slice(0, 12);
-
-        const looksLikeLoginCta = (t: string) =>
-          /sign\s*in|log\s*in|enter\s*otp|phone\s*number|get\s*otp|verify|continue|housing\.com/i.test(
-            t,
-          );
-
-        let hasAccountName = false;
-        for (const sel of nameSelectors) {
-          for (const root of roots) {
-            const nodes = Array.from(root.querySelectorAll(sel)).slice(0, 10);
-            for (const el of nodes) {
-              const t = (el.textContent || '').trim().replace(/\s+/g, ' ');
-              if (t.length >= 2 && t.length <= 80) {
-                candidates.names.push(`[${sel}] ${t}`);
-                if (!looksLikeLoginCta(t)) {
-                  hasAccountName = true;
-                  matchedSelectors.push(`name:${sel}`);
-                }
-              }
-            }
-          }
-        }
-        if (!hasAccountName && /user-profile|my-profile|\/profile/.test(location.pathname)) {
-          const shortLines = text
-            .split('\n')
-            .map((l) => l.trim())
-            .filter((l) => l.length >= 2 && l.length <= 48);
-          for (const l of shortLines.slice(0, 30)) {
-            candidates.names.push(`[line] ${l}`);
-          }
-          hasAccountName = shortLines.some(
-            (l) =>
-              !looksLikeLoginCta(l) &&
-              !/edit\s*profile|log\s*out|settings|notifications|wishlist|saved|help|support/.test(
-                l,
-              ) &&
-              /^[a-z][a-z\s.'.-]{1,46}$/i.test(l),
-          );
-          if (hasAccountName) matchedSelectors.push('heuristic:account-name-lines');
-        }
-        candidates.names = candidates.names.slice(0, 12);
-
-        const hasLoginForm =
-          Boolean(document.querySelector('input[type="password"]')) ||
-          Boolean(
-            document.querySelector(
-              'input[name*="otp"], input[placeholder*="otp"], input[autocomplete="one-time-code"]',
-            ),
-          ) ||
-          (/enter\s*otp|enter\s*password|get\s*otp|request\s*otp|verify\s*otp/.test(text) &&
-            Boolean(document.querySelector('input')));
-
-        const html = (document.documentElement?.outerHTML || '').slice(0, 6000);
-
-        return {
-          frameUrl: location.href,
-          readyState: document.readyState || 'unknown',
-          iframeCount,
-          shadowHostCount,
-          hasAvatar,
-          hasAccountName,
-          hasEditProfile,
-          hasLogout,
-          hasProfileLink,
-          hasLoginForm,
-          matchedSelectors,
-          attemptedSelectors,
-          candidates,
-          textSample: text.slice(0, 2500),
-          htmlSample: html,
-        };
-      },
-      {
-        avatarSelectors: AVATAR_SELECTORS,
-        editSelectors: EDIT_SELECTORS,
-        logoutSelectors: LOGOUT_SELECTORS,
-        nameSelectors: NAME_SELECTORS,
-      },
-    );
+    // Plain CJS source + string evaluate — never pass a TS/tsx-compiled closure into
+    // Chromium (tsx injects `__name` → ReferenceError: __name is not defined).
+    const scanSource = loadScanFrameDomSource();
+    const args = {
+      avatarSelectors: AVATAR_SELECTORS,
+      editSelectors: EDIT_SELECTORS,
+      logoutSelectors: LOGOUT_SELECTORS,
+      nameSelectors: NAME_SELECTORS,
+    };
+    const expression = `(${scanSource})(${JSON.stringify(args)})`;
+    return (await frame.evaluate(expression)) as FrameDomScan;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -628,7 +451,7 @@ export async function collectPageAuthProbe(
   let screenshotPath: string | undefined;
   if (options.artifactDir) {
     const poll = options.pollIndex ?? 0;
-    await fs.mkdir(options.artifactDir, { recursive: true });
+    await fsp.mkdir(options.artifactDir, { recursive: true });
     htmlSnapshotPath = path.join(options.artifactDir, `poll-${poll}.html`);
     screenshotPath = path.join(options.artifactDir, `poll-${poll}.jpg`);
     const fullHtml = await page.content().catch(() => merged.htmlSample || '');
@@ -638,7 +461,7 @@ export async function collectPageAuthProbe(
           `\n<!-- FRAME ${i} url=${s.frameUrl} ready=${s.readyState} iframes=${s.iframeCount} shadows=${s.shadowHostCount} err=${s.error || ''} -->\n${s.htmlSample}`,
       )
       .join('\n');
-    await fs
+    await fsp
       .writeFile(
         htmlSnapshotPath,
         `<!-- url=${url} title=${title} readyState=${readyState} settled=${settled} -->\n${fullHtml}\n${frameDump}`,

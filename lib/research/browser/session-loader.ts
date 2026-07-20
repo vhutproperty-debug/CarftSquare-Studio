@@ -85,11 +85,12 @@ export class SessionLoader {
       try {
         for (const originEntry of origins) {
           await page.goto(originEntry.origin, { waitUntil: 'domcontentloaded' });
-          await page.evaluate((items) => {
-            for (const item of items) {
-              window.localStorage.setItem(item.name, item.value);
-            }
-          }, originEntry.localStorage);
+          // Plain string expression — never pass a TS/tsx-compiled closure (avoids `__name`).
+          await page.evaluate(
+            `((items) => { for (const item of items) { window.localStorage.setItem(item.name, item.value); } })(${JSON.stringify(
+              originEntry.localStorage,
+            )})`,
+          );
         }
       } finally {
         await page.close().catch(() => undefined);
