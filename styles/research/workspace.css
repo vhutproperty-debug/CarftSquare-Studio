@@ -1,0 +1,120 @@
+/**
+ * Research-module-only presentation styles.
+ * Imported from research components — do not add to globals.css.
+ */
+
+.research-workspace {
+  --research-ink: #0f172a;
+  --research-muted: #64748b;
+  --research-line: rgba(148, 163, 184, 0.28);
+  --research-surface: rgba(255, 255, 255, 0.86);
+  --research-accent: #ea580c;
+  --research-glow: rgba(234, 88, 12, 0.18);
+  font-feature-settings: 'ss01' on, 'cv11' on;
+}
+
+.research-workspace-shell {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(251, 146, 60, 0.14), transparent 55%),
+    radial-gradient(900px 500px at 88% 0%, rgba(148, 163, 184, 0.12), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.dark .research-workspace-shell {
+  background:
+    radial-gradient(1000px 520px at 10% -8%, rgba(234, 88, 12, 0.12), transparent 55%),
+    radial-gradient(800px 480px at 90% 0%, rgba(51, 65, 85, 0.35), transparent 50%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+}
+
+.research-panel {
+  background: var(--research-surface);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--research-line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 18px 40px -28px rgba(15, 23, 42, 0.35);
+}
+
+.dark .research-panel {
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 22px 48px -30px rgba(0, 0, 0, 0.7);
+}
+
+.research-composer {
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.18),
+    0 16px 40px -20px rgba(15, 23, 42, 0.28);
+}
+
+.research-composer:focus-within {
+  box-shadow:
+    0 0 0 2px rgba(234, 88, 12, 0.22),
+    0 18px 44px -18px rgba(234, 88, 12, 0.28);
+}
+
+.research-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--research-accent);
+  box-shadow: 0 0 0 0 var(--research-glow);
+  animation: research-live-pulse 1.8s ease-out infinite;
+}
+
+@keyframes research-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--research-glow);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.research-progress-track {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.research-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fb923c, #ea580c, #f59e0b);
+  background-size: 200% 100%;
+  animation: research-progress-shimmer 1.4s linear infinite;
+}
+
+@keyframes research-progress-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.research-loading-orb {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ea580c, #f59e0b);
+  box-shadow: 0 18px 40px -18px rgba(234, 88, 12, 0.55);
+  animation: research-orb-breathe 2.2s ease-in-out infinite;
+}
+
+@keyframes research-orb-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.04);
+  }
+}

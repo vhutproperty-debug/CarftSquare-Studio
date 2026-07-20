@@ -70,10 +70,10 @@ export default function PropertyCard({
 
   return (
     <article
-      className={`group overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${
+      className={`group overflow-hidden rounded-2xl border bg-white/95 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${
         selected
           ? 'border-orange-300 ring-1 ring-orange-200 dark:border-orange-700 dark:ring-orange-900'
-          : 'border-slate-200/90 dark:border-slate-800'
+          : 'border-slate-200/80 dark:border-slate-800'
       }`}
     >
       <div className="flex items-start gap-3 p-4">

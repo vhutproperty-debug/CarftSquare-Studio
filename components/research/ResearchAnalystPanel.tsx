@@ -32,12 +32,19 @@ import PropertyCard from '@/components/research/ai/PropertyCard';
 import ResearchCanvas from '@/components/research/ai/ResearchCanvas';
 import ResearchMarkdown from '@/components/research/ai/ResearchMarkdown';
 import {
+  AnimatePresence,
+  ResearchFadeUp,
+  ResearchLivePanel,
+  ResearchMessageMotion,
+} from '@/components/research/ai/ResearchMotion';
+import {
   RESEARCH_SUGGESTED_PROMPTS,
   SESSION_GROUP_LABEL,
   buildLiveResearchSteps,
   sessionTimeGroup,
   type SessionTimeGroup,
 } from '@/components/research/ai/research-workspace-utils';
+import '@/styles/research/workspace.css';
 
 type PublicSession = Pick<
   ResearchAiSession,
@@ -343,9 +350,9 @@ export default function ResearchAnalystPanel() {
   const showCanvas = hasConversation || Boolean(report) || listings.length > 0;
 
   return (
-    <div className="flex min-h-[calc(100vh-7.5rem)] flex-col gap-3 xl:flex-row xl:gap-4">
+    <div className="research-workspace flex min-h-[calc(100vh-7.5rem)] flex-col gap-3 xl:flex-row xl:gap-4">
       {/* Conversation history rail */}
-      <aside className="hidden w-56 shrink-0 flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 lg:flex">
+      <aside className="research-panel hidden w-56 shrink-0 flex-col rounded-2xl p-3 lg:flex">
         <button
           type="button"
           onClick={() => void newSession()}
@@ -427,20 +434,20 @@ export default function ResearchAnalystPanel() {
       </aside>
 
       {/* Conversation column */}
-      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-[#fbfaf8] via-white to-slate-50 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 px-4 py-3 dark:border-slate-800">
+      <section className="research-panel relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 px-4 py-3.5 dark:border-slate-800/80">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm shadow-orange-600/30">
               <Sparkles className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <p className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                 Executive Mumbai Research Analyst
               </p>
               <p className="truncate text-[11px] text-slate-500">
                 {busy
                   ? session?.progress?.message || 'Working across portals…'
-                  : 'ChatGPT-grade research for Mumbai real estate'}
+                  : 'Calm, focused research for Mumbai real estate'}
               </p>
             </div>
           </div>
@@ -467,80 +474,79 @@ export default function ResearchAnalystPanel() {
 
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-6">
           {!hasConversation ? (
-            <div className="mx-auto flex max-w-2xl flex-col items-center px-2 pb-10 pt-8 text-center sm:pt-16">
-              <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-600/25">
+            <ResearchFadeUp className="mx-auto flex max-w-2xl flex-col items-center px-2 pb-12 pt-10 text-center sm:pt-20">
+              <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-600/25">
                 <Sparkles className="h-8 w-8" />
               </div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600/80">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600/80">
                 Prop / Research
               </p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-[2.5rem] sm:leading-tight">
                 What should we research today?
               </h2>
-              <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-slate-500 dark:text-slate-400">
                 You’re speaking with an executive Mumbai real estate research analyst — portals,
                 owner vs broker, pricing, and negotiation in one conversation.
               </p>
 
               {sessions.length > 0 ? (
-                <div className="mt-6 w-full text-left">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <div className="mt-8 w-full text-left">
+                  <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                     Recent conversations
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {sessions.slice(0, 4).map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => void openSession(s.id)}
-                        className="rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                      >
-                        <span className="line-clamp-2 font-medium">{s.title || 'Research'}</span>
-                      </button>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {sessions.slice(0, 4).map((s, i) => (
+                      <ResearchFadeUp key={s.id} delay={0.04 * i}>
+                        <button
+                          type="button"
+                          onClick={() => void openSession(s.id)}
+                          className="w-full rounded-2xl border border-slate-200/80 bg-white/90 px-3.5 py-3.5 text-left text-sm text-slate-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        >
+                          <span className="line-clamp-2 font-medium">{s.title || 'Research'}</span>
+                        </button>
+                      </ResearchFadeUp>
                     ))}
                   </div>
                 </div>
               ) : null}
 
-              <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
-                {RESEARCH_SUGGESTED_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => void send(prompt)}
-                    className="rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/60 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-700"
-                  >
-                    {prompt}
-                  </button>
+              <div className="mt-10 grid w-full gap-2.5 sm:grid-cols-2">
+                {RESEARCH_SUGGESTED_PROMPTS.map((prompt, i) => (
+                  <ResearchFadeUp key={prompt} delay={0.05 + i * 0.04}>
+                    <button
+                      type="button"
+                      onClick={() => void send(prompt)}
+                      className="w-full rounded-2xl border border-slate-200/80 bg-white/90 px-3.5 py-3.5 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-700"
+                    >
+                      {prompt}
+                    </button>
+                  </ResearchFadeUp>
                 ))}
               </div>
 
-              <div className="mt-6 flex flex-wrap justify-center gap-2 text-[11px] text-slate-500">
-                <Link href="/research/inventory" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+              <div className="mt-8 flex flex-wrap justify-center gap-2 text-[11px] text-slate-500">
+                <Link href="/research/inventory" className="rounded-full border border-slate-200/90 px-3 py-1.5 hover:bg-white dark:border-slate-700">
                   Inventory Search
                 </Link>
-                <Link href="/research/connectors" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+                <Link href="/research/connectors" className="rounded-full border border-slate-200/90 px-3 py-1.5 hover:bg-white dark:border-slate-700">
                   Connectors
                 </Link>
-                <Link href="/research/knowledge" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+                <Link href="/research/knowledge" className="rounded-full border border-slate-200/90 px-3 py-1.5 hover:bg-white dark:border-slate-700">
                   Knowledge Explorer
                 </Link>
               </div>
-            </div>
+            </ResearchFadeUp>
           ) : (
             <div className="mx-auto max-w-3xl space-y-5">
               {messages.map((m) => {
                 const isUser = m.role === 'user';
                 return (
-                  <div
-                    key={m.id}
-                    className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-                  >
+                  <ResearchMessageMotion key={m.id} fromUser={isUser}>
                     <div
-                      className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm sm:max-w-[88%] ${
+                      className={`max-w-[92%] rounded-2xl px-4 py-3.5 text-[15px] leading-relaxed shadow-sm sm:max-w-[88%] ${
                         isUser
                           ? 'rounded-br-md bg-slate-900 text-white dark:bg-orange-600'
-                          : 'rounded-bl-md border border-slate-200/80 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+                          : 'rounded-bl-md border border-slate-200/70 bg-white/95 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
                       }`}
                     >
                       {!isUser ? (
@@ -557,14 +563,15 @@ export default function ResearchAnalystPanel() {
                         />
                       )}
                     </div>
-                  </div>
+                  </ResearchMessageMotion>
                 );
               })}
 
+              <AnimatePresence>
               {busy || liveSteps.length > 0 ? (
-                <div className="rounded-2xl border border-orange-200/70 bg-white/95 p-4 shadow-sm dark:border-orange-900/40 dark:bg-slate-900/95">
+                <ResearchLivePanel className="rounded-2xl border border-orange-200/60 bg-white/95 p-4 shadow-sm dark:border-orange-900/40 dark:bg-slate-900/95">
                   <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
-                    <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+                    <span className="research-live-dot" />
                     Thinking & researching
                     {session?.progress?.percent != null ? (
                       <span className="ml-auto text-xs font-normal text-slate-400">
@@ -572,6 +579,14 @@ export default function ResearchAnalystPanel() {
                       </span>
                     ) : null}
                   </div>
+                  {session?.progress?.percent != null ? (
+                    <div className="research-progress-track mb-3">
+                      <div
+                        className="research-progress-bar"
+                        style={{ width: `${Math.max(8, Math.min(100, session.progress.percent))}%` }}
+                      />
+                    </div>
+                  ) : null}
                   <ul className="space-y-2">
                     {liveSteps.map((step) => (
                       <li key={step.id} className="flex items-center gap-2.5 text-sm">
@@ -604,8 +619,9 @@ export default function ResearchAnalystPanel() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </ResearchLivePanel>
               ) : null}
+              </AnimatePresence>
 
               {listings.length > 0 && !busy ? (
                 <div className="space-y-3">
@@ -688,7 +704,7 @@ export default function ResearchAnalystPanel() {
           <div className="mx-auto max-w-3xl space-y-2.5">
             <ConnectorStatusChips />
             <form onSubmit={onSubmit}>
-              <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5 transition focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-orange-700 dark:focus-within:ring-orange-950">
+              <div className="flex items-end gap-2 research-composer rounded-2xl border border-slate-200/80 bg-white p-2 transition dark:border-slate-700 dark:bg-slate-900">
                 <textarea
                   ref={textareaRef}
                   value={input}

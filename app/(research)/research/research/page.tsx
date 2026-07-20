@@ -16,7 +16,7 @@ export default async function ResearchWorkspacePage() {
       actions={
         <Link
           href="/research/connectors"
-          className="inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
+          className="inline-flex h-8 items-center rounded-lg border border-slate-200/90 px-3 text-sm font-medium text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-200"
         >
           Connectors
         </Link>

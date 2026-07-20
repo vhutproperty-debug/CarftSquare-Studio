@@ -10,6 +10,7 @@ import ResearchEmptyState from '@/components/research/ResearchEmptyState';
 import ResearchShell from '@/components/research/ResearchShell';
 import ResearchStatCard from '@/components/research/ResearchStatCard';
 import { RESEARCH_DASHBOARD_PLACEHOLDERS } from '@/lib/research/business';
+import '@/styles/research/workspace.css';
 
 const QUICK_ACTIONS = [
   {
@@ -76,7 +77,7 @@ export default function ResearchDashboard({ userLabel }: Props) {
         </Link>
       }
     >
-      <div className="space-y-6">
+      <div className="research-workspace mx-auto max-w-7xl space-y-8">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <ResearchStatCard label="Research Runs" value={stats.researchRuns} hint="Completed portal runs" />
           <ResearchStatCard
@@ -108,7 +109,7 @@ export default function ResearchDashboard({ userLabel }: Props) {
         <KnowledgeGraphPanel />
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="mb-4 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             Quick actions
           </h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -118,13 +119,13 @@ export default function ResearchDashboard({ userLabel }: Props) {
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-900"
+                  className="research-panel rounded-2xl p-5 transition hover:-translate-y-0.5 hover:border-orange-200 dark:hover:border-orange-900"
                 >
                   <Icon className="h-4 w-4 text-orange-600" />
                   <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {action.label}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                     {action.description}
                   </p>
                 </Link>

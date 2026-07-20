@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import ResearchHeader from '@/components/research/ResearchHeader';
 import ResearchMobileNav from '@/components/research/ResearchMobileNav';
 import ResearchSidebar, { useResearchSidebarState } from '@/components/research/ResearchSidebar';
+import '@/styles/research/workspace.css';
 
 type Props = {
   children: ReactNode;
@@ -26,7 +27,7 @@ export default function ResearchShell({
   const sidebar = useResearchSidebarState();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-50/40 via-slate-100 to-slate-100 text-slate-900 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950 dark:text-slate-100">
+    <div className="research-workspace research-workspace-shell min-h-screen text-slate-900 dark:text-slate-100">
       <div className="flex min-h-screen">
         <ResearchSidebar
           collapsed={sidebar.collapsed}
@@ -46,7 +47,7 @@ export default function ResearchShell({
             className={
               dense
                 ? 'flex-1 px-3 py-3 pb-24 md:px-4 md:py-4 md:pb-4'
-                : 'flex-1 px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-6'
+                : 'flex-1 px-4 py-5 pb-24 md:px-6 md:py-7 md:pb-6'
             }
           >
             {children}
