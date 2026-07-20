@@ -23,10 +23,11 @@ RUN apt-get update \
   && (test -f /usr/share/novnc/vnc.html || test -f /usr/share/novnc/vnc_lite.html || true)
 
 COPY package.json package-lock.json* yarn.lock* ./
-RUN if [ -f yarn.lock ]; then \
-      yarn install --frozen-lockfile --production=false; \
-    elif [ -f package-lock.json ]; then \
+# Prefer npm (this repo ships package-lock.json). Do not use a stale yarn.lock.
+RUN if [ -f package-lock.json ]; then \
       npm ci; \
+    elif [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile --production=false; \
     else \
       npm install; \
     fi
