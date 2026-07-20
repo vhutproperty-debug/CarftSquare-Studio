@@ -176,6 +176,85 @@ export async function pingBrowserWorkerHeartbeat(): Promise<boolean> {
   }
 }
 
+/**
+ * Run portal validateSession on the Browser Worker (has Chromium).
+ * Next.js / Vercel must never launch Playwright locally.
+ */
+export async function requestWorkerValidateSession(input: {
+  workspaceId: string;
+  portal: string;
+}): Promise<{
+  ok: boolean;
+  status: string;
+  message?: string;
+  sessionId?: string;
+  httpStatus?: number | null;
+  responseKind?: string;
+  error?: string;
+}> {
+  const base = getBrowserWorkerBaseUrl();
+  const worker = await fetchBrowserWorkerStatus();
+  if (!worker.online || !worker.healthy) {
+    return {
+      ok: false,
+      status: 'error',
+      message:
+        worker.lastError ||
+        'Browser Worker is offline. Chromium validation runs only on Railway (unique-endurance).',
+    };
+  }
+
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/jobs/validate`,
+      {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(process.env.RESEARCH_BROWSER_WORKER_SECRET
+            ? { 'x-research-worker-secret': process.env.RESEARCH_BROWSER_WORKER_SECRET }
+            : {}),
+        },
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          portal: input.portal,
+        }),
+      },
+      110_000,
+    );
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: 'error',
+        message: String(json.error || `Worker validate HTTP ${res.status}`),
+        error: String(json.error || res.statusText),
+      };
+    }
+    return {
+      ok: Boolean(json.ok),
+      status: String(json.status || (json.ok ? 'valid' : 'error')),
+      message: typeof json.message === 'string' ? json.message : undefined,
+      sessionId: typeof json.sessionId === 'string' ? json.sessionId : undefined,
+      httpStatus:
+        typeof json.httpStatus === 'number' || json.httpStatus === null
+          ? (json.httpStatus as number | null)
+          : undefined,
+      responseKind: typeof json.responseKind === 'string' ? json.responseKind : undefined,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.name === 'AbortError'
+          ? 'Worker validate timed out'
+          : error.message
+        : 'Worker validate failed';
+    return { ok: false, status: 'error', message, error: message };
+  }
+}
+
 function offlineStatus(
   queue: { queueSize: number; activeSessions: number },
   lastError: string,

@@ -3,6 +3,7 @@ import path from 'path';
 import { chromium, type BrowserContext } from 'playwright';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
+import { assertPlaywrightRuntimeAllowed } from '@/lib/research/browser/playwright-runtime-guard';
 import { ensureDir, poolProfileDir } from '@/lib/research/browser/runtime-paths';
 
 const HEAVY_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
@@ -51,6 +52,7 @@ export class BrowserFactory {
 
   /** Launch Chromium persistent context for workspace + portal isolation. */
   async launchPersistent(workspaceId: string, portal: string): Promise<BrowserContext> {
+    assertPlaywrightRuntimeAllowed('BrowserFactory.launchPersistent');
     const t0 = researchPerfNow();
     const userDataDir = await this.ensureProfileDir(workspaceId, portal);
     await clearChromiumProfileLocks(userDataDir);

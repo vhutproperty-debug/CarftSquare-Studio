@@ -2,11 +2,13 @@
 # Must ship Playwright Chromium inside the image — Connect cannot download browsers at runtime.
 #
 # Base image tag MUST match package.json playwright version (currently 1.61.1).
+# Railway build: railway.json → builder=DOCKERFILE, dockerfilePath=Dockerfile.browser-worker
 FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 WORKDIR /app
 
 # Official image stores browsers here; keep npm Playwright pointed at the same tree.
+# CRITICAL: without this, Playwright falls back to ~/.cache/ms-playwright (empty on fresh hosts).
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 
@@ -34,8 +36,10 @@ RUN if [ -f package-lock.json ]; then \
 
 # After npm install, Playwright looks for chromium-NNNN matching the npm package.
 # Re-install Chromium (+ OS deps) into PLAYWRIGHT_BROWSERS_PATH so the path always exists.
+# This MUST run on every image build — never rely on runtime `npx playwright install`.
 RUN npx playwright install --with-deps chromium \
-  && node -e "const p=require('playwright/package.json'); const {chromium}=require('playwright'); const fs=require('fs'); const exe=chromium.executablePath(); console.log('[docker-build] playwright='+p.version); console.log('[docker-build] executablePath='+exe); console.log('[docker-build] browserExists='+fs.existsSync(exe)); if(!fs.existsSync(exe)) process.exit(1);"
+  && node -e "const p=require('playwright/package.json'); const {chromium}=require('playwright'); const fs=require('fs'); const exe=chromium.executablePath(); console.log('[docker-build] playwright='+p.version); console.log('[docker-build] PLAYWRIGHT_BROWSERS_PATH='+(process.env.PLAYWRIGHT_BROWSERS_PATH||'')); console.log('[docker-build] executablePath='+exe); console.log('[docker-build] browserExists='+fs.existsSync(exe)); if(!fs.existsSync(exe)) process.exit(1);" \
+  && ls -la /ms-playwright && echo "[docker-build] Chromium tree under /ms-playwright OK"
 
 COPY . .
 
@@ -44,6 +48,8 @@ RUN chmod +x scripts/railway-browser-worker-entrypoint.sh scripts/verify-playwri
 
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
+# Pin browser path again after COPY so nothing in the app tree overrides it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # Always use writable temp for Chromium profiles (never read-only app roots).
 ENV RESEARCH_BROWSER_PROFILE_ROOT=/tmp/craftsquare/research-profiles
 ENV RESEARCH_BROWSER_SCREENSHOT_ROOT=/tmp/craftsquare/research-screenshots

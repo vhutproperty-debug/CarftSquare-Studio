@@ -404,6 +404,11 @@ export class RemoteBrowserSessionManager {
     display: string,
     headless: boolean,
   ): Promise<BrowserContext> {
+    const { assertPlaywrightRuntimeAllowed } = await import(
+      '@/lib/research/browser/playwright-runtime-guard'
+    );
+    assertPlaywrightRuntimeAllowed('remote-display.openContext');
+
     return chromium.launchPersistentContext(profileDir, {
       headless,
       viewport: { width: 1365, height: 900 },

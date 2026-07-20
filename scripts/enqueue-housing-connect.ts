@@ -67,20 +67,15 @@ async function main() {
     }
     const phase = s?.phase || '';
     if (
-      [
-        'waiting_for_login',
-        'capturing',
-        'encrypting',
-        'validating',
-        'connected',
-        'failed',
-        'cancelled',
-        'expired',
-      ].includes(phase)
+      ['connected', 'failed', 'cancelled', 'expired'].includes(phase)
     ) {
       break;
     }
-    await new Promise((r) => setTimeout(r, 2000));
+    // Keep polling through capturing/encrypting/validating after login wait.
+    if (phase === 'waiting_for_login') {
+      // Auth may auto-detect; do not exit early.
+    }
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   const final = await getConnectSessionPublic(connectSession.id);

@@ -2,7 +2,18 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.browser-worker"
+    "dockerfilePath": "Dockerfile.browser-worker",
+    "watchPatterns": [
+      "Dockerfile.browser-worker",
+      "railway.json",
+      "package.json",
+      "package-lock.json",
+      "scripts/railway-browser-worker-entrypoint.sh",
+      "scripts/verify-playwright-chromium.mjs",
+      "scripts/research-browser-worker.ts",
+      "scripts/railway-worker-proxy.mjs",
+      "lib/research/**"
+    ]
   },
   "deploy": {
     "healthcheckPath": "/health",

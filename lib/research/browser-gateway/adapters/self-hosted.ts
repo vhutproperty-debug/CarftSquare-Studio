@@ -63,6 +63,11 @@ async function launchLocalFallback(input: {
   // Caller prepares a fresh profileDir; ensure parents exist.
   await fs.mkdir(input.profileDir, { recursive: true });
   const headless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+  const { assertPlaywrightRuntimeAllowed } = await import(
+    '@/lib/research/browser/playwright-runtime-guard'
+  );
+  assertPlaywrightRuntimeAllowed('self_hosted.launchLoginSession');
+
   const context: BrowserContext = await chromium.launchPersistentContext(input.profileDir, {
     headless,
     viewport: { width: 1365, height: 900 },

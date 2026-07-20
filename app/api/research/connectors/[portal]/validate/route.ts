@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireResearchEditAccess } from '@/lib/research/auth';
-import { requirePortalConnector } from '@/connectors/registry';
+import { requestWorkerValidateSession } from '@/lib/research/browser-gateway/worker-client';
 import { DEFAULT_RESEARCH_WORKSPACE } from '@/lib/research/business';
 
 export const runtime = 'nodejs';
@@ -9,6 +9,10 @@ export const maxDuration = 120;
 
 type Ctx = { params: { portal: string } };
 
+/**
+ * Validate portal session via the Railway Browser Worker.
+ * Never launches Playwright on Vercel (no Chromium there).
+ */
 export async function POST(request: Request, { params }: Ctx) {
   const auth = await requireResearchEditAccess(request);
   const denied = authResultToResponse(auth);
@@ -25,8 +29,13 @@ export async function POST(request: Request, { params }: Ctx) {
   }
 
   try {
-    const connector = requirePortalConnector(params.portal);
-    const result = await connector.validateSession(workspaceId);
+    const result = await requestWorkerValidateSession({
+      workspaceId,
+      portal: params.portal,
+    });
+    if (result.error && !result.message) {
+      return NextResponse.json({ error: result.error }, { status: 502 });
+    }
     return NextResponse.json({ ok: result.ok, ...result });
   } catch (error) {
     console.error('[research] validate_failed', error);

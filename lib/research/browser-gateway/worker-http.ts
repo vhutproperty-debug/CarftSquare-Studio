@@ -78,6 +78,37 @@ export async function startWorkerHttpServer(input: {
         return;
       }
 
+      // Sync validate on the worker (Chromium lives here — never on Vercel).
+      if (url.pathname === '/jobs/validate' && req.method === 'POST') {
+        if (!authorizeWorkerRequest(req)) {
+          json(res, 401, { error: 'Unauthorized' });
+          return;
+        }
+        const body = (await readJsonBody(req)) as {
+          workspaceId?: string;
+          portal?: string;
+        };
+        const workspaceId = String(body.workspaceId || '').trim();
+        const portal = String(body.portal || '').trim();
+        if (!workspaceId || !portal) {
+          json(res, 400, { error: 'workspaceId and portal are required' });
+          return;
+        }
+        const { requirePortalConnector } = await import('@/connectors/registry');
+        const connector = requirePortalConnector(portal);
+        pushWorkerLog(
+          'info',
+          `http_jobs_validate start workspaceId=${workspaceId} portal=${portal}`,
+        );
+        const result = await connector.validateSession(workspaceId);
+        pushWorkerLog(
+          result.ok ? 'info' : 'warn',
+          `http_jobs_validate done workspaceId=${workspaceId} portal=${portal} ok=${result.ok} status=${result.status}`,
+        );
+        json(res, 200, { ok: result.ok, ...result });
+        return;
+      }
+
       json(res, 404, { error: 'Not found' });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -106,6 +137,25 @@ export async function startWorkerHttpServer(input: {
         server.close((err) => (err ? reject(err) : resolve()));
       }),
   };
+}
+
+function authorizeWorkerRequest(req: http.IncomingMessage): boolean {
+  const secret = process.env.RESEARCH_BROWSER_WORKER_SECRET?.trim();
+  if (!secret) return true;
+  return req.headers['x-research-worker-secret'] === secret;
+}
+
+async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  if (!chunks.length) return {};
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    return {};
+  }
 }
 
 function json(res: http.ServerResponse, status: number, body: unknown) {

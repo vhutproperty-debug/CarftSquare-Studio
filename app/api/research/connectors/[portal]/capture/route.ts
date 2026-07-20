@@ -3,17 +3,15 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireResearchEditAccess } from '@/lib/research/auth';
 import { getPortalMeta } from '@/lib/research/browser/config';
 import { DEFAULT_RESEARCH_WORKSPACE } from '@/lib/research/business';
-import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
-import { upsertPortalConnection } from '@/lib/research/store/portal-connections';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 type Ctx = { params: { portal: string } };
 
 /**
- * Capture cookies/storage from the persistent browser profile after human login.
- * Connected is ONLY set when validateSession() succeeds afterward.
+ * Legacy capture endpoint — must NOT launch Playwright on Vercel.
+ * Use remote Connect (Browser Worker) which captures + validates on Railway.
  */
 export async function POST(request: Request, { params }: Ctx) {
   const auth = await requireResearchEditAccess(request);
@@ -36,49 +34,15 @@ export async function POST(request: Request, { params }: Ctx) {
     /* empty */
   }
 
-  try {
-    const session = await browserSessionManager.getOrCreate(workspaceId, portal);
-    const updated = await browserSessionManager.saveAuthenticatedState({
+  return NextResponse.json(
+    {
+      ok: false,
+      error:
+        'Cookie capture runs only on the Railway Browser Worker. Use Connectors → Connect (remote browser), not Capture on Vercel.',
       workspaceId,
       portal,
-    });
-    const validation = await browserSessionManager.validateSession(updated.id, { force: true });
-    if (!validation.ok) {
-      await upsertPortalConnection({
-        workspaceId,
-        portalKey: portal,
-        portalName: meta.displayName,
-        status: 'pending',
-        lastError: validation.message || 'Validation failed after capture',
-      });
-      return NextResponse.json(
-        {
-          ok: false,
-          error: validation.message || 'Captured cookies failed validation — not Connected.',
-          session: updated,
-          previousSessionId: session.id,
-        },
-        { status: 400 },
-      );
-    }
-    await upsertPortalConnection({
-      workspaceId,
-      portalKey: portal,
       portalName: meta.displayName,
-      status: 'connected',
-      lastError: null,
-    });
-    return NextResponse.json({
-      ok: true,
-      session: updated,
-      previousSessionId: session.id,
-      message: 'Encrypted cookies captured and validated — Connected.',
-    });
-  } catch (error) {
-    console.error('[research] capture_failed', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Capture failed.' },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 501 },
+  );
 }
