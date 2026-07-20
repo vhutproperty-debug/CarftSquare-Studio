@@ -31,7 +31,6 @@ import {
 } from '@/lib/research/browser-gateway/remote-display/types';
 import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 import type { BrowserLaunchHandle } from '@/lib/research/browser-gateway/types';
-import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 
 export type CreateRemoteSessionInput = {
   connectSessionId: string;
