@@ -12,7 +12,8 @@
       "scripts/verify-playwright-chromium.mjs",
       "scripts/research-browser-worker.ts",
       "scripts/railway-worker-proxy.mjs",
-      "lib/research/**"
+      "lib/research/**",
+      "connectors/**"
     ]
   },
   "deploy": {

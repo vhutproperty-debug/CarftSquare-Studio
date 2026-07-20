@@ -4,6 +4,7 @@ import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
 import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
+import { isServerlessPlaywrightHost } from '@/lib/research/browser/playwright-runtime-guard';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
 import {
   findPortalConnection,
@@ -51,6 +52,25 @@ export abstract class BasePortalConnector implements PortalConnector {
     responseKind?: string;
   }> {
     connectorLog(this.key, 'validateSession', { workspaceId });
+
+    // Vercel / serverless: same Chromium path Connectors use (worker /jobs/validate).
+    // Never launch Playwright on the Next.js host.
+    if (isServerlessPlaywrightHost()) {
+      const { requestWorkerValidateSession } = await import(
+        '@/lib/research/browser-gateway/worker-client'
+      );
+      const result = await requestWorkerValidateSession({
+        workspaceId,
+        portal: this.key,
+      });
+      connectorLog(this.key, 'validateSession_worker', {
+        ok: result.ok,
+        status: result.status,
+        message: result.message,
+      });
+      return result;
+    }
+
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
     try {
       // Explicit validate/connect must always hit the portal (never use fresh TTL cache).
@@ -90,6 +110,20 @@ export abstract class BasePortalConnector implements PortalConnector {
   }
 
   async executeSearch(request: ConnectorSearchRequest): Promise<ConnectorSearchResponse> {
+    // Vercel / serverless: run authenticated search on the Browser Worker (same cookies/session).
+    if (isServerlessPlaywrightHost()) {
+      const { requestWorkerExecuteSearch } = await import(
+        '@/lib/research/browser-gateway/worker-client'
+      );
+      return requestWorkerExecuteSearch({
+        workspaceId: request.workspaceId,
+        portal: this.key,
+        criteria: request.criteria,
+        sessionId: request.sessionId,
+        skipValidation: request.skipValidation,
+      });
+    }
+
     const tSearch = researchPerfNow();
     const session = await browserSessionManager.getOrCreate(request.workspaceId, this.key);
 
@@ -113,6 +147,10 @@ export abstract class BasePortalConnector implements PortalConnector {
     }
 
     const searchUrl = this.buildSearchUrl(request.criteria);
+    connectorLog(this.key, 'executeSearch_url', {
+      searchUrl,
+      workspaceId: request.workspaceId,
+    });
     const outcome = await researchBrowserManager.withPage(
       session,
       `search-${this.key}`,

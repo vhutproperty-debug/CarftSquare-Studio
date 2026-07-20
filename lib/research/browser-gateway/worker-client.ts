@@ -255,6 +255,80 @@ export async function requestWorkerValidateSession(input: {
   }
 }
 
+/**
+ * Run portal executeSearch on the Browser Worker (has Chromium + encrypted cookies).
+ * Next.js / Vercel must never launch Playwright locally.
+ */
+export async function requestWorkerExecuteSearch(input: {
+  workspaceId: string;
+  portal: string;
+  criteria: import('@/lib/research/types').ResearchPlanCriteria;
+  sessionId?: string;
+  skipValidation?: boolean;
+}): Promise<import('@/lib/research/types').ConnectorSearchResponse> {
+  const base = getBrowserWorkerBaseUrl();
+  const worker = await fetchBrowserWorkerStatus();
+  if (!worker.online || !worker.healthy) {
+    return {
+      ok: false,
+      listings: [],
+      sessionStatus: 'error',
+      message:
+        worker.lastError ||
+        'Browser Worker is offline. Authenticated portal search runs only on Railway.',
+    };
+  }
+
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/jobs/search`,
+      {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(process.env.RESEARCH_BROWSER_WORKER_SECRET
+            ? { 'x-research-worker-secret': process.env.RESEARCH_BROWSER_WORKER_SECRET }
+            : {}),
+        },
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          portal: input.portal,
+          criteria: input.criteria,
+          sessionId: input.sessionId,
+          skipValidation: input.skipValidation,
+        }),
+      },
+      110_000,
+    );
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      return {
+        ok: false,
+        listings: [],
+        sessionStatus: 'error',
+        message: String(json.error || `Worker search HTTP ${res.status}`),
+      };
+    }
+    return {
+      ok: Boolean(json.ok),
+      listings: Array.isArray(json.listings) ? (json.listings as import('@/lib/research/types').ResearchListing[]) : [],
+      sessionStatus: String(json.sessionStatus || (json.ok ? 'valid' : 'error')) as import('@/lib/research/types').ResearchBrowserSessionStatus,
+      message: typeof json.message === 'string' ? json.message : undefined,
+      screenshotPath: typeof json.screenshotPath === 'string' ? json.screenshotPath : undefined,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.name === 'AbortError'
+          ? 'Worker search timed out'
+          : error.message
+        : 'Worker search failed';
+    return { ok: false, listings: [], sessionStatus: 'error', message };
+  }
+}
+
 function offlineStatus(
   queue: { queueSize: number; activeSessions: number },
   lastError: string,

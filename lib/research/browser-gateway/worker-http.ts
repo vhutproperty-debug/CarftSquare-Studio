@@ -109,6 +109,120 @@ export async function startWorkerHttpServer(input: {
         return;
       }
 
+      // Authenticated portal search on the worker (same encrypted session as Connectors).
+      if (url.pathname === '/jobs/search' && req.method === 'POST') {
+        if (!authorizeWorkerRequest(req)) {
+          json(res, 401, { error: 'Unauthorized' });
+          return;
+        }
+        const body = (await readJsonBody(req)) as {
+          workspaceId?: string;
+          portal?: string;
+          criteria?: Record<string, unknown>;
+          sessionId?: string;
+          skipValidation?: boolean;
+        };
+        const workspaceId = String(body.workspaceId || '').trim();
+        const portal = String(body.portal || '').trim();
+        if (!workspaceId || !portal) {
+          json(res, 400, { error: 'workspaceId and portal are required' });
+          return;
+        }
+        const { requirePortalConnector } = await import('@/connectors/registry');
+        const connector = requirePortalConnector(portal);
+        pushWorkerLog(
+          'info',
+          `http_jobs_search start workspaceId=${workspaceId} portal=${portal}`,
+        );
+        const result = await connector.executeSearch({
+          workspaceId,
+          criteria: (body.criteria || {}) as import('@/lib/research/types').ResearchPlanCriteria,
+          sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
+          skipValidation: Boolean(body.skipValidation),
+        });
+        pushWorkerLog(
+          result.ok ? 'info' : 'warn',
+          `http_jobs_search done workspaceId=${workspaceId} portal=${portal} ok=${result.ok} listings=${result.listings?.length || 0}`,
+        );
+        json(res, 200, result);
+        return;
+      }
+
+      // Debug inspect: load authenticated session, open search URL, report DOM signals.
+      if (url.pathname === '/jobs/inspect-search' && req.method === 'POST') {
+        if (!authorizeWorkerRequest(req)) {
+          json(res, 401, { error: 'Unauthorized' });
+          return;
+        }
+        const body = (await readJsonBody(req)) as {
+          workspaceId?: string;
+          portal?: string;
+          url?: string;
+        };
+        const workspaceId = String(body.workspaceId || '').trim();
+        const portal = String(body.portal || '').trim();
+        const targetUrl = String(body.url || '').trim();
+        if (!workspaceId || !portal || !targetUrl) {
+          json(res, 400, { error: 'workspaceId, portal, and url are required' });
+          return;
+        }
+        const { findBrowserSession } = await import('@/lib/research/sessions/session-store');
+        const { researchBrowserManager } = await import('@/lib/research/browser/browser-manager');
+        const session = await findBrowserSession(workspaceId, portal);
+        if (!session?.encryptedCookies) {
+          json(res, 200, {
+            ok: false,
+            error: 'No encrypted cookies for portal session',
+            sessionStatus: session?.sessionStatus || null,
+          });
+          return;
+        }
+        pushWorkerLog('info', `http_jobs_inspect_search portal=${portal} url=${targetUrl}`);
+        const outcome = await researchBrowserManager.withPage(
+          session,
+          `inspect-${portal}`,
+          async (page) => {
+            const response = await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+            await new Promise((r) => setTimeout(r, 2_500));
+            const httpStatus = response?.status() ?? null;
+            const title = await page.title().catch(() => '');
+            const finalUrl = page.url();
+            const html = await page.content().catch(() => '');
+            const signals = await page.evaluate(() => {
+              const anchors = Array.from(document.querySelectorAll('a[href]'));
+              const hrefs = anchors.map((a) => (a as HTMLAnchorElement).href).filter(Boolean);
+              const propertyRe = /property|\/rent|\/buy|flat|apartment|resale/i;
+              const property = hrefs.filter((h) => propertyRe.test(h));
+              return {
+                totalAnchorCount: hrefs.length,
+                propertyAnchorCount: property.length,
+                sampleHrefs: Array.from(new Set(property.length ? property : hrefs)).slice(0, 12),
+                bodyTextSample: (document.body?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 400),
+              };
+            });
+            const securityChallenge = /security|challenge|access denied|captcha|akamai/i.test(
+              `${title} ${signals.bodyTextSample}`,
+            );
+            return {
+              ok: true,
+              httpStatus,
+              title,
+              finalUrl,
+              requestedUrl: targetUrl,
+              htmlLength: html.length,
+              securityChallenge,
+              ...signals,
+            };
+          },
+        );
+        if (outcome.error) {
+          json(res, 200, { ok: false, error: outcome.error.message });
+          return;
+        }
+        json(res, 200, outcome.result);
+        return;
+      }
+
       json(res, 404, { error: 'Not found' });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -1,6 +1,7 @@
 import { getPortalMeta } from '@/lib/research/browser/config';
 import type { ResearchPlanCriteria } from '@/lib/research/types';
 import { slugifyProject } from '@/connectors/common/listing-parser';
+import { buildHousingSearchEntryUrl } from '@/connectors/housing/housing-listings';
 
 function citySlug(criteria: ResearchPlanCriteria): string {
   return slugifyProject(criteria.city || 'mumbai') || 'mumbai';
@@ -19,12 +20,13 @@ export function buildPortalSearchUrl(portal: string, criteria: ResearchPlanCrite
   const city = citySlug(criteria);
   const q = encodeURIComponent(projectQuery(criteria));
   const bhk = criteria.bhk != null ? String(criteria.bhk) : '';
-  const max = criteria.maxBudget != null ? String(criteria.maxBudget) : '';
   const txn = criteria.transactionType === 'SALE' ? 'buy' : 'rent';
 
   switch (portal) {
     case 'housing':
-      return `${origin}/in/${txn}/${city}/search?q=${q}${bhk ? `&bedroom_count=${bhk}` : ''}${max ? `&price_max=${max}` : ''}`;
+      // Project searches need Housing autocomplete → rent-…-rpid-… SERP.
+      // Query-param ?q= shells never render listing cards — entry URL only.
+      return buildHousingSearchEntryUrl(criteria);
     case 'magicbricks':
       return txn === 'buy'
         ? `https://www.magicbricks.com/property-for-sale/residential-real-estate?proptype=Multistorey-Apartment,Builder-Floor-Apartment,Penthouse,Studio-Apartment&cityName=${encodeURIComponent(criteria.city || 'Mumbai')}&keyword=${q}`

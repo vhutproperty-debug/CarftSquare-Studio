@@ -290,6 +290,8 @@ export type ResearchListing = {
   bhk?: number;
   rent?: number;
   salePrice?: number;
+  /** Built-up / carpet area in sq.ft when extracted from the portal card. */
+  areaSqft?: number;
   furnishing?: string;
   url?: string;
   postedAt?: string;
