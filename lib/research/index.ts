@@ -4,6 +4,7 @@ export { RESEARCH_COLLECTIONS } from '@/lib/research/collections';
 export {
   RESEARCH_PRODUCT,
   RESEARCH_NAV_ITEMS,
+  RESEARCH_NAV_GROUPS,
   DEFAULT_RESEARCH_WORKSPACE,
   RESEARCH_DASHBOARD_PLACEHOLDERS,
 } from '@/lib/research/business';
@@ -43,6 +44,7 @@ export {
 export {
   startRemoteConnect,
   listConnectorStatuses,
+  liveValidateConnectorStatuses,
   disconnectPortal,
   reconnectPortal,
   processNextConnectJob,

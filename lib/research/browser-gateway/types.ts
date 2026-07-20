@@ -47,6 +47,14 @@ export type PublicConnectSession = Omit<ConnectSession, never> & {
   previewUrl?: string | null;
 };
 
+/** Visible UX states for connector cards (presentation layer). */
+export type ConnectorDisplayState =
+  | 'connected'
+  | 'session_expired'
+  | 'connection_failed'
+  | 'never_connected'
+  | 'reconnecting';
+
 export type ConnectorStatusCard = {
   portal: string;
   portalName: string;
@@ -71,6 +79,22 @@ export type ConnectorStatusCard = {
   provider?: BrowserProviderKind;
   /** Exact last validation / connect failure (not a generic "error"). */
   lastError?: string;
+  /** Production UX state — prefer over raw `status` in Connectors UI. */
+  displayState?: ConnectorDisplayState;
+  /** Human label for displayState. */
+  displayLabel?: string;
+  /** True when encrypted session cookies exist (never exposes cookies). */
+  sessionExists?: boolean;
+  sessionAgeMs?: number | null;
+  sessionAgeLabel?: string | null;
+  availableForResearch?: boolean;
+  availableLabel?: string;
+  /** Operator-facing failure copy only (no stack traces). */
+  humanError?: string | null;
+  detailSummary?: string | null;
+  /** Whether this card was refreshed via worker live validate. */
+  liveValidated?: boolean;
+  liveValidationSource?: 'live' | 'cached' | 'skipped';
 };
 
 export type BrowserLaunchHandle = {

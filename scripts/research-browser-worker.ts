@@ -169,6 +169,25 @@ async function main() {
   console.log(` listen port : ${port}`);
   console.log(` bind        : ${host}`);
   console.log(` interval    : ${intervalSec}s`);
+  {
+    const { getWorkerPublicBaseUrl } = await import(
+      '../lib/research/browser-gateway/remote-display/signed-url'
+    );
+    const publicBase = getWorkerPublicBaseUrl();
+    const source = process.env.RESEARCH_BROWSER_WORKER_PUBLIC_URL?.trim()
+      ? 'RESEARCH_BROWSER_WORKER_PUBLIC_URL'
+      : process.env.RAILWAY_PUBLIC_DOMAIN?.trim()
+        ? 'RAILWAY_PUBLIC_DOMAIN'
+        : 'localhost_fallback';
+    console.log(` publicBase  : ${publicBase}`);
+    console.log(` publicSrc   : ${source}`);
+    if (source === 'localhost_fallback' && (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID)) {
+      console.warn(
+        '[research-browser-worker] WARNING: liveViewUrl will use 127.0.0.1 — set RESEARCH_BROWSER_WORKER_PUBLIC_URL to the Railway public HTTPS URL',
+      );
+    }
+    pushWorkerLog('info', `live_view_public_base url=${publicBase} source=${source}`);
+  }
   console.log('══════════════════════════════════════════════════════════');
   console.log('');
 

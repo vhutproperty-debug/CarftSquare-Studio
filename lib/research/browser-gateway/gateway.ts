@@ -9,6 +9,10 @@ import {
   updateConnectSession,
 } from '@/lib/research/browser-gateway/connect-session-store';
 // updateConnectSession used by startRemoteConnect / disconnect
+import {
+  deriveConnectorDisplay,
+  humanizeConnectorError,
+} from '@/lib/research/browser-gateway/connector-status';
 import type {
   ConnectorStatusCard,
   PublicConnectSession,
@@ -104,12 +108,25 @@ export async function getConnectSessionPublic(id: string): Promise<PublicConnect
   return session ? publicConnectSession(session) : null;
 }
 
-export async function listConnectorStatuses(workspaceId: string): Promise<{
+export async function listConnectorStatuses(
+  workspaceId: string,
+  opts?: { liveValidated?: boolean; workerOnline?: boolean },
+): Promise<{
   connectors: ConnectorStatusCard[];
   activeConnectSessions: PublicConnectSession[];
+  workerOnline: boolean;
+  liveValidated: boolean;
 }> {
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
+
+  const { fetchBrowserWorkerStatus } = await import(
+    '@/lib/research/browser-gateway/worker-client'
+  );
+  const workerOnline =
+    typeof opts?.workerOnline === 'boolean'
+      ? opts.workerOnline
+      : Boolean((await fetchBrowserWorkerStatus().catch(() => null))?.online);
 
   const [connections, sessions, activeConnects, lastJobs] = await Promise.all([
     Promise.all(
@@ -155,15 +172,36 @@ export async function listConnectorStatuses(workspaceId: string): Promise<{
 
     let health: ConnectorStatusCard['health'] = 'unknown';
     if (status === 'connected') health = 'healthy';
-    else if (status === 'needs_login' || status === 'expired') health = 'degraded';
+    else if (status === 'needs_login') health = 'degraded';
     else if (status === 'error') health = 'failing';
     else if (status === 'disconnected') health = 'idle';
     else if (status === 'connecting') health = 'unknown';
+    else if (status === 'pending') health = 'unknown';
 
     const lastCrawl = lastJobs.find((j) =>
       String((j.evidence as { criteria?: { portals?: string[] } } | undefined)?.criteria?.portals || '')
         .includes(c.portalKey),
     );
+
+    const rawError =
+      c.lastError ||
+      browser?.lastValidationError ||
+      active?.errorMessage ||
+      undefined;
+
+    const display = deriveConnectorDisplay({
+      connection: c,
+      browser,
+      connectPhase: active?.phase,
+      workerOnline,
+    });
+
+    // Keep legacy `status` aligned with display for older consumers.
+    if (display.displayState === 'session_expired') status = 'needs_login';
+    else if (display.displayState === 'connection_failed') status = 'error';
+    else if (display.displayState === 'never_connected') status = 'disconnected';
+    else if (display.displayState === 'reconnecting') status = 'connecting';
+    else if (display.displayState === 'connected') status = 'connected';
 
     return {
       portal: c.portalKey,
@@ -180,18 +218,117 @@ export async function listConnectorStatuses(workspaceId: string): Promise<{
       workerId: active?.workerId,
       browserVersion: active?.browserVersion,
       provider: active?.provider || resolveBrowserProvider(),
-      lastError:
-        c.lastError ||
-        browser?.lastValidationError ||
-        active?.errorMessage ||
-        undefined,
+      lastError: humanizeConnectorError(rawError) || undefined,
+      displayState: display.displayState,
+      displayLabel: display.label,
+      sessionExists: display.sessionExists,
+      sessionAgeMs: display.sessionAgeMs,
+      sessionAgeLabel: display.sessionAgeLabel,
+      availableForResearch: display.availableForResearch,
+      availableLabel: display.availableLabel,
+      humanError: display.humanError,
+      detailSummary: display.detailSummary,
+      liveValidated: Boolean(opts?.liveValidated),
+      liveValidationSource: opts?.liveValidated
+        ? 'live'
+        : display.displayState === 'never_connected'
+          ? 'skipped'
+          : 'cached',
     };
   });
 
   return {
     connectors,
     activeConnectSessions: activeConnects.map(publicConnectSession),
+    workerOnline,
+    liveValidated: Boolean(opts?.liveValidated),
   };
+}
+
+/**
+ * Live-validate portals that have (or claim) a session via the Browser Worker,
+ * then return fresh connector status cards. Additive — does not change schema.
+ * Persistence of validate results stays on the worker/connector path.
+ *
+ * Fresh sessions (within validateFreshMs) are not re-probed with Chromium —
+ * we still verify session existence / expiry from stored session metadata.
+ */
+export async function liveValidateConnectorStatuses(workspaceId: string): Promise<{
+  connectors: ConnectorStatusCard[];
+  activeConnectSessions: PublicConnectSession[];
+  workerOnline: boolean;
+  liveValidated: boolean;
+  validatedPortals: string[];
+}> {
+  const { fetchBrowserWorkerStatus, requestWorkerValidateSession } = await import(
+    '@/lib/research/browser-gateway/worker-client'
+  );
+  const { RESEARCH_BROWSER_CONFIG } = await import('@/lib/research/browser/config');
+  const worker = await fetchBrowserWorkerStatus();
+  if (!worker.online || !worker.healthy) {
+    const cached = await listConnectorStatuses(workspaceId, {
+      liveValidated: false,
+      workerOnline: false,
+    });
+    return { ...cached, validatedPortals: [] };
+  }
+
+  const preliminary = await listConnectorStatuses(workspaceId, {
+    liveValidated: false,
+    workerOnline: true,
+  });
+
+  const freshMs = RESEARCH_BROWSER_CONFIG.validateFreshMs;
+  const toValidate = preliminary.connectors.filter((c) => {
+    if (c.displayState === 'reconnecting') return false;
+    if (c.displayState === 'never_connected') return false;
+
+    // Always re-check failed / expired when a session record exists.
+    if (
+      c.displayState === 'connection_failed' ||
+      c.displayState === 'session_expired'
+    ) {
+      return Boolean(c.browserSessionId || c.sessionExists);
+    }
+
+    // Connected: only Chromium-validate when lastVerified is stale/missing.
+    if (c.displayState === 'connected') {
+      if (!c.sessionExists) return true;
+      if (!c.lastValidatedAt) return true;
+      const age = Date.now() - new Date(c.lastValidatedAt).getTime();
+      return !(age >= 0 && age < freshMs);
+    }
+
+    return Boolean(c.sessionExists || c.lastValidatedAt);
+  });
+
+  const validatedPortals: string[] = [];
+  // Cap concurrency so Vercel/status requests stay within maxDuration.
+  const queue = [...toValidate];
+  const workers = Math.min(2, queue.length);
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      while (queue.length) {
+        const c = queue.shift();
+        if (!c) return;
+        try {
+          await requestWorkerValidateSession({
+            workspaceId,
+            portal: c.portal,
+          });
+          validatedPortals.push(c.portal);
+        } catch {
+          /* keep cached row */
+        }
+      }
+    }),
+  );
+
+  const refreshed = await listConnectorStatuses(workspaceId, {
+    liveValidated: true,
+    workerOnline: true,
+  });
+  return { ...refreshed, validatedPortals };
 }
 
 export async function disconnectPortal(input: {

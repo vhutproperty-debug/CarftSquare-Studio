@@ -10,8 +10,9 @@ export default async function ResearchWorkspacePage() {
   return (
     <ResearchShell
       title="Research"
-      subtitle="Conversational AI property research"
+      subtitle="Executive AI property research workspace"
       userLabel={userLabel}
+      dense
       actions={
         <Link
           href="/research/connectors"

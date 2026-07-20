@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_RESEARCH_WORKSPACE } from '@/lib/research/business';
 import type {
+  ConnectorDisplayState,
   ConnectorStatusCard,
   ConnectFlowPhase,
   PublicConnectSession,
@@ -36,10 +37,9 @@ const CONNECT_STEPS = [
 
 function activeConnectStepIndex(session: PublicConnectSession): number {
   if (session.phase === 'queued' || session.phase === 'connecting' || session.phase === 'opening_browser') {
-    return 0; // Preparing Browser
+    return 0;
   }
   if (session.phase === 'waiting_for_login') {
-    // Light Browser Ready + Waiting for Login once the signed remote URL exists.
     return session.liveViewUrl ? 2 : 0;
   }
   if (session.phase === 'capturing') return 4;
@@ -52,23 +52,33 @@ function activeConnectStepIndex(session: PublicConnectSession): number {
 const WORKER_OFFLINE_MSG =
   'Browser Worker is not running. Start it using:\nnpm run research:browser-worker';
 
-function statusTone(status: string): string {
-  if (status === 'connected' || status === 'healthy') {
+function displayStateOf(c: ConnectorStatusCard): ConnectorDisplayState {
+  if (c.displayState) return c.displayState;
+  if (c.status === 'connected') return 'connected';
+  if (c.status === 'connecting') return 'reconnecting';
+  if (c.status === 'error') return 'connection_failed';
+  if (c.status === 'needs_login' || c.status === 'expired') return 'session_expired';
+  return 'never_connected';
+}
+
+function statusTone(state: ConnectorDisplayState | string): string {
+  if (state === 'connected' || state === 'healthy') {
     return 'bg-emerald-50 text-emerald-800 border-emerald-200';
   }
-  if (
-    status === 'pending' ||
-    status === 'needs_login' ||
-    status === 'connecting' ||
-    status === 'queued' ||
-    status === 'degraded'
-  ) {
+  if (state === 'session_expired' || state === 'reconnecting' || state === 'degraded') {
     return 'bg-amber-50 text-amber-800 border-amber-200';
   }
-  if (status === 'error' || status === 'expired' || status === 'failing' || status === 'failed') {
+  if (state === 'connection_failed' || state === 'failing' || state === 'failed') {
     return 'bg-rose-50 text-rose-800 border-rose-200';
   }
   return 'bg-slate-50 text-slate-700 border-slate-200';
+}
+
+function stateDot(state: ConnectorDisplayState): string {
+  if (state === 'connected') return 'bg-emerald-500';
+  if (state === 'session_expired' || state === 'reconnecting') return 'bg-amber-400';
+  if (state === 'connection_failed') return 'bg-rose-500';
+  return 'bg-slate-300';
 }
 
 function fmt(ts?: string) {
@@ -93,6 +103,7 @@ export default function ConnectorsPanel() {
   const workspaceId = DEFAULT_RESEARCH_WORKSPACE.id;
   const [connectors, setConnectors] = useState<ConnectorStatusCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [validating, setValidating] = useState(false);
   const [busyPortal, setBusyPortal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -100,6 +111,7 @@ export default function ConnectorsPanel() {
   const [worker, setWorker] = useState<WorkerStatus | null>(null);
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [drawerPortal, setDrawerPortal] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const [drawerDetail, setDrawerDetail] = useState<{
     connectSession?: PublicConnectSession | null;
     session?: {
@@ -114,6 +126,7 @@ export default function ConnectorsPanel() {
   } | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [queuedSince, setQueuedSince] = useState<number | null>(null);
+  const [liveValidated, setLiveValidated] = useState(false);
 
   const refreshWorker = useCallback(async () => {
     try {
@@ -153,28 +166,36 @@ export default function ConnectorsPanel() {
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { live?: boolean; clearError?: boolean }) => {
+    const live = Boolean(opts?.live);
+    if (live) setValidating(true);
     try {
-      const res = await fetch(
-        `/api/research/connectors/status?workspaceId=${encodeURIComponent(workspaceId)}`,
-        { credentials: 'include' },
-      );
+      const qs = new URLSearchParams({ workspaceId });
+      if (live) qs.set('live', '1');
+      const res = await fetch(`/api/research/connectors/status?${qs.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load connectors');
       setConnectors(json.connectors || []);
-      if (!liveSession) setError(null);
+      setLiveValidated(Boolean(json.liveValidated));
+      if (opts?.clearError) setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
+      setValidating(false);
     }
-  }, [workspaceId, liveSession]);
+  }, [workspaceId]);
 
+  // Initial load: live-validate sessions so cards are not cache-only.
   useEffect(() => {
-    void refresh();
+    void refresh({ live: true, clearError: true });
     void refreshWorker();
+    // Soft poll (no live Chromium) while page is open.
     const t = setInterval(() => {
-      void refresh();
+      void refresh({ live: false });
       void refreshWorker();
     }, 10_000);
     return () => clearInterval(t);
@@ -222,17 +243,12 @@ export default function ConnectorsPanel() {
         const json = await res.json();
         if (!res.ok || cancelled) return;
         const next = json.connectSession as PublicConnectSession;
-        // Backend is the only source of truth — never advance phase locally.
         setLiveSession(next);
         setPreviewKey((k) => k + 1);
         if (next.phase === 'connected') {
-          console.info(
-            '[connectors] Connected from backend',
-            { id: next.id, phase: next.phase, message: next.message },
-          );
           setMessage(`${next.portalName} connected successfully.`);
           setQueuedSince(null);
-          await refresh();
+          await refresh({ live: true });
         }
         if (next.phase === 'failed' || next.phase === 'expired' || next.phase === 'cancelled') {
           setError(next.errorMessage || `Connect ${next.phase}`);
@@ -291,10 +307,38 @@ export default function ConnectorsPanel() {
         setQueuedSince(Date.now());
         void refreshLogs();
       }
-      await refresh();
+      await refresh({ live: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : `${path} failed`;
-      setError(msg.includes('Browser Worker') ? msg : msg);
+      setError(msg);
+    } finally {
+      setBusyPortal(null);
+    }
+  }
+
+  async function retryValidate(portal: string) {
+    setBusyPortal(portal);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/research/connectors/${encodeURIComponent(portal)}/validate`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Retry failed');
+      }
+      if (json.ok) {
+        setMessage(`${portal} session verified.`);
+      } else {
+        setError(json.message || json.error || 'Session could not be verified.');
+      }
+      await refresh({ live: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Retry failed');
     } finally {
       setBusyPortal(null);
     }
@@ -327,8 +371,8 @@ export default function ConnectorsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Connect portals via a secure remote browser on Railway. Open the login window, sign in,
-          and the worker captures encrypted cookies automatically.
+          Manage portal sessions for research. Status is verified live against the browser worker
+          whenever possible — never guess from stale cache alone.
         </p>
         <div className="flex items-center gap-2">
           <span
@@ -341,15 +385,23 @@ export default function ConnectorsPanel() {
             Worker {worker?.online ? 'Online' : 'Offline'}
             {worker?.provider ? ` · ${worker.provider}` : ''}
           </span>
+          <span className="hidden text-[11px] text-slate-400 sm:inline">
+            {validating
+              ? 'Live validating…'
+              : liveValidated
+                ? 'Live verified'
+                : 'Cached snapshot'}
+          </span>
           <button
             type="button"
+            disabled={validating}
             onClick={() => {
-              void refresh();
+              void refresh({ live: true });
               void refreshWorker();
             }}
-            className="inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
+            className="inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
           >
-            Refresh
+            {validating ? 'Validating…' : 'Refresh & verify'}
           </button>
         </div>
       </div>
@@ -493,8 +545,20 @@ export default function ConnectorsPanel() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {connectors.map((c) => {
             const busy = busyPortal === c.portal;
-            const phaseLabel = c.connectPhase ? PHASE_LABEL[c.connectPhase] : null;
-            const idle = !c.connectPhase && (c.status === 'disconnected' || c.status === 'pending');
+            const state = displayStateOf(c);
+            const label = c.displayLabel || (
+              state === 'never_connected'
+                ? 'Not Connected'
+                : state === 'session_expired'
+                  ? 'Session Expired'
+                  : state === 'connection_failed'
+                    ? 'Connection Failed'
+                    : state === 'reconnecting'
+                      ? 'Reconnecting'
+                      : 'Connected'
+            );
+            const showDetails = detailsOpen === c.portal;
+
             return (
               <article
                 key={c.portal}
@@ -508,43 +572,118 @@ export default function ConnectorsPanel() {
                     <p className="text-xs capitalize text-slate-500">{c.portal}</p>
                   </div>
                   <span
-                    className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${statusTone(c.status)}`}
+                    className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ${statusTone(state)}`}
                   >
-                    {phaseLabel || (idle ? 'Idle' : c.status.replace(/_/g, ' '))}
+                    <span className={`h-1.5 w-1.5 rounded-full ${stateDot(state)}`} aria-hidden />
+                    {label}
                   </span>
                 </div>
 
-                <dl className="mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-slate-500">
-                  <div>
-                    <dt className="font-semibold text-slate-400">Health</dt>
-                    <dd className="capitalize text-slate-700 dark:text-slate-300">{c.health}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-slate-400">Last login</dt>
-                    <dd className="text-slate-700 dark:text-slate-300">{fmt(c.lastLoginAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-slate-400">Last validation</dt>
-                    <dd className="text-slate-700 dark:text-slate-300">{fmt(c.lastValidatedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-slate-400">Session expiry</dt>
-                    <dd className="text-slate-700 dark:text-slate-300">{fmt(c.sessionExpiresAt)}</dd>
-                  </div>
-                  <div className="col-span-2">
-                    <dt className="font-semibold text-slate-400">Last crawl</dt>
-                    <dd className="text-slate-700 dark:text-slate-300">{fmt(c.lastCrawlAt)}</dd>
-                  </div>
-                </dl>
+                {/* State-specific body */}
+                {state === 'connected' ? (
+                  <dl className="mt-3 space-y-1.5 text-[12px] text-slate-600 dark:text-slate-300">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-400">Last verified</dt>
+                      <dd className="text-right text-slate-800 dark:text-slate-100">
+                        {fmt(c.lastValidatedAt)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-400">Session age</dt>
+                      <dd className="text-right text-slate-800 dark:text-slate-100">
+                        {c.sessionAgeLabel || '—'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-400">Availability</dt>
+                      <dd
+                        className={`text-right font-medium ${
+                          c.availableForResearch
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {c.availableLabel ||
+                          (c.availableForResearch
+                            ? 'Available for research'
+                            : 'Not available')}
+                      </dd>
+                    </div>
+                  </dl>
+                ) : null}
 
-                {c.lastError ? (
-                  <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800 whitespace-pre-wrap">
-                    {c.lastError}
-                  </p>
+                {state === 'session_expired' ? (
+                  <div className="mt-3 space-y-1 text-[12px] text-amber-900 dark:text-amber-200">
+                    <p className="font-medium">Session expired</p>
+                    <p className="text-amber-800/80 dark:text-amber-200/80">
+                      Reconnect required to use this portal for research.
+                    </p>
+                    {c.lastValidatedAt ? (
+                      <p className="text-[11px] text-slate-500">
+                        Last verified {fmt(c.lastValidatedAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {state === 'connection_failed' ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[12px] font-medium text-rose-800 dark:text-rose-300">
+                      Connection failed
+                    </p>
+                    {c.humanError || c.lastError ? (
+                      <p className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
+                        {c.humanError || c.lastError}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500">
+                        Something went wrong while verifying this portal.
+                      </p>
+                    )}
+                    {showDetails ? (
+                      <dl className="rounded-md border border-slate-100 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                        <div className="flex justify-between gap-2">
+                          <dt>Last verified</dt>
+                          <dd>{fmt(c.lastValidatedAt)}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt>Session exists</dt>
+                          <dd>{c.sessionExists ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt>Expires</dt>
+                          <dd>{fmt(c.sessionExpiresAt)}</dd>
+                        </div>
+                        <p className="mt-2 text-slate-400">
+                          Technical stack traces are never shown. Retry or reconnect to recover.
+                        </p>
+                      </dl>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {state === 'never_connected' ? (
+                  <div className="mt-3 text-[12px] text-slate-600 dark:text-slate-300">
+                    <p className="font-medium text-slate-800 dark:text-slate-100">Not connected</p>
+                    <p className="mt-0.5 text-slate-500">
+                      Connect this portal to unlock live research results.
+                    </p>
+                  </div>
+                ) : null}
+
+                {state === 'reconnecting' ? (
+                  <div className="mt-3 text-[12px] text-amber-900 dark:text-amber-200">
+                    <p className="font-medium">
+                      {c.connectPhase ? PHASE_LABEL[c.connectPhase] : 'Reconnecting…'}
+                    </p>
+                    <p className="text-amber-800/80 dark:text-amber-200/80">
+                      Secure browser session in progress.
+                    </p>
+                  </div>
                 ) : null}
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {c.status === 'connected' ? (
+                  {state === 'connected' ? (
                     <>
                       <button
                         type="button"
@@ -556,11 +695,11 @@ export default function ConnectorsPanel() {
                       </button>
                       <button
                         type="button"
-                        disabled={busy}
-                        onClick={() => void postAction('refresh', c.portal)}
+                        disabled={busy || validating}
+                        onClick={() => void retryValidate(c.portal)}
                         className="h-8 rounded-md border border-slate-200 px-2.5 text-xs font-medium disabled:opacity-50 dark:border-slate-700"
                       >
-                        Refresh
+                        Verify
                       </button>
                       <button
                         type="button"
@@ -571,16 +710,70 @@ export default function ConnectorsPanel() {
                         Disconnect
                       </button>
                     </>
-                  ) : (
+                  ) : null}
+
+                  {state === 'session_expired' ? (
                     <button
                       type="button"
-                      disabled={busy || c.status === 'connecting'}
+                      disabled={busy}
+                      onClick={() => void postAction('reconnect', c.portal, { openLive: true })}
+                      className="h-8 rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                    >
+                      Reconnect
+                    </button>
+                  ) : null}
+
+                  {state === 'connection_failed' ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void retryValidate(c.portal)}
+                        className="h-8 rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                      >
+                        Retry
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void postAction('reconnect', c.portal, { openLive: true })}
+                        className="h-8 rounded-md border border-slate-200 px-2.5 text-xs font-medium disabled:opacity-50 dark:border-slate-700"
+                      >
+                        Reconnect
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailsOpen((prev) => (prev === c.portal ? null : c.portal))
+                        }
+                        className="h-8 rounded-md border border-slate-200 px-2.5 text-xs font-medium dark:border-slate-700"
+                      >
+                        {showDetails ? 'Hide details' : 'View details'}
+                      </button>
+                    </>
+                  ) : null}
+
+                  {state === 'never_connected' ? (
+                    <button
+                      type="button"
+                      disabled={busy}
                       onClick={() => void postAction('connect', c.portal, { openLive: true })}
                       className="h-8 rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
                     >
-                      {c.status === 'connecting' ? 'Connecting…' : 'Connect'}
+                      Connect
                     </button>
-                  )}
+                  ) : null}
+
+                  {state === 'reconnecting' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="h-8 rounded-md border border-amber-200 bg-amber-50 px-2.5 text-xs font-medium text-amber-900 opacity-80"
+                    >
+                      Connecting…
+                    </button>
+                  ) : null}
+
                   <button
                     type="button"
                     onClick={() => void openDrawer(c.portal)}
@@ -629,7 +822,9 @@ export default function ConnectorsPanel() {
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase text-slate-400">Status</dt>
-                <dd>{drawerDetail?.session?.status || 'none'}</dd>
+                <dd className="capitalize">
+                  {(drawerDetail?.session?.status || 'none').replace(/_/g, ' ')}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase text-slate-400">Created</dt>

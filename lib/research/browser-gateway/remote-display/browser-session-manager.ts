@@ -21,6 +21,7 @@ import {
 import {
   buildLiveViewUrl,
   createViewId,
+  getWorkerPublicBaseUrl,
   signRemoteViewToken,
   tokenFingerprint,
 } from '@/lib/research/browser-gateway/remote-display/signed-url';
@@ -28,6 +29,7 @@ import {
   REMOTE_VIEW_TTL_MS,
   type RemoteDisplaySession,
 } from '@/lib/research/browser-gateway/remote-display/types';
+import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 import type { BrowserLaunchHandle } from '@/lib/research/browser-gateway/types';
 import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 
@@ -60,6 +62,23 @@ export class RemoteBrowserSessionManager {
       ttlMs: REMOTE_VIEW_TTL_MS,
     });
     const liveViewUrl = buildLiveViewUrl(viewId, token);
+    const publicBase = getWorkerPublicBaseUrl();
+    pushWorkerLog(
+      'info',
+      `live_view_url_resolved connectSessionId=${input.connectSessionId} portal=${input.portal} publicBase=${publicBase} host=${(() => {
+        try {
+          return new URL(liveViewUrl).origin;
+        } catch {
+          return 'invalid';
+        }
+      })()}`,
+    );
+    if (/127\.0\.0\.1|localhost/i.test(liveViewUrl)) {
+      pushWorkerLog(
+        'error',
+        `live_view_url_localhost_fallback connectSessionId=${input.connectSessionId} — set RESEARCH_BROWSER_WORKER_PUBLIC_URL on the worker`,
+      );
+    }
     const displayNum = allocateDisplayNumber();
     const vncPort = await allocatePort();
     const websockifyPort = await allocatePort();

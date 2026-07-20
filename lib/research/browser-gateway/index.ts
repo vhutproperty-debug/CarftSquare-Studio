@@ -13,11 +13,18 @@ export {
   startRemoteConnect,
   getConnectSessionPublic,
   listConnectorStatuses,
+  liveValidateConnectorStatuses,
   disconnectPortal,
   reconnectPortal,
   requestSessionRefresh,
   notifySessionNeedsLogin,
 } from '@/lib/research/browser-gateway/gateway';
+export {
+  deriveConnectorDisplay,
+  humanizeConnectorError,
+  formatSessionAge,
+} from '@/lib/research/browser-gateway/connector-status';
+export type { ConnectorDisplayState } from '@/lib/research/browser-gateway/connector-status';
 export {
   processNextConnectJob,
   validateDueSessions,

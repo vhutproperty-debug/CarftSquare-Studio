@@ -9,7 +9,7 @@ export default async function ResearchConnectorsPage() {
   return (
     <ResearchShell
       title="Connectors"
-      subtitle="External property portal connections"
+      subtitle="Portal sessions — live status, reconnect, and research readiness"
       userLabel={userLabel}
     >
       <ConnectorsPanel />

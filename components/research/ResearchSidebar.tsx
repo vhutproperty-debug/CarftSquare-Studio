@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import BrandLogo from '@/components/BrandLogo';
 import { ResearchNavIcon } from '@/components/research/research-nav-icons';
-import { RESEARCH_NAV_ITEMS, RESEARCH_PRODUCT } from '@/lib/research/business';
+import {
+  RESEARCH_NAV_GROUPS,
+  RESEARCH_PRODUCT,
+} from '@/lib/research/business';
 
 const SIDEBAR_STORAGE_KEY = 'research-sidebar-collapsed';
 
@@ -62,30 +65,43 @@ export default function ResearchSidebar({
 
   const nav = (
     <nav className="flex-1 overflow-y-auto px-2 py-3">
-      <ul className="space-y-0.5">
-        {RESEARCH_NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href, item.exact);
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                title={collapsed ? item.label : undefined}
-                onClick={() => onMobileOpenChange(false)}
-                className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
-                  collapsed ? 'justify-center' : ''
-                } ${
-                  active
-                    ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
-                }`}
-              >
-                <ResearchNavIcon icon={item.icon} className="h-4 w-4 shrink-0" />
-                {!collapsed ? <span className="min-w-0 flex-1 truncate">{item.label}</span> : null}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="space-y-4">
+        {RESEARCH_NAV_GROUPS.map((group) => (
+          <div key={group.id}>
+            {!collapsed ? (
+              <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {group.label}
+              </p>
+            ) : null}
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActive(pathname, item.href, item.exact);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      title={collapsed ? item.label : undefined}
+                      onClick={() => onMobileOpenChange(false)}
+                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+                        collapsed ? 'justify-center' : ''
+                      } ${
+                        active
+                          ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
+                      }`}
+                    >
+                      <ResearchNavIcon icon={item.icon} className="h-4 w-4 shrink-0" />
+                      {!collapsed ? (
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      ) : null}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </nav>
   );
 

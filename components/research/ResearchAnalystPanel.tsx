@@ -9,13 +9,14 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
+import Link from 'next/link';
 import {
   ArrowUp,
+  Bookmark,
   Check,
-  FileSpreadsheet,
-  FileText,
   Loader2,
   Plus,
+  Search,
   Sparkles,
 } from 'lucide-react';
 import { DEFAULT_RESEARCH_WORKSPACE } from '@/lib/research/business';
@@ -25,6 +26,18 @@ import type {
   ResearchReport,
   ResearchScoredListing,
 } from '@/lib/research/types';
+import ConnectorStatusChips from '@/components/research/ai/ConnectorStatusChips';
+import ExecutiveReportPanel from '@/components/research/ai/ExecutiveReportPanel';
+import PropertyCard from '@/components/research/ai/PropertyCard';
+import ResearchCanvas from '@/components/research/ai/ResearchCanvas';
+import ResearchMarkdown from '@/components/research/ai/ResearchMarkdown';
+import {
+  RESEARCH_SUGGESTED_PROMPTS,
+  SESSION_GROUP_LABEL,
+  buildLiveResearchSteps,
+  sessionTimeGroup,
+  type SessionTimeGroup,
+} from '@/components/research/ai/research-workspace-utils';
 
 type PublicSession = Pick<
   ResearchAiSession,
@@ -51,127 +64,7 @@ type SessionListItem = Pick<ResearchAiSession, 'id' | 'title' | 'status'> & {
   progress?: ResearchAiProgress;
 };
 
-type LiveStep = {
-  id: string;
-  label: string;
-  status: 'pending' | 'active' | 'done';
-};
-
-const SUGGESTED_PROMPTS = [
-  'Find 2 BHK rentals below ₹80,000 in Oberoi Sky City',
-  'Compare owner vs broker listings for 3 BHK in Andheri West',
-  'Which portals have the best inventory in Powai this week?',
-  'Fully furnished 2 BHK near BKC under ₹1.2L — exclude east-facing',
-];
-
-function money(n?: number): string {
-  if (n == null) return '—';
-  return `₹${n.toLocaleString('en-IN')}`;
-}
-
-function buildLiveSteps(progress: ResearchAiProgress | null | undefined, busy: boolean): LiveStep[] {
-  if (!busy && (!progress || progress.phase === 'idle' || progress.phase === 'completed')) {
-    return [];
-  }
-  const phase = progress?.phase || 'understanding';
-  const portalsDone = progress?.portalsDone ?? 0;
-  const portalsTotal = Math.max(progress?.portalsTotal ?? 5, 1);
-  const message = (progress?.message || '').toLowerCase();
-
-  const portalLabels = ['Housing.com', 'MagicBricks', '99acres', 'NoBroker', 'Square Yards'];
-  const steps: LiveStep[] = [
-    {
-      id: 'understand',
-      label: 'Understanding your brief…',
-      status: phase === 'understanding' || phase === 'planning' ? 'active' : 'done',
-    },
-  ];
-
-  portalLabels.forEach((name, index) => {
-    let status: LiveStep['status'] = 'pending';
-    if (phase === 'searching') {
-      if (index < portalsDone) status = 'done';
-      else if (index === portalsDone) status = 'active';
-    } else if (
-      phase === 'analyzing' ||
-      phase === 'reporting' ||
-      phase === 'completed'
-    ) {
-      status = 'done';
-    }
-    steps.push({ id: `portal-${name}`, label: `Searching ${name}…`, status });
-  });
-
-  const afterSearch =
-    phase === 'analyzing' || phase === 'reporting' || phase === 'completed'
-      ? 'active'
-      : phase === 'searching' && portalsDone >= portalsTotal
-        ? 'active'
-        : 'pending';
-
-  steps.push({
-    id: 'dedupe',
-    label: 'Removing duplicates…',
-    status:
-      /dedup|duplicate/i.test(message) || phase === 'analyzing'
-        ? afterSearch === 'active'
-          ? 'active'
-          : phase === 'reporting' || phase === 'completed'
-            ? 'done'
-            : 'pending'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'compare',
-    label: 'Comparing prices…',
-    status:
-      phase === 'analyzing' && /score|compar|price|knowledge/i.test(message)
-        ? 'active'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'history',
-    label: 'Checking historical records…',
-    status:
-      /knowledge graph|historical|graph/i.test(message)
-        ? 'active'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'intel',
-    label: 'Building market intelligence…',
-    status:
-      phase === 'reporting'
-        ? 'active'
-        : phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'exec',
-    label: 'Preparing executive summary…',
-    status: phase === 'completed' ? 'done' : phase === 'reporting' ? 'active' : 'pending',
-  });
-
-  // Ensure exactly one active when busy
-  if (busy) {
-    const firstPending = steps.findIndex((s) => s.status === 'pending');
-    const hasActive = steps.some((s) => s.status === 'active');
-    if (!hasActive && firstPending >= 0) {
-      steps[firstPending] = { ...steps[firstPending], status: 'active' };
-    }
-  }
-
-  return steps;
-}
-
-function TypewriterText({ text, active }: { text: string; active: boolean }) {
+function TypewriterMarkdown({ text, active }: { text: string; active: boolean }) {
   const [shown, setShown] = useState(active ? '' : text);
 
   useEffect(() => {
@@ -182,20 +75,20 @@ function TypewriterText({ text, active }: { text: string; active: boolean }) {
     setShown('');
     let i = 0;
     const id = window.setInterval(() => {
-      i += Math.max(1, Math.ceil(text.length / 80));
+      i += Math.max(1, Math.ceil(text.length / 90));
       setShown(text.slice(0, i));
       if (i >= text.length) window.clearInterval(id);
-    }, 18);
+    }, 16);
     return () => window.clearInterval(id);
   }, [text, active]);
 
   return (
-    <span className="whitespace-pre-wrap">
-      {shown}
+    <div>
+      <ResearchMarkdown text={shown} />
       {active && shown.length < text.length ? (
-        <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-current align-middle opacity-60" />
+        <span className="mt-1 inline-block h-4 w-1 animate-pulse bg-orange-500 align-middle opacity-70" />
       ) : null}
-    </span>
+    </div>
   );
 }
 
@@ -208,6 +101,7 @@ export default function ResearchAnalystPanel() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [animateAssistantId, setAnimateAssistantId] = useState<string | null>(null);
+  const [canvasOpenMobile, setCanvasOpenMobile] = useState(false);
   const [comparison, setComparison] = useState<{
     rows: Array<{ attribute: string; values: Array<string | number | undefined> }>;
     strengths: Record<string, string[]>;
@@ -219,9 +113,22 @@ export default function ResearchAnalystPanel() {
   const pollRef = useRef<number | null>(null);
 
   const liveSteps = useMemo(
-    () => buildLiveSteps(session?.progress, busy),
+    () => buildLiveResearchSteps(session?.progress, busy),
     [session?.progress, busy],
   );
+
+  const groupedSessions = useMemo(() => {
+    const order: SessionTimeGroup[] = ['today', 'yesterday', 'last_week', 'older'];
+    const map = new Map<SessionTimeGroup, SessionListItem[]>();
+    for (const g of order) map.set(g, []);
+    for (const s of sessions) {
+      const g = sessionTimeGroup(s.updatedAt || s.createdAt);
+      map.get(g)!.push(s);
+    }
+    return order
+      .map((g) => ({ group: g, items: map.get(g)! }))
+      .filter((g) => g.items.length > 0);
+  }, [sessions]);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -232,7 +139,7 @@ export default function ResearchAnalystPanel() {
       const json = await res.json();
       if (res.ok && Array.isArray(json.sessions)) {
         setSessions(json.sessions);
-        setSession((current) => current || json.sessions[0] || null);
+        // Keep empty home hero — do not auto-open the latest session.
       }
     } catch {
       /* ignore */
@@ -255,8 +162,8 @@ export default function ResearchAnalystPanel() {
     };
   }, []);
 
-  const ensureSession = useCallback(async (): Promise<string> => {
-    if (session?.id) return session.id;
+  const ensureSession = useCallback(async (): Promise<{ id: string; base: PublicSession }> => {
+    if (session?.id) return { id: session.id, base: session };
     const res = await fetch('/api/research/ai/sessions', {
       method: 'POST',
       credentials: 'include',
@@ -267,8 +174,8 @@ export default function ResearchAnalystPanel() {
     if (!res.ok) throw new Error(json.error || 'Could not start session');
     setSession(json.session);
     setSessions((prev) => [json.session, ...prev.filter((s) => s.id !== json.session.id)]);
-    return json.session.id as string;
-  }, [session?.id, workspaceId]);
+    return { id: json.session.id as string, base: json.session as PublicSession };
+  }, [session, workspaceId]);
 
   const pollProgress = useCallback((sessionId: string) => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -283,7 +190,6 @@ export default function ResearchAnalystPanel() {
           setSession((prev) => ({
             ...(prev || json.session),
             ...json.session,
-            // Keep optimistic user bubble if messages temporarily lag
             messages: json.session.messages?.length
               ? json.session.messages
               : prev?.messages || [],
@@ -302,37 +208,37 @@ export default function ResearchAnalystPanel() {
     setError(null);
     setComparison(null);
     setInput('');
+    setCanvasOpenMobile(true);
 
     try {
-      const id = await ensureSession();
+      const { id, base } = await ensureSession();
 
       const optimisticId = `local-user-${Date.now()}`;
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              messages: [
-                ...prev.messages,
-                {
-                  id: optimisticId,
-                  role: 'user',
-                  content: text,
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-              progress: {
-                phase: 'understanding',
-                percent: 5,
-                message: 'Understanding your brief…',
-                portalsTotal: 5,
-                portalsDone: 0,
-                listingsCollected: 0,
-                duplicatesRemoved: 0,
-                updatedAt: new Date().toISOString(),
-              },
-            }
-          : prev,
-      );
+      setSession((prev) => {
+        const current = prev?.id === id ? prev : base;
+        return {
+          ...current,
+          messages: [
+            ...(current.messages || []),
+            {
+              id: optimisticId,
+              role: 'user',
+              content: text,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          progress: {
+            phase: 'understanding',
+            percent: 5,
+            message: 'Understanding your brief…',
+            portalsTotal: 5,
+            portalsDone: 0,
+            listingsCollected: 0,
+            duplicatesRemoved: 0,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+      });
 
       pollProgress(id);
 
@@ -400,6 +306,7 @@ export default function ResearchAnalystPanel() {
       setSelected([]);
       setComparison(null);
       setAnimateAssistantId(null);
+      setCanvasOpenMobile(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     }
@@ -433,114 +340,195 @@ export default function ResearchAnalystPanel() {
   const listings = session?.listings || [];
   const report = session?.report as ResearchReport | undefined;
   const hasConversation = messages.length > 0 || busy;
+  const showCanvas = hasConversation || Boolean(report) || listings.length > 0;
 
   return (
-    <div className="flex min-h-[calc(100vh-8.5rem)] flex-col gap-3 lg:flex-row lg:gap-4">
-      {/* Session rail */}
-      <aside className="hidden w-56 shrink-0 flex-col rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 lg:flex">
+    <div className="flex min-h-[calc(100vh-7.5rem)] flex-col gap-3 xl:flex-row xl:gap-4">
+      {/* Conversation history rail */}
+      <aside className="hidden w-56 shrink-0 flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 lg:flex">
         <button
           type="button"
           onClick={() => void newSession()}
           disabled={busy}
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-orange-600 dark:hover:bg-orange-500"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-slate-900 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-orange-600 dark:hover:bg-orange-500"
         >
           <Plus className="h-3.5 w-3.5" />
           New research
         </button>
-        <p className="mb-2 mt-4 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          History
-        </p>
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-          {sessions.length === 0 ? (
-            <p className="px-1 text-xs text-slate-500">No sessions yet.</p>
+
+        <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
+          {groupedSessions.length === 0 ? (
+            <p className="px-1 text-xs text-slate-500">No conversations yet.</p>
           ) : (
-            sessions.map((s) => {
-              const active = s.id === session?.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => void openSession(s.id)}
-                  className={`w-full rounded-xl px-2.5 py-2 text-left transition ${
-                    active
-                      ? 'bg-orange-50 text-orange-900 dark:bg-orange-950/50 dark:text-orange-100'
-                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="line-clamp-2 text-xs font-medium">{s.title || 'Research'}</span>
-                  <span className="mt-0.5 block text-[10px] text-slate-400">
-                    {new Date(s.updatedAt || s.createdAt).toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </button>
-              );
-            })
+            groupedSessions.map(({ group, items }) => (
+              <div key={group}>
+                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  {SESSION_GROUP_LABEL[group]}
+                </p>
+                <div className="space-y-1">
+                  {items.map((s) => {
+                    const active = s.id === session?.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => void openSession(s.id)}
+                        className={`w-full rounded-xl px-2.5 py-2 text-left transition ${
+                          active
+                            ? 'bg-orange-50 text-orange-900 dark:bg-orange-950/50 dark:text-orange-100'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="line-clamp-2 text-xs font-medium">
+                          {s.title || 'Research'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
+
+          <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
+            <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Workspace
+            </p>
+            <div className="space-y-0.5">
+              <Link
+                href="/research/saved-searches"
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Bookmark className="h-3.5 w-3.5" />
+                Saved Reports
+              </Link>
+              <Link
+                href="/research/inventory"
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Inventory Search
+              </Link>
+              <Link
+                href="/research/watches"
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Watchlists
+              </Link>
+              <Link
+                href="/research/knowledge"
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Knowledge Explorer
+              </Link>
+            </div>
+          </div>
         </div>
       </aside>
 
-      {/* Conversation stage */}
-      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white via-slate-50/80 to-slate-100/90 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
+      {/* Conversation column */}
+      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-[#fbfaf8] via-white to-slate-50 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
         <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 px-4 py-3 dark:border-slate-800">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm">
-                <Sparkles className="h-3.5 w-3.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Mumbai Real Estate Research Analyst
-                </p>
-                <p className="truncate text-[11px] text-slate-500">
-                  {busy
-                    ? session?.progress?.message || 'Working across portals…'
-                    : 'Ask in plain language — portals, prices, history'}
-                </p>
-              </div>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm shadow-orange-600/30">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Executive Mumbai Research Analyst
+              </p>
+              <p className="truncate text-[11px] text-slate-500">
+                {busy
+                  ? session?.progress?.message || 'Working across portals…'
+                  : 'ChatGPT-grade research for Mumbai real estate'}
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void newSession()}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-white lg:hidden dark:border-slate-700 dark:text-slate-200"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New
-          </button>
+          <div className="flex items-center gap-2">
+            {showCanvas ? (
+              <button
+                type="button"
+                onClick={() => setCanvasOpenMobile((v) => !v)}
+                className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 xl:hidden dark:border-slate-700 dark:text-slate-200"
+              >
+                Canvas
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void newSession()}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-white lg:hidden dark:border-slate-700 dark:text-slate-200"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New
+            </button>
+          </div>
         </div>
 
-        <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-5">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-6">
           {!hasConversation ? (
-            <div className="mx-auto flex max-w-2xl flex-col items-center px-2 pb-8 pt-6 text-center sm:pt-12">
-              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg shadow-orange-600/25">
-                <Sparkles className="h-7 w-7" />
+            <div className="mx-auto flex max-w-2xl flex-col items-center px-2 pb-10 pt-8 text-center sm:pt-16">
+              <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-600/25">
+                <Sparkles className="h-8 w-8" />
               </div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
-                What should we research?
-              </h2>
-              <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Talk like you would to a senior Mumbai property analyst. I search Housing,
-                MagicBricks, 99acres and more, then compare and brief you.
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600/80">
+                Prop / Research
               </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+                What should we research today?
+              </h2>
+              <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                You’re speaking with an executive Mumbai real estate research analyst — portals,
+                owner vs broker, pricing, and negotiation in one conversation.
+              </p>
+
+              {sessions.length > 0 ? (
+                <div className="mt-6 w-full text-left">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Recent conversations
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {sessions.slice(0, 4).map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => void openSession(s.id)}
+                        className="rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        <span className="line-clamp-2 font-medium">{s.title || 'Research'}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
-                {SUGGESTED_PROMPTS.map((prompt) => (
+                {RESEARCH_SUGGESTED_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
                     onClick={() => void send(prompt)}
-                    className="rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50/60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-700 dark:hover:bg-orange-950/30"
+                    className="rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/60 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-700"
                   >
                     {prompt}
                   </button>
                 ))}
               </div>
+
+              <div className="mt-6 flex flex-wrap justify-center gap-2 text-[11px] text-slate-500">
+                <Link href="/research/inventory" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+                  Inventory Search
+                </Link>
+                <Link href="/research/connectors" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+                  Connectors
+                </Link>
+                <Link href="/research/knowledge" className="rounded-full border border-slate-200 px-3 py-1 hover:bg-white dark:border-slate-700">
+                  Knowledge Explorer
+                </Link>
+              </div>
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-4">
+            <div className="mx-auto max-w-3xl space-y-5">
               {messages.map((m) => {
                 const isUser = m.role === 'user';
                 return (
@@ -549,7 +537,7 @@ export default function ResearchAnalystPanel() {
                     className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm sm:max-w-[85%] ${
+                      className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm sm:max-w-[88%] ${
                         isUser
                           ? 'rounded-br-md bg-slate-900 text-white dark:bg-orange-600'
                           : 'rounded-bl-md border border-slate-200/80 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
@@ -563,7 +551,7 @@ export default function ResearchAnalystPanel() {
                       {isUser ? (
                         m.content
                       ) : (
-                        <TypewriterText
+                        <TypewriterMarkdown
                           text={m.content}
                           active={animateAssistantId === m.id}
                         />
@@ -574,10 +562,10 @@ export default function ResearchAnalystPanel() {
               })}
 
               {busy || liveSteps.length > 0 ? (
-                <div className="rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+                <div className="rounded-2xl border border-orange-200/70 bg-white/95 p-4 shadow-sm dark:border-orange-900/40 dark:bg-slate-900/95">
                   <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
                     <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
-                    Live research
+                    Thinking & researching
                     {session?.progress?.percent != null ? (
                       <span className="ml-auto text-xs font-normal text-slate-400">
                         {session.progress.percent}%
@@ -590,10 +578,10 @@ export default function ResearchAnalystPanel() {
                         <span
                           className={`flex h-5 w-5 items-center justify-center rounded-full ${
                             step.status === 'done'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                              ? 'bg-emerald-100 text-emerald-700'
                               : step.status === 'active'
-                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
-                                : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-slate-100 text-slate-400'
                           }`}
                         >
                           {step.status === 'done' ? (
@@ -616,93 +604,36 @@ export default function ResearchAnalystPanel() {
                       </li>
                     ))}
                   </ul>
-                  {session?.progress ? (
-                    <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500 dark:border-slate-800">
-                      <div>
-                        <dt className="uppercase tracking-wide">Portals</dt>
-                        <dd className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {session.progress.portalsDone}/{session.progress.portalsTotal || '—'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="uppercase tracking-wide">Listings</dt>
-                        <dd className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {session.progress.listingsCollected}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="uppercase tracking-wide">Deduped</dt>
-                        <dd className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {session.progress.duplicatesRemoved}
-                        </dd>
-                      </div>
-                    </dl>
-                  ) : null}
                 </div>
               ) : null}
 
               {listings.length > 0 && !busy ? (
-                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      Ranked matches
+                      Matching properties
                     </h3>
                     <button
                       type="button"
                       onClick={() => void runCompare()}
-                      className="h-8 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
+                      className="h-8 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-200"
                     >
                       Compare selected
                     </button>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500 dark:bg-slate-950/50">
-                        <tr>
-                          <th className="px-3 py-2" />
-                          <th className="px-3 py-2">Score</th>
-                          <th className="px-3 py-2">Listing</th>
-                          <th className="px-3 py-2">Price</th>
-                          <th className="px-3 py-2">Why</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {listings.slice(0, 20).map((listing: ResearchScoredListing) => (
-                          <tr key={listing.id}>
-                            <td className="px-3 py-2">
-                              <input
-                                type="checkbox"
-                                checked={selected.includes(listing.id)}
-                                onChange={(e) => {
-                                  setSelected((prev) =>
-                                    e.target.checked
-                                      ? [...prev, listing.id]
-                                      : prev.filter((id) => id !== listing.id),
-                                  );
-                                }}
-                              />
-                            </td>
-                            <td className="px-3 py-2 font-semibold">{listing.relevanceScore}</td>
-                            <td className="px-3 py-2">
-                              <div className="font-medium text-slate-900 dark:text-slate-100">
-                                {listing.title || 'Listing'}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {(listing.portalRefs || [])
-                                  .map((p) => p.portal)
-                                  .join(', ') || listing.portal}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {money(listing.rent ?? listing.salePrice)}
-                            </td>
-                            <td className="max-w-[240px] px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
-                              {listing.explanation}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid gap-3">
+                    {listings.slice(0, 20).map((listing: ResearchScoredListing) => (
+                      <PropertyCard
+                        key={listing.id}
+                        listing={listing}
+                        selected={selected.includes(listing.id)}
+                        onToggleSelect={(id, next) => {
+                          setSelected((prev) =>
+                            next ? [...prev, id] : prev.filter((x) => x !== id),
+                          );
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               ) : null}
@@ -737,110 +668,91 @@ export default function ResearchAnalystPanel() {
               ) : null}
 
               {report && !busy ? (
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                      Executive briefing
-                    </h3>
-                    {session?.id ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        <a
-                          href={`/api/research/ai/sessions/${session.id}/export?format=pdf`}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          PDF
-                        </a>
-                        <a
-                          href={`/api/research/ai/sessions/${session.id}/export?format=excel`}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
-                        >
-                          <FileSpreadsheet className="h-3.5 w-3.5" />
-                          Excel
-                        </a>
-                        <a
-                          href={`/api/research/ai/sessions/${session.id}/export?format=csv`}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
-                        >
-                          CSV
-                        </a>
-                      </div>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 leading-relaxed text-slate-700 dark:text-slate-200">
-                    {report.executiveSummary}
-                  </p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    <div>
-                      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Observations
-                      </h4>
-                      <ul className="mt-1 space-y-1 text-slate-600 dark:text-slate-300">
-                        {report.observations.map((o) => (
-                          <li key={o}>• {o}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Next steps
-                      </h4>
-                      <ul className="mt-1 space-y-1 text-slate-600 dark:text-slate-300">
-                        {report.recommendedNextSteps.map((o) => (
-                          <li key={o}>• {o}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  {report.warnings.length ? (
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                      {report.warnings.join(' ')}
-                    </div>
-                  ) : null}
-                </div>
+                <ExecutiveReportPanel
+                  report={report}
+                  listings={listings}
+                  sessionId={session?.id}
+                />
               ) : null}
             </div>
           )}
         </div>
 
         {/* Sticky composer */}
-        <div className="sticky bottom-0 border-t border-slate-200/80 bg-white/95 p-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:p-4">
+        <div className="sticky bottom-0 border-t border-slate-200/80 bg-white/90 p-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:p-4">
           {error ? (
             <p className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100">
               {error}
             </p>
           ) : null}
-          <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
-            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/30">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onComposerKeyDown}
-                rows={1}
-                disabled={busy}
-                placeholder="Ask your Mumbai research analyst…"
-                className="max-h-36 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:opacity-60 dark:text-slate-100"
-              />
-              <button
-                type="submit"
-                disabled={busy || !input.trim()}
-                aria-label="Send"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white transition hover:bg-orange-500 disabled:opacity-40"
-              >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            <p className="mt-1.5 text-center text-[10px] text-slate-400">
-              Enter to send · Shift+Enter for new line · Live portal search may take a minute
-            </p>
-          </form>
+          <div className="mx-auto max-w-3xl space-y-2.5">
+            <ConnectorStatusChips />
+            <form onSubmit={onSubmit}>
+              <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5 transition focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-orange-700 dark:focus-within:ring-orange-950">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onComposerKeyDown}
+                  rows={1}
+                  disabled={busy}
+                  placeholder="Ask your Mumbai research analyst…"
+                  className="max-h-36 min-h-[48px] flex-1 resize-none bg-transparent px-2 py-3 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 disabled:opacity-60 dark:text-slate-100"
+                />
+                <button
+                  type="submit"
+                  disabled={busy || !input.trim()}
+                  aria-label="Send"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white transition hover:bg-orange-500 disabled:opacity-40"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="mt-1.5 text-center text-[10px] text-slate-400">
+                Enter to send · Shift+Enter for new line
+              </p>
+            </form>
+          </div>
         </div>
       </section>
+
+      {/* Desktop canvas */}
+      {showCanvas ? (
+        <div className="hidden w-[380px] shrink-0 xl:block 2xl:w-[420px]">
+          <ResearchCanvas
+            busy={busy}
+            progress={session?.progress}
+            liveSteps={liveSteps}
+            listings={listings}
+            report={report}
+          />
+        </div>
+      ) : null}
+
+      {/* Mobile canvas drawer */}
+      {showCanvas && canvasOpenMobile ? (
+        <div className="fixed inset-0 z-40 xl:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/40"
+            aria-label="Close canvas"
+            onClick={() => setCanvasOpenMobile(false)}
+          />
+          <div className="absolute inset-y-0 right-0 w-full max-w-md p-3">
+            <ResearchCanvas
+              busy={busy}
+              progress={session?.progress}
+              liveSteps={liveSteps}
+              listings={listings}
+              report={report}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

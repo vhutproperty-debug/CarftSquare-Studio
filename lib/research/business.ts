@@ -2,7 +2,7 @@ export const RESEARCH_PRODUCT = {
   name: 'Prop/Research',
   shortName: 'Research',
   tagline: 'AI-powered property research workspace',
-  homeHref: '/research/dashboard',
+  homeHref: '/research/research',
 } as const;
 
 export type ResearchNavItem = {
@@ -24,19 +24,65 @@ export type ResearchNavItem = {
   exact?: boolean;
 };
 
+/** Presentation-only sidebar groups (does not change routes). */
+export type ResearchNavGroup = {
+  id: string;
+  label: string;
+  items: ResearchNavItem[];
+};
+
 export const RESEARCH_NAV_ITEMS: ResearchNavItem[] = [
-  { label: 'Dashboard', href: '/research/dashboard', icon: 'dashboard' },
   { label: 'Research', href: '/research/research', icon: 'research' },
-  { label: 'Knowledge', href: '/research/knowledge', icon: 'knowledge' },
-  { label: 'Inventory', href: '/research/inventory', icon: 'inventory' },
-  { label: 'Watches', href: '/research/watches', icon: 'watches' },
+  { label: 'Dashboard', href: '/research/dashboard', icon: 'dashboard' },
+  { label: 'Inventory Search', href: '/research/inventory', icon: 'inventory' },
+  { label: 'Watchlists', href: '/research/watches', icon: 'watches' },
+  { label: 'Knowledge Explorer', href: '/research/knowledge', icon: 'knowledge' },
+  { label: 'Saved Reports', href: '/research/saved-searches', icon: 'saved' },
+  { label: 'History', href: '/research/history', icon: 'history' },
+  { label: 'Connectors', href: '/research/connectors', icon: 'connectors' },
   { label: 'Notifications', href: '/research/notifications', icon: 'notifications' },
   { label: 'Operations', href: '/research/operations', icon: 'operations' },
   { label: 'Health', href: '/research/health', icon: 'health' },
-  { label: 'Saved Searches', href: '/research/saved-searches', icon: 'saved' },
-  { label: 'History', href: '/research/history', icon: 'history' },
-  { label: 'Connectors', href: '/research/connectors', icon: 'connectors' },
   { label: 'Settings', href: '/research/settings', icon: 'settings' },
+];
+
+export const RESEARCH_NAV_GROUPS: ResearchNavGroup[] = [
+  {
+    id: 'workspace',
+    label: 'Workspace',
+    items: [
+      { label: 'Research', href: '/research/research', icon: 'research' },
+      { label: 'Dashboard', href: '/research/dashboard', icon: 'dashboard' },
+    ],
+  },
+  {
+    id: 'intelligence',
+    label: 'Intelligence',
+    items: [
+      { label: 'Inventory Search', href: '/research/inventory', icon: 'inventory' },
+      { label: 'Watchlists', href: '/research/watches', icon: 'watches' },
+      { label: 'Knowledge Explorer', href: '/research/knowledge', icon: 'knowledge' },
+    ],
+  },
+  {
+    id: 'library',
+    label: 'Library',
+    items: [
+      { label: 'Saved Reports', href: '/research/saved-searches', icon: 'saved' },
+      { label: 'History', href: '/research/history', icon: 'history' },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'System',
+    items: [
+      { label: 'Connectors', href: '/research/connectors', icon: 'connectors' },
+      { label: 'Notifications', href: '/research/notifications', icon: 'notifications' },
+      { label: 'Operations', href: '/research/operations', icon: 'operations' },
+      { label: 'Health', href: '/research/health', icon: 'health' },
+      { label: 'Settings', href: '/research/settings', icon: 'settings' },
+    ],
+  },
 ];
 
 /** Default workspace shown in the workspace selector until multi-workspace lands. */
