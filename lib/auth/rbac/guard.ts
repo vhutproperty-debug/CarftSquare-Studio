@@ -6,7 +6,7 @@ import type { PublicAdminUser } from '@/lib/auth/rbac/types';
 
 export type AuthResult =
   | { ok: true; admin: PublicAdminUser }
-  | { ok: false; status: 401 | 403; message: string };
+  | { ok: false; status: 401 | 403 | 503; message: string };
 
 export function unauthorizedResponse(message = 'Admin authentication required.') {
   return NextResponse.json({ error: message }, { status: 401 });
@@ -14,6 +14,12 @@ export function unauthorizedResponse(message = 'Admin authentication required.')
 
 export function forbiddenResponse(message = 'You do not have permission to perform this action.') {
   return NextResponse.json({ error: message }, { status: 403 });
+}
+
+export function serviceUnavailableResponse(
+  message = 'Authentication service temporarily unavailable.',
+) {
+  return NextResponse.json({ error: message }, { status: 503 });
 }
 
 export function authorizeAdmin(
@@ -55,7 +61,7 @@ export function authorizeAdmin(
 
 export function authResultToResponse(result: AuthResult) {
   if (result.ok) return null;
-  return result.status === 401
-    ? unauthorizedResponse(result.message)
-    : forbiddenResponse(result.message);
+  if (result.status === 401) return unauthorizedResponse(result.message);
+  if (result.status === 503) return serviceUnavailableResponse(result.message);
+  return forbiddenResponse(result.message);
 }
