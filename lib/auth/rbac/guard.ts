@@ -60,8 +60,10 @@ export function authorizeAdmin(
 }
 
 export function authResultToResponse(result: AuthResult) {
-  if (result.ok) return null;
-  if (result.status === 401) return unauthorizedResponse(result.message);
-  if (result.status === 503) return serviceUnavailableResponse(result.message);
-  return forbiddenResponse(result.message);
+  if (result.ok === false) {
+    if (result.status === 401) return unauthorizedResponse(result.message);
+    if (result.status === 503) return serviceUnavailableResponse(result.message);
+    return forbiddenResponse(result.message);
+  }
+  return null;
 }

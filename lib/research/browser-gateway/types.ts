@@ -95,6 +95,31 @@ export type ConnectorStatusCard = {
   /** Whether this card was refreshed via worker live validate. */
   liveValidated?: boolean;
   liveValidationSource?: 'live' | 'cached' | 'skipped';
+  /** Self-diagnosing checklist + operator guidance (additive). */
+  diagnostics?: ConnectorDiagnostics;
+};
+
+/** Per-step connector health checklist for Connectors UI. */
+export type ConnectorDiagnosticCheck = {
+  id: string;
+  label: string;
+  /** true = pass, false = fail, null = unknown / not applicable */
+  ok: boolean | null;
+  detail?: string;
+};
+
+export type ConnectorDiagnostics = {
+  checks: ConnectorDiagnosticCheck[];
+  currentState: ConnectorDisplayState;
+  health: ConnectorStatusCard['health'];
+  lastVerification?: string;
+  researchReady: boolean;
+  browserState: string;
+  sessionAgeLabel?: string | null;
+  validationResult: string;
+  latencyMs?: number | null;
+  failureReason?: string | null;
+  suggestedAction?: string | null;
 };
 
 export type BrowserLaunchHandle = {

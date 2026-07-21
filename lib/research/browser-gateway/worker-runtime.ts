@@ -620,10 +620,18 @@ function isRecoverableValidationFailure(
   if (text.includes('406')) return true;
   if (validation.status === 'needs_login') return true;
   // Stale Chromium SingletonLock on Railway volume after redeploy.
+  // Browser/page crashes must also retry with a fresh context/page.
   if (
     text.includes('profile appears to be in use') ||
     text.includes('singletonlock') ||
-    text.includes('target page, context or browser has been closed')
+    text.includes('target page, context or browser has been closed') ||
+    text.includes('page crashed') ||
+    text.includes('target closed') ||
+    text.includes('browser disconnected') ||
+    text.includes('browser has been closed') ||
+    text.includes('execution context was destroyed') ||
+    text.includes('execution context destroyed') ||
+    text.includes('session closed')
   ) {
     return true;
   }

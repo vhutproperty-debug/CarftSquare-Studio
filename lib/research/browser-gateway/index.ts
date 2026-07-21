@@ -23,6 +23,7 @@ export {
   deriveConnectorDisplay,
   humanizeConnectorError,
   formatSessionAge,
+  buildConnectorDiagnostics,
 } from '@/lib/research/browser-gateway/connector-status';
 export type { ConnectorDisplayState } from '@/lib/research/browser-gateway/connector-status';
 export {

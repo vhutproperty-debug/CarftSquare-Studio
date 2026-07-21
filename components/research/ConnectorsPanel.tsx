@@ -579,6 +579,62 @@ export default function ConnectorsPanel() {
                   </span>
                 </div>
 
+                {/* Diagnostics checklist — every portal independently diagnosable */}
+                {c.diagnostics?.checks?.length ? (
+                  <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    {c.diagnostics.checks.map((check) => (
+                      <li
+                        key={check.id}
+                        className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300"
+                      >
+                        <span
+                          className={
+                            check.ok === true
+                              ? 'text-emerald-600'
+                              : check.ok === false
+                                ? 'text-rose-600'
+                                : 'text-slate-400'
+                          }
+                          aria-hidden
+                        >
+                          {check.ok === true ? '✓' : check.ok === false ? '✗' : '·'}
+                        </span>
+                        <span>
+                          <span className="font-medium text-slate-800 dark:text-slate-100">
+                            {check.label}
+                          </span>
+                          {check.detail ? (
+                            <span className="block text-slate-400">{check.detail}</span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {c.diagnostics?.failureReason || c.diagnostics?.suggestedAction ? (
+                  <div className="mt-2 space-y-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5 text-[11px] dark:border-slate-800 dark:bg-slate-950">
+                    {c.diagnostics.failureReason ? (
+                      <p>
+                        <span className="font-medium text-rose-700 dark:text-rose-300">Reason: </span>
+                        <span className="text-slate-700 dark:text-slate-200">
+                          {c.diagnostics.failureReason}
+                        </span>
+                      </p>
+                    ) : null}
+                    {c.diagnostics.suggestedAction ? (
+                      <p>
+                        <span className="font-medium text-slate-800 dark:text-slate-100">
+                          Suggested action:{' '}
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {c.diagnostics.suggestedAction}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {/* State-specific body */}
                 {state === 'connected' ? (
                   <dl className="mt-3 space-y-1.5 text-[12px] text-slate-600 dark:text-slate-300">
@@ -592,6 +648,12 @@ export default function ConnectorsPanel() {
                       <dt className="text-slate-400">Session age</dt>
                       <dd className="text-right text-slate-800 dark:text-slate-100">
                         {c.sessionAgeLabel || '—'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-400">Browser state</dt>
+                      <dd className="text-right text-slate-800 dark:text-slate-100">
+                        {c.diagnostics?.browserState || 'ready'}
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
@@ -629,17 +691,10 @@ export default function ConnectorsPanel() {
                 {state === 'connection_failed' ? (
                   <div className="mt-3 space-y-2">
                     <p className="text-[12px] font-medium text-rose-800 dark:text-rose-300">
-                      Connection failed
+                      {/crash/i.test(c.diagnostics?.failureReason || c.humanError || '')
+                        ? 'Browser crashed'
+                        : 'Connection failed'}
                     </p>
-                    {c.humanError || c.lastError ? (
-                      <p className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
-                        {c.humanError || c.lastError}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-slate-500">
-                        Something went wrong while verifying this portal.
-                      </p>
-                    )}
                     {showDetails ? (
                       <dl className="rounded-md border border-slate-100 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                         <div className="flex justify-between gap-2">
@@ -651,12 +706,13 @@ export default function ConnectorsPanel() {
                           <dd>{c.sessionExists ? 'Yes' : 'No'}</dd>
                         </div>
                         <div className="flex justify-between gap-2">
+                          <dt>Validation</dt>
+                          <dd>{c.diagnostics?.validationResult || 'failed'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
                           <dt>Expires</dt>
                           <dd>{fmt(c.sessionExpiresAt)}</dd>
                         </div>
-                        <p className="mt-2 text-slate-400">
-                          Technical stack traces are never shown. Retry or reconnect to recover.
-                        </p>
                       </dl>
                     ) : null}
                   </div>

@@ -12,6 +12,7 @@ import {
 import {
   deriveConnectorDisplay,
   humanizeConnectorError,
+  buildConnectorDiagnostics,
 } from '@/lib/research/browser-gateway/connector-status';
 import type {
   ConnectorStatusCard,
@@ -234,6 +235,16 @@ export async function listConnectorStatuses(
         : display.displayState === 'never_connected'
           ? 'skipped'
           : 'cached',
+      diagnostics: buildConnectorDiagnostics({
+        display,
+        health,
+        workerOnline,
+        browser,
+        lastValidatedAt: browser?.lastVerified,
+        liveValidated: Boolean(opts?.liveValidated),
+        validationLatencyMs: null,
+        rawError,
+      }),
     };
   });
 

@@ -572,13 +572,21 @@ export default function ResearchAnalystPanel() {
                 <ResearchLivePanel className="rounded-2xl border border-orange-200/60 bg-white/95 p-4 shadow-sm dark:border-orange-900/40 dark:bg-slate-900/95">
                   <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
                     <span className="research-live-dot" />
-                    Thinking & researching
+                    Live research timeline
                     {session?.progress?.percent != null ? (
                       <span className="ml-auto text-xs font-normal text-slate-400">
                         {session.progress.percent}%
                       </span>
                     ) : null}
                   </div>
+                  {session?.progress?.message ? (
+                    <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                      {session.progress.message}
+                      {session.progress.listingsCollected
+                        ? ` · ${session.progress.listingsCollected} listings collected`
+                        : ''}
+                    </p>
+                  ) : null}
                   {session?.progress?.percent != null ? (
                     <div className="research-progress-track mb-3">
                       <div
@@ -587,20 +595,25 @@ export default function ResearchAnalystPanel() {
                       />
                     </div>
                   ) : null}
-                  <ul className="space-y-2">
-                    {liveSteps.map((step) => (
+                  <ul className="max-h-64 space-y-2 overflow-y-auto">
+                    {liveSteps.length > 0 ? (
+                      liveSteps.map((step) => (
                       <li key={step.id} className="flex items-center gap-2.5 text-sm">
                         <span
                           className={`flex h-5 w-5 items-center justify-center rounded-full ${
                             step.status === 'done'
                               ? 'bg-emerald-100 text-emerald-700'
-                              : step.status === 'active'
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-slate-100 text-slate-400'
+                              : step.status === 'fail'
+                                ? 'bg-rose-100 text-rose-700'
+                                : step.status === 'active'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-slate-100 text-slate-400'
                           }`}
                         >
                           {step.status === 'done' ? (
                             <Check className="h-3 w-3" />
+                          ) : step.status === 'fail' ? (
+                            <span className="text-[10px] font-bold">!</span>
                           ) : step.status === 'active' ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
@@ -611,13 +624,21 @@ export default function ResearchAnalystPanel() {
                           className={
                             step.status === 'pending'
                               ? 'text-slate-400'
-                              : 'text-slate-700 dark:text-slate-200'
+                              : step.status === 'fail'
+                                ? 'text-rose-700 dark:text-rose-300'
+                                : 'text-slate-700 dark:text-slate-200'
                           }
                         >
                           {step.label}
                         </span>
                       </li>
-                    ))}
+                      ))
+                    ) : busy ? (
+                      <li className="flex items-center gap-2.5 text-sm text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+                        Waiting for research activity…
+                      </li>
+                    ) : null}
                   </ul>
                 </ResearchLivePanel>
               ) : null}

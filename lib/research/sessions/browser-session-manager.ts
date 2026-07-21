@@ -37,6 +37,13 @@ function classifyException(message: string): ValidationProbe['kind'] {
   return 'exception';
 }
 
+/** Browser/page lifecycle failures must propagate so withPage can invalidate + retry. */
+function isBrowserLifecycleError(message: string): boolean {
+  return /page crashed|target closed|has been closed|browser.*(closed|disconnected)|execution context (was )?destroyed|session closed|destroyed/i.test(
+    message,
+  );
+}
+
 function looksLoggedOut(url: string, body: string): boolean {
   const u = url.toLowerCase();
   const b = body.toLowerCase();
@@ -263,6 +270,10 @@ export class BrowserSessionManager implements SessionManager {
             { httpStatus, finalUrl: page.url(), kind, error: errMessage },
             'error',
           );
+          // Do not swallow crash/lifecycle errors — withPage must invalidate + RetryManager retry.
+          if (isBrowserLifecycleError(errMessage)) {
+            throw error instanceof Error ? error : new Error(errMessage);
+          }
           return {
             httpStatus,
             finalUrl: page.url(),

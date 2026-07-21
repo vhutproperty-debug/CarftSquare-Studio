@@ -59,15 +59,32 @@ export class BrowserManager {
     label: string,
     fn: (page: Page, context: BrowserContext) => Promise<T>,
   ): Promise<{ result?: T; screenshotPath?: string; error?: Error }> {
+    const portal = session.portal || session.portalKey || 'housing';
     try {
       return await this.withSessionContext(session, async (context) => {
-        const portal = session.portal || session.portalKey || 'housing';
-        const page = await researchBrowserPool.acquireWarmPage(
-          session.workspaceId,
-          portal,
-          context,
-        );
-        return this.pages.withExistingPage(page, label, (p) => fn(p, context));
+        return this.retries.run(async () => {
+          const page = await researchBrowserPool.acquireWarmPage(
+            session.workspaceId,
+            portal,
+            context,
+          );
+          try {
+            const result = await fn(page, context);
+            return { result };
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            const dead =
+              page.isClosed() ||
+              /crashed|Target closed|has been closed|destroyed|Browser closed/i.test(
+                err.message,
+              );
+            if (dead) {
+              await researchBrowserPool.invalidateWarmPage(session.workspaceId, portal);
+            }
+            // Re-throw so RetryManager can open a fresh warm page.
+            throw err;
+          }
+        }, `page:${portal}:${label}`);
       });
     } catch (error) {
       return {

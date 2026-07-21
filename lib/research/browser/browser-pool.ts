@@ -85,16 +85,41 @@ export class BrowserPool {
   async acquireWarmPage(workspaceId: string, portal: string, context: BrowserContext): Promise<Page> {
     const entry = this.entries.get(keyOf(workspaceId, portal));
     if (entry?.warmPage && !entry.warmPage.isClosed()) {
-      researchPerfLog('page_reuse', researchPerfNow(), { portal, warm: true });
-      return entry.warmPage;
+      try {
+        // Crashed Chromium renderers often still report !isClosed() and page.url()
+        // may not throw — probe the JS world so we never reuse a dead Page.
+        await entry.warmPage.evaluate(() => true);
+        researchPerfLog('page_reuse', researchPerfNow(), { portal, warm: true });
+        return entry.warmPage;
+      } catch {
+        await this.invalidateWarmPage(workspaceId, portal);
+      }
     }
     const t0 = researchPerfNow();
     const page = await context.newPage();
     page.setDefaultTimeout(RESEARCH_BROWSER_CONFIG.defaultTimeoutMs);
     page.setDefaultNavigationTimeout(RESEARCH_BROWSER_CONFIG.navigationTimeoutMs);
+    page.on('crash', () => {
+      const current = this.entries.get(keyOf(workspaceId, portal));
+      if (current?.warmPage === page) current.warmPage = null;
+    });
     if (entry) entry.warmPage = page;
     researchPerfLog('page_create', t0, { portal, warm: false });
     return page;
+  }
+
+  /** Drop a dead/crashed warm page so the next acquire opens a fresh one. */
+  async invalidateWarmPage(workspaceId: string, portal: string): Promise<void> {
+    const entry = this.entries.get(keyOf(workspaceId, portal));
+    if (!entry?.warmPage) return;
+    const page = entry.warmPage;
+    entry.warmPage = null;
+    researchPerfLog('page_invalidate', researchPerfNow(), { portal });
+    try {
+      if (!page.isClosed()) await page.close();
+    } catch {
+      /* ignore */
+    }
   }
 
   release(workspaceId: string, portal: string): void {

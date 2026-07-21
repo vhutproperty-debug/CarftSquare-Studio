@@ -27,6 +27,7 @@ import { createResearchQuery } from '@/lib/research/store/queries';
 import { createResearchRun, updateResearchRun } from '@/lib/research/store/runs';
 import { createResearchResult } from '@/lib/research/store/results';
 import type {
+  ResearchAiActivityEvent,
   ResearchAiDecisionAudit,
   ResearchAiMessage,
   ResearchAiProgress,
@@ -75,6 +76,14 @@ export class ExecutiveResearchAgent {
 
     const userMsg = msg('user', input.message.trim());
     session.messages.push(userMsg);
+
+    session.progress = progress('understanding', 8, 'Understanding your request…', {
+      activity: appendActivity([], {
+        message: 'Understanding your request…',
+        status: 'running',
+      }),
+    });
+    await saveAiSession(session);
 
     const intent = understandResearchIntent(
       input.message,
@@ -192,7 +201,13 @@ export class ExecutiveResearchAgent {
       projects.length > 1
         ? `Planning ${projects.length} comparative searches…`
         : 'Planning portal research…',
-      { portalsTotal: session.filters.portals!.length * projects.length },
+      {
+        portalsTotal: session.filters.portals!.length * projects.length,
+        activity: appendActivity(session.progress?.activity, {
+          message: 'Expanding search intent and selecting portals…',
+          status: 'running',
+        }),
+      },
     );
     await saveAiSession(session);
 
@@ -235,29 +250,67 @@ export class ExecutiveResearchAgent {
         startedAt: new Date().toISOString(),
       });
 
-      session.progress = progress('searching', 35, `Searching portals${project ? ` for ${project}` : ''}…`, {
-        portalsTotal,
-        portalsDone,
-      });
+      session.progress = progress(
+        'searching',
+        35,
+        `Searching portals${project ? ` for ${project}` : ''}…`,
+        {
+          portalsTotal,
+          portalsDone,
+          activity: appendActivity(session.progress?.activity, {
+            message: project
+              ? `Searching portals for ${project}…`
+              : 'Searching Housing, MagicBricks, 99acres, NoBroker, Square Yards…',
+            status: 'running',
+          }),
+        },
+      );
       await saveAiSession(session);
+
+      // Serialize portal activity writes — parallel onPortalDone must not race-overwrite progress.activity.
+      let activityWriteChain: Promise<void> = Promise.resolve();
+      let listingsCollectedAcc = session.progress?.listingsCollected || 0;
 
       const { listings, outcomes } = await searchPortalsInParallel({
         workspaceId: session.workspaceId,
         criteria,
         portals: criteria.portals || [],
-        onPortalDone: async () => {
-          portalsDone = Math.min(portalsTotal, portalsDone + 1);
-          session.progress = progress(
-            'searching',
-            35 + Math.round((portalsDone / Math.max(portalsTotal, 1)) * 35),
-            'Collecting listings…',
-            {
-              portalsTotal,
-              portalsDone,
-              listingsCollected: allRaw.length,
-            },
-          );
-          await saveAiSession(session);
+        onPortalDone: async (done, total, portal, outcome) => {
+          const portalLabel = portalDisplayName(portal);
+          const activityMsg = outcome.ok
+            ? `${portalLabel} returned ${outcome.listings.length} listing${outcome.listings.length === 1 ? '' : 's'}.`
+            : `${portalLabel} unavailable — ${outcome.message || 'failed'}. Continuing with healthy connectors.`;
+
+          activityWriteChain = activityWriteChain.then(async () => {
+            portalsDone = Math.min(portalsTotal, done);
+            const prior = session.progress?.activity || [];
+            // Skip duplicate portal completion lines if the same portal already recorded.
+            if (prior.some((e) => e.portal === portal && (e.status === 'ok' || e.status === 'fail'))) {
+              return;
+            }
+            if (outcome.ok) {
+              listingsCollectedAcc += outcome.listings.length;
+            }
+            session.progress = progress(
+              'searching',
+              35 + Math.round((done / Math.max(total, 1)) * 35),
+              activityMsg,
+              {
+                portalsTotal,
+                portalsDone,
+                listingsCollected: listingsCollectedAcc,
+                activity: appendActivity(prior, {
+                  message: activityMsg,
+                  status: outcome.ok ? 'ok' : 'fail',
+                  portal,
+                  count: outcome.listings.length,
+                }),
+              },
+            );
+            await saveAiSession(session);
+          });
+          // Never fail portal search because timeline persistence failed.
+          await activityWriteChain.catch(() => undefined);
         },
       });
 
@@ -284,6 +337,10 @@ export class ExecutiveResearchAgent {
       portalsTotal,
       portalsDone: portalsTotal,
       listingsCollected: allRaw.length,
+      activity: appendActivity(session.progress?.activity, {
+        message: 'Removing duplicates and matching project aliases…',
+        status: 'running',
+      }),
     });
     await saveAiSession(session);
 
@@ -305,6 +362,11 @@ export class ExecutiveResearchAgent {
       portalsDone: portalsTotal,
       listingsCollected: scored.length,
       duplicatesRemoved,
+      activity: appendActivity(session.progress?.activity, {
+        message: `Calculating confidence, comparing prices, ranking ${scored.length} opportunities…`,
+        status: 'running',
+        count: scored.length,
+      }),
     });
     await saveAiSession(session);
 
@@ -339,6 +401,10 @@ export class ExecutiveResearchAgent {
       portalsDone: portalsTotal,
       listingsCollected: scored.length,
       duplicatesRemoved,
+      activity: appendActivity(session.progress?.activity, {
+        message: 'Preparing executive report and generating final answer…',
+        status: 'running',
+      }),
     });
     await saveAiSession(session);
 
@@ -363,6 +429,13 @@ export class ExecutiveResearchAgent {
         portalsDone: portalsTotal,
         listingsCollected: scored.length,
         duplicatesRemoved,
+        activity: appendActivity(session.progress?.activity, {
+          message:
+            session.status === 'completed'
+              ? 'Research complete — executive report ready.'
+              : 'Research incomplete — reconnect failed portals and retry.',
+          status: session.status === 'completed' ? 'ok' : 'fail',
+        }),
       },
     );
 
@@ -466,12 +539,36 @@ function progress(
     portalsDone: extra?.portalsDone || 0,
     listingsCollected: extra?.listingsCollected || 0,
     duplicatesRemoved: extra?.duplicatesRemoved || 0,
+    activity: extra?.activity,
     estimatedCompletionAt:
       percent < 100
         ? new Date(Date.now() + (100 - percent) * 800).toISOString()
         : undefined,
     updatedAt: new Date().toISOString(),
   };
+}
+
+function appendActivity(
+  prior: ResearchAiActivityEvent[] | undefined,
+  event: Omit<ResearchAiActivityEvent, 'id' | 'at'>,
+): ResearchAiActivityEvent[] {
+  const next: ResearchAiActivityEvent = {
+    id: uuidv4(),
+    at: new Date().toISOString(),
+    ...event,
+  };
+  return [...(prior || []), next].slice(-40);
+}
+
+function portalDisplayName(portal: string): string {
+  const labels: Record<string, string> = {
+    housing: 'Housing',
+    magicbricks: 'MagicBricks',
+    '99acres': '99acres',
+    nobroker: 'NoBroker',
+    squareyards: 'Square Yards',
+  };
+  return labels[portal] || portal;
 }
 
 function buildAssistantReply(

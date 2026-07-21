@@ -59,6 +59,9 @@ export function humanizeConnectorError(raw?: string | null): string | null {
   if (/security|challenge|captcha|akamai|bot/i.test(lower)) {
     return 'Portal security check blocked validation. Reconnect and complete login.';
   }
+  if (/page crashed|target closed|browser.*crash|has been closed/i.test(lower)) {
+    return 'Browser page crashed during validation. Session may be corrupt — reconnect.';
+  }
   if (/timeout|timed out/i.test(lower)) {
     return 'Validation timed out. Retry when the portal is reachable.';
   }
@@ -238,5 +241,160 @@ export function deriveConnectorDisplay(input: {
     availableLabel: 'Not connected',
     humanError: null,
     detailSummary: 'Not connected yet.',
+  };
+}
+
+function suggestedActionFor(input: {
+  displayState: ConnectorDisplayState;
+  humanError: string | null;
+  workerOnline: boolean;
+  rawError?: string | null;
+}): string | null {
+  const { displayState, humanError, workerOnline, rawError } = input;
+  if (!workerOnline) {
+    return 'Start the Browser Worker (`npm run research:browser-worker`), then retry validation.';
+  }
+  if (/page crashed|target closed|browser.*crash/i.test(String(rawError || humanError || ''))) {
+    return 'Retry validation — a fresh browser page will be used. Reconnect only if retries keep failing.';
+  }
+  if (displayState === 'session_expired') {
+    return 'Click Reconnect, complete portal login, and wait until Research Ready.';
+  }
+  if (displayState === 'connection_failed') {
+    return humanError
+      ? `Retry validation. If it fails again: ${humanError}`
+      : 'Retry validation, then reconnect if the session is still invalid.';
+  }
+  if (displayState === 'never_connected') {
+    return 'Connect this portal and complete login before running research.';
+  }
+  if (displayState === 'reconnecting') {
+    return 'Finish login in the secure browser window.';
+  }
+  return null;
+}
+
+/**
+ * Build a self-diagnosing checklist from existing status signals (no new infra).
+ */
+export function buildConnectorDiagnostics(input: {
+  display: ConnectorDisplayMeta;
+  health: 'healthy' | 'degraded' | 'failing' | 'unknown' | 'idle';
+  workerOnline: boolean;
+  browser?: ResearchBrowserSession | null;
+  lastValidatedAt?: string;
+  liveValidated?: boolean;
+  validationLatencyMs?: number | null;
+  rawError?: string | null;
+}): import('@/lib/research/browser-gateway/types').ConnectorDiagnostics {
+  const {
+    display,
+    health,
+    workerOnline,
+    browser,
+    lastValidatedAt,
+    liveValidated,
+    validationLatencyMs,
+    rawError,
+  } = input;
+
+  const loginOk = browser?.sessionStatus === 'valid' && display.sessionExists;
+  const researchReady = display.availableForResearch;
+
+  const checks: import('@/lib/research/browser-gateway/types').ConnectorDiagnosticCheck[] = [
+    {
+      id: 'worker',
+      label: 'Worker online',
+      ok: workerOnline,
+      detail: workerOnline ? 'Confirmed via worker status' : 'Browser worker unreachable',
+    },
+    {
+      id: 'browser',
+      label: 'Browser session record',
+      ok: Boolean(browser?.id),
+      detail: browser?.id
+        ? `Stored session ${browser.id.slice(0, 8)}… (not a live browser probe)`
+        : 'No browser session row',
+    },
+    {
+      id: 'context',
+      label: 'Encrypted cookies stored',
+      ok: display.sessionExists,
+      detail: display.sessionExists
+        ? 'Cookies present in session store'
+        : 'No saved cookies',
+    },
+    {
+      id: 'login',
+      label: 'Login status (stored)',
+      ok: display.displayState === 'never_connected' ? null : loginOk,
+      detail: browser?.sessionStatus
+        ? `sessionStatus=${browser.sessionStatus}`
+        : undefined,
+    },
+    {
+      id: 'cookies',
+      label: 'Session cookies recorded',
+      ok: display.sessionExists,
+      detail: display.sessionExists ? 'Presence only — contents never exposed' : undefined,
+    },
+    {
+      id: 'portal',
+      label: liveValidated ? 'Last live validation' : 'Last validation (cached)',
+      ok:
+        display.displayState === 'connected'
+          ? true
+          : display.displayState === 'connection_failed'
+            ? false
+            : null,
+      detail:
+        display.displayState === 'connection_failed'
+          ? display.humanError || 'Stored validation failed'
+          : liveValidated
+            ? 'Result from live worker validate'
+            : 'Inferred from stored session — not a live reachability probe',
+    },
+    {
+      id: 'research_ready',
+      label: 'Available for research',
+      ok: researchReady,
+      detail: display.availableLabel,
+    },
+  ];
+
+  const failureReason =
+    display.displayState === 'connected' ? null : display.humanError || humanizeConnectorError(rawError);
+
+  let browserState = 'idle';
+  if (display.displayState === 'reconnecting') browserState = 'connecting';
+  else if (display.displayState === 'connected') browserState = 'session_valid_stored';
+  else if (display.displayState === 'connection_failed') browserState = 'error_stored';
+  else if (display.displayState === 'session_expired') browserState = 'needs_login';
+  else if (display.sessionExists) browserState = 'cookies_stored';
+
+  let validationResult = 'not_run';
+  if (display.displayState === 'connected') validationResult = 'passed';
+  else if (display.displayState === 'connection_failed') validationResult = 'failed';
+  else if (display.displayState === 'session_expired') validationResult = 'expired';
+  else if (display.displayState === 'reconnecting') validationResult = 'in_progress';
+  else if (display.displayState === 'never_connected') validationResult = 'not_connected';
+
+  return {
+    checks,
+    currentState: display.displayState,
+    health,
+    lastVerification: lastValidatedAt || browser?.lastVerified,
+    researchReady,
+    browserState,
+    sessionAgeLabel: display.sessionAgeLabel,
+    validationResult,
+    latencyMs: validationLatencyMs ?? null,
+    failureReason,
+    suggestedAction: suggestedActionFor({
+      displayState: display.displayState,
+      humanError: failureReason,
+      workerOnline,
+      rawError,
+    }),
   };
 }

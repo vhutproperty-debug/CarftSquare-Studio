@@ -8,7 +8,6 @@ import type { PublicAdminUser } from '@/lib/auth/rbac/types';
 import { AsyncTimeoutError, withTimeout } from '@/lib/auth/async-timeout';
 import { inspectSessionToken } from '@/lib/auth/session';
 import { getSessionTokenFromRequest } from '@/lib/auth/session-constants';
-// @ts-expect-error JS module
 import { getDb, isMongoReady } from '@/lib/mongodb';
 import { resolveRegisteredRoutePermission } from '@/lib/auth/rbac/registry';
 

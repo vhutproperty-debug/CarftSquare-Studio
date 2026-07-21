@@ -16,7 +16,9 @@ export const RESEARCH_SUGGESTED_PROMPTS = [
 export type LiveStep = {
   id: string;
   label: string;
-  status: 'pending' | 'active' | 'done';
+  status: 'pending' | 'active' | 'done' | 'fail';
+  portal?: string;
+  count?: number;
 };
 
 export function formatResearchMoney(n?: number): string {
@@ -40,99 +42,34 @@ export function daysOnMarket(postedAt?: string, freshnessHours?: number): string
   return `${days} days`;
 }
 
+/**
+ * Live timeline from server-emitted activity only.
+ * Never fabricates portal/progress steps when activity is empty.
+ */
 export function buildLiveResearchSteps(
   progress: ResearchAiProgress | null | undefined,
   busy: boolean,
 ): LiveStep[] {
-  if (!busy && (!progress || progress.phase === 'idle' || progress.phase === 'completed')) {
-    return [];
-  }
-  const phase = progress?.phase || 'understanding';
-  const portalsDone = progress?.portalsDone ?? 0;
-  const portalsTotal = Math.max(progress?.portalsTotal ?? 5, 1);
-  const message = (progress?.message || '').toLowerCase();
+  const activity = progress?.activity;
+  if (!activity?.length) return [];
 
-  const portalLabels = ['Housing.com', 'MagicBricks', '99acres', 'NoBroker', 'Square Yards'];
-  const steps: LiveStep[] = [
-    {
-      id: 'understand',
-      label: 'Understanding your brief…',
-      status: phase === 'understanding' || phase === 'planning' ? 'active' : 'done',
-    },
-  ];
-
-  portalLabels.forEach((name, index) => {
-    let status: LiveStep['status'] = 'pending';
-    if (phase === 'searching') {
-      if (index < portalsDone) status = 'done';
-      else if (index === portalsDone) status = 'active';
-    } else if (phase === 'analyzing' || phase === 'reporting' || phase === 'completed') {
+  return activity.map((ev, index) => {
+    const isLast = index === activity.length - 1;
+    let status: LiveStep['status'] = 'done';
+    if (ev.status === 'fail') status = 'fail';
+    else if (ev.status === 'running' || (busy && isLast && ev.status !== 'ok')) {
+      status = 'active';
+    } else if (ev.status === 'ok' || ev.status === 'info') {
       status = 'done';
     }
-    steps.push({ id: `portal-${name}`, label: `Searching ${name}…`, status });
+    return {
+      id: ev.id,
+      label: ev.message,
+      status,
+      portal: ev.portal,
+      count: ev.count,
+    };
   });
-
-  const afterSearch =
-    phase === 'analyzing' || phase === 'reporting' || phase === 'completed'
-      ? 'active'
-      : phase === 'searching' && portalsDone >= portalsTotal
-        ? 'active'
-        : 'pending';
-
-  steps.push({
-    id: 'dedupe',
-    label: 'Removing duplicates…',
-    status:
-      /dedup|duplicate/i.test(message) || phase === 'analyzing'
-        ? afterSearch === 'active'
-          ? 'active'
-          : phase === 'reporting' || phase === 'completed'
-            ? 'done'
-            : 'pending'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'compare',
-    label: 'Comparing prices…',
-    status:
-      phase === 'analyzing' && /score|compar|price|knowledge/i.test(message)
-        ? 'active'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'history',
-    label: 'Checking historical records…',
-    status:
-      /knowledge graph|historical|graph/i.test(message)
-        ? 'active'
-        : phase === 'reporting' || phase === 'completed'
-          ? 'done'
-          : 'pending',
-  });
-  steps.push({
-    id: 'intel',
-    label: 'Building market intelligence…',
-    status: phase === 'reporting' ? 'active' : phase === 'completed' ? 'done' : 'pending',
-  });
-  steps.push({
-    id: 'exec',
-    label: 'Preparing executive summary…',
-    status: phase === 'completed' ? 'done' : phase === 'reporting' ? 'active' : 'pending',
-  });
-
-  if (busy) {
-    const firstPending = steps.findIndex((s) => s.status === 'pending');
-    const hasActive = steps.some((s) => s.status === 'active');
-    if (!hasActive && firstPending >= 0) {
-      steps[firstPending] = { ...steps[firstPending], status: 'active' };
-    }
-  }
-
-  return steps;
 }
 
 export type SessionTimeGroup = 'today' | 'yesterday' | 'last_week' | 'older';

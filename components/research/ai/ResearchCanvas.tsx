@@ -104,6 +104,8 @@ export default function ResearchCanvas({
                     <li key={step.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                       {step.status === 'done' ? (
                         <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : step.status === 'fail' ? (
+                        <span className="text-[10px] font-bold text-rose-600">!</span>
                       ) : step.status === 'active' ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
                       ) : (
@@ -113,7 +115,12 @@ export default function ResearchCanvas({
                     </li>
                   ))}
                 </ul>
-              ) : null}
+              ) : (
+                <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
+                  Waiting for research activity…
+                </p>
+              )}
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -128,6 +135,8 @@ export default function ResearchCanvas({
                   <li key={step.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     {step.status === 'done' ? (
                       <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    ) : step.status === 'fail' ? (
+                      <span className="text-[10px] font-bold text-rose-600">!</span>
                     ) : (
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
                     )}

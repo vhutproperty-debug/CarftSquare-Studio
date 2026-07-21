@@ -1,0 +1,123 @@
+{
+  "enter1": {
+    "mode": "enter",
+    "hits": [
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"workspaceId\":\"workspace-default\"}",
+        "at": 1784623360162
+      },
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions/59e8beda-1ea3-49c2-a2fe-8a785771c839/message",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"message\":\"Find 2 BHK rentals in Auris Serenity\"}",
+        "at": 1784623360927
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions",
+        "status": 200,
+        "body": "{\"ok\":true,\"session\":{\"id\":\"59e8beda-1ea3-49c2-a2fe-8a785771c839\",\"workspaceId\":\"workspace-default\",\"title\":\"New research session\",\"status\":\"active\",\"goals\":[],\"filters\":{\"city\":\"Mumbai\",\"portals\":[]},\"exclusions\":[],\"assumptions\":[],\"messages\":[],\"progress\":{\"phase\":\"idle\",\"percent\":0,\"message\":\"Re",
+        "at": 1784623360935
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions/59e8beda-1ea3-49c2-a2fe-8a785771c839/message",
+        "status": 200,
+        "body": "{\"ok\":true,\"assistantMessage\":\"I completed the research. 13 unique properties after removing 8 cross-portal duplicate(s). Reused 1 prior knowledge-graph match(es) and refreshed with live portal data. Top match: “2 BHK Flat for rent in Kanchpada, Malad West” (score 71/100). This property scored 71/10",
+        "at": 1784623397401
+      }
+    ],
+    "uiError": null
+  },
+  "enter2": {
+    "mode": "enter",
+    "hits": [
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"workspaceId\":\"workspace-default\"}",
+        "at": 1784623434642
+      },
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions/76103067-ab73-4709-a6cc-712f2c360ddb/message",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"message\":\"Find 2 BHK rentals in Auris Serenity\"}",
+        "at": 1784623435428
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions",
+        "status": 200,
+        "body": "{\"ok\":true,\"session\":{\"id\":\"76103067-ab73-4709-a6cc-712f2c360ddb\",\"workspaceId\":\"workspace-default\",\"title\":\"New research session\",\"status\":\"active\",\"goals\":[],\"filters\":{\"city\":\"Mumbai\",\"portals\":[]},\"exclusions\":[],\"assumptions\":[],\"messages\":[],\"progress\":{\"phase\":\"idle\",\"percent\":0,\"message\":\"Re",
+        "at": 1784623435433
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions/76103067-ab73-4709-a6cc-712f2c360ddb/message",
+        "status": 200,
+        "body": "{\"ok\":true,\"assistantMessage\":\"I completed the research. 13 unique properties after removing 8 cross-portal duplicate(s). Reused 1 prior knowledge-graph match(es) and refreshed with live portal data. Top match: “2 BHK Flat for rent in Kanchpada, Malad West” (score 71/100). This property scored 71/10",
+        "at": 1784623467249
+      }
+    ],
+    "uiError": null
+  },
+  "submit1": {
+    "mode": "submit",
+    "hits": [
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"workspaceId\":\"workspace-default\"}",
+        "at": 1784623524227
+      },
+      {
+        "phase": "request",
+        "url": "/api/research/ai/sessions/3b6f900a-e5df-480c-b5d2-8a155d54f194/message",
+        "method": "POST",
+        "hasCookieHeader": false,
+        "cookieNames": [],
+        "hasSessionCookie": false,
+        "body": "{\"message\":\"Find 2 BHK rentals in Auris Serenity\"}",
+        "at": 1784623524961
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions",
+        "status": 200,
+        "body": "{\"ok\":true,\"session\":{\"id\":\"3b6f900a-e5df-480c-b5d2-8a155d54f194\",\"workspaceId\":\"workspace-default\",\"title\":\"New research session\",\"status\":\"active\",\"goals\":[],\"filters\":{\"city\":\"Mumbai\",\"portals\":[]},\"exclusions\":[],\"assumptions\":[],\"messages\":[],\"progress\":{\"phase\":\"idle\",\"percent\":0,\"message\":\"Re",
+        "at": 1784623524966
+      },
+      {
+        "phase": "response",
+        "url": "/api/research/ai/sessions/3b6f900a-e5df-480c-b5d2-8a155d54f194/message",
+        "status": 200,
+        "body": "{\"ok\":true,\"assistantMessage\":\"I completed the research. 1 unique property after removing 0 cross-portal duplicate(s). Reused 1 prior knowledge-graph match(es) and refreshed with live portal data. Top match: “2 BHK Flat for rent in Kanchpada, Malad West” (score 66/100). This property scored 66/100 b",
+        "at": 1784623553547
+      }
+    ],
+    "uiError": null
+  },
+  "at": "2026-07-21T08:46:25.179Z"
+}

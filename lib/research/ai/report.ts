@@ -41,19 +41,51 @@ export function buildResearchReport(input: {
   const confidence = computeConfidence(listings, portalsSearched, portalErrors, duplicatesRemoved);
 
   const observations: string[] = [];
+  const healthyPortals = portalsSearched.filter((p) => !portalErrors.some((e) => e.portal === p));
+  if (healthyPortals.length || portalErrors.length) {
+    observations.push(
+      `Portal coverage: ${healthyPortals.length ? healthyPortals.join(', ') : 'none'} responded` +
+        (portalErrors.length
+          ? `; unavailable: ${portalErrors.map((e) => e.portal).join(', ')}`
+          : '') +
+        '.',
+    );
+  }
   if (topMatches[0]) {
     observations.push(
-      `Top match: ${topMatches[0].title || 'Listing'} (score ${topMatches[0].relevanceScore}/100). ${topMatches[0].explanation}`,
+      `Top opportunity: ${topMatches[0].title || 'Listing'} (score ${topMatches[0].relevanceScore}/100). ${topMatches[0].explanation}`,
+    );
+  }
+  if (topMatches.length > 1) {
+    observations.push(
+      `Next ranked options: ${topMatches
+        .slice(1, 4)
+        .map((l) => `${l.title || 'Listing'} (${l.relevanceScore})`)
+        .join('; ')}.`,
     );
   }
   if (insights.averageAskingRent != null) {
     observations.push(
-      `Among listings with extracted rents, average asking rent is ${money(insights.averageAskingRent)} (median ${money(insights.medianAskingRent)}).`,
+      `Price band from extracted rents: ${money(insights.minAskingRent)} – ${money(insights.maxAskingRent)} (avg ${money(insights.averageAskingRent)}, median ${money(insights.medianAskingRent)}).`,
+    );
+  }
+  const brokerish = listings.filter((l) =>
+    /broker|agent|dealer/i.test(`${l.broker || ''} ${l.title || ''} ${l.explanation || ''}`),
+  ).length;
+  if (brokerish) {
+    observations.push(
+      `${brokerish} listing(s) show broker/agent signals in extracted fields — treat as broker inventory unless confirmed owner.`,
+    );
+  }
+  const withAmenities = listings.filter((l) => (l.amenities?.length || 0) > 0).length;
+  if (withAmenities) {
+    observations.push(
+      `Amenities extracted for ${withAmenities}/${listings.length} listings; incomplete amenity data is common on portals.`,
     );
   }
   if (insights.duplicatePercentage > 0) {
     observations.push(
-      `${insights.duplicatePercentage}% of unique properties appeared on more than one portal.`,
+      `${insights.duplicatePercentage}% of unique properties appeared on more than one portal after alias matching.`,
     );
   }
   if (!observations.length) {
@@ -70,9 +102,23 @@ export function buildResearchReport(input: {
   if (portalErrors.length) {
     nextSteps.push('Re-authenticate failed portal sessions and re-run research for fuller coverage.');
   }
+  if (healthyPortals.length && portalErrors.length) {
+    nextSteps.push(
+      `Research continued on healthy connectors (${healthyPortals.join(', ')}); reconnect failed portals for a full-market view.`,
+    );
+  }
 
   return {
-    executiveSummary: buildExecutiveSummary(criteria, listings, topMatches, confidence),
+    executiveSummary: buildExecutiveSummary(
+      criteria,
+      listings,
+      topMatches,
+      confidence,
+      healthyPortals,
+      portalErrors,
+      duplicatesRemoved,
+      insights,
+    ),
     searchStrategy: buildSearchStrategy(session, portalsSearched),
     portalsSearched,
     listingsFound: listings.length + duplicatesRemoved,
@@ -101,6 +147,10 @@ function buildExecutiveSummary(
   listings: ResearchScoredListing[],
   top: ResearchScoredListing[],
   confidence: number,
+  healthyPortals: string[],
+  portalErrors: Array<{ portal: string; message: string }>,
+  duplicatesRemoved: number,
+  insights: ReturnType<typeof deriveMarketInsights>,
 ): string {
   const target =
     criteria.projects?.join(' vs ')
@@ -113,11 +163,40 @@ function buildExecutiveSummary(
     criteria.maxBudget != null ? ` below ${money(criteria.maxBudget)}` : '';
 
   if (!listings.length) {
-    return `Research for ${bhk}${txn} options in ${target}${budget} returned no usable listings from authenticated portals. Confidence ${confidence}/100. No fabricated inventory is shown.`;
+    return [
+      `Research brief for ${bhk}${txn} options in ${target}${budget}.`,
+      'No usable listings were collected from authenticated portals.',
+      portalErrors.length
+        ? `Unavailable portals: ${portalErrors.map((e) => e.portal).join(', ')}.`
+        : 'Connected portals returned no matching inventory for the stated filters.',
+      `Confidence ${confidence}/100. No fabricated inventory is shown.`,
+    ].join(' ');
   }
 
   const lead = top[0];
-  return `Researched ${bhk}${txn} inventory in ${target}${budget}. Found ${listings.length} unique propert${listings.length === 1 ? 'y' : 'ies'} after cross-portal deduplication. Leading option: “${lead?.title || 'Listing'}” (score ${lead?.relevanceScore}/100). Overall research confidence ${confidence}/100 based only on extracted portal data.`;
+  const coverage =
+    healthyPortals.length > 0
+      ? `Live coverage from ${healthyPortals.join(', ')}`
+      : 'Limited portal coverage';
+  const failover =
+    portalErrors.length > 0
+      ? ` Research continued despite ${portalErrors.length} portal failure(s) (${portalErrors.map((e) => e.portal).join(', ')}).`
+      : '';
+  const priceLine =
+    insights.averageAskingRent != null
+      ? ` Extracted asking rents average ${money(insights.averageAskingRent)} (range ${money(insights.minAskingRent)}–${money(insights.maxAskingRent)}).`
+      : ' Price averages are withheld where rents were not extractable.';
+
+  return [
+    `Executive research brief: ${bhk}${txn} inventory in ${target}${budget}.`,
+    `${coverage}; ${listings.length} unique propert${listings.length === 1 ? 'y' : 'ies'} after removing ${duplicatesRemoved} cross-portal duplicate(s).`,
+    `Leading opportunity: “${lead?.title || 'Listing'}” (score ${lead?.relevanceScore}/100) — ${lead?.explanation || 'ranked from extracted portal fields only.'}`,
+    priceLine.trim(),
+    failover.trim(),
+    `Overall research confidence ${confidence}/100 based only on extracted portal data.`,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 function buildSearchStrategy(session: ResearchAiSession, portals: string[]): string {

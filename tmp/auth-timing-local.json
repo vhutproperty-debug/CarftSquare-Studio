@@ -1,0 +1,15 @@
+{
+  "firstAuthorizeMs": 3918,
+  "firstOk": true,
+  "warmAuthorizeMs": [
+    16,
+    12,
+    23,
+    21,
+    20
+  ],
+  "warmAvgMs": 18,
+  "getDbWarmMs": 0,
+  "noCookieStatus": 401,
+  "noCookieMs": 1
+}

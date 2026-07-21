@@ -172,6 +172,17 @@ export type ResearchAiProgress = {
   duplicatesRemoved: number;
   estimatedCompletionAt?: string;
   updatedAt: string;
+  /** Live activity feed for the research OS timeline (additive). */
+  activity?: ResearchAiActivityEvent[];
+};
+
+export type ResearchAiActivityEvent = {
+  id: string;
+  at: string;
+  message: string;
+  status: 'running' | 'ok' | 'fail' | 'info';
+  portal?: string;
+  count?: number;
 };
 
 export type ResearchScoredListing = ResearchListing & {
