@@ -1,0 +1,66 @@
+{
+  "probedFrom": "local-windows",
+  "workerBase": "https://unique-endurance-production-57a8.up.railway.app",
+  "limitation": "Does not exercise Railway worker Playwright IP. MagicBricks currently has no encrypted cookies, so worker /jobs/inspect-search cannot run.",
+  "results": [
+    {
+      "url": "https://www.magicbricks.com/",
+      "status": 200,
+      "headers": {
+        "cache-control": "max-age=14400",
+        "content-type": "text/html;charset=ISO-8859-1",
+        "server": "newlan",
+        "server-timing": "ak_p; desc=\"1784703742638_398566742_2620674087_44807_11069_5_78_-\";dur=1",
+        "set-cookie": "HDSESSIONID=b09aa195-3f0c-45ea-9cf5-846c5156c753; Domain=magicbricks.com; Path=/; Secure; HttpOnly",
+        "x-content-header": "gzip",
+        "x-content-type-options": "nosniff, nosniff",
+        "x-frame-options": "sameorigin",
+        "x-req-id": "7fc9090f-b0c1-41a2-bd89-8218e8434bf5",
+        "x-xss-protection": "1; mode=block"
+      },
+      "accessDenied": false,
+      "reference": null,
+      "title": "Real Estate | Property in India | Buy/Sale/Rent Properties | MagicBricks",
+      "bodyHit": null
+    },
+    {
+      "url": "https://www.magicbricks.com/userProfile",
+      "status": 404,
+      "headers": {
+        "cache-control": "s-maxage=10",
+        "content-type": "text/html;charset=utf-8",
+        "server": "newlan",
+        "server-timing": "ak_p; desc=\"1784703743261_398566742_2620676442_9123_10416_9_0_-\";dur=1",
+        "set-cookie": "JSESSIONID=776E6CABE416F5A4E6E6099EFC984B08-n1.13146; Domain=.magicbricks.com; Path=/; Secure",
+        "x-content-header": "gzip",
+        "x-cool": "13146",
+        "x-req-id": "6a5e847f-df33-427d-b17d-3c3d90514bfe"
+      },
+      "accessDenied": false,
+      "reference": null,
+      "title": "SERVER - Error report",
+      "bodyHit": null
+    },
+    {
+      "url": "https://www.magicbricks.com/property-for-rent/residential-real-estate?cityName=Mumbai&keyword=Oberoi%20Sky%20City",
+      "status": 200,
+      "headers": {
+        "cache-control": "max-age=900",
+        "content-type": "text/html;charset=UTF-8",
+        "server": "newlan",
+        "server-timing": "ak_p; desc=\"1784703743366_398566742_2620677446_64369_11545_9_0_-\";dur=1",
+        "set-cookie": "SRPSESSIONID=NzkyNDMzODMtZDk5NS00MmNkLWFlYzUtNDAyYmY1ZTAxMDg3; Domain=magicbricks.com; Path=/; Secure; HttpOnly; SameSite=Lax",
+        "x-content-header": "gzip",
+        "x-content-type-options": "nosniff, nosniff",
+        "x-frame-options": "sameorigin",
+        "x-req-id": "a1fb7140-9e5d-4979-8111-1156db478e97",
+        "x-time": "0.540",
+        "x-xss-protection": "1; mode=block"
+      },
+      "accessDenied": false,
+      "reference": null,
+      "title": "",
+      "bodyHit": null
+    }
+  ]
+}

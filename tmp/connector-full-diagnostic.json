@@ -1,0 +1,745 @@
+{
+  "checkedAt": "2026-07-22T06:45:40.341Z",
+  "worker": {
+    "online": true,
+    "healthy": true,
+    "workerHost": "unique-endurance-production-57a8.up.railway.app",
+    "lastError": null,
+    "provider": "self_hosted"
+  },
+  "architectureNotes": {
+    "sharedBase": "All portals extend BasePortalConnector; only Housing has portal-specific SERP/extract.",
+    "browserLifecycle": "BrowserFactory.launchPersistent + BrowserPool warm page per workspace::portal; SessionLoader cookies+storage.",
+    "ocrFallback": "NOT IMPLEMENTED — connectors/extraction-engine.ts is interface stub only; no OCR in tree.",
+    "pagination": "NOT IMPLEMENTED — single results page harvest only.",
+    "failover": "searchPortalsInParallel continues on per-portal failure.",
+    "resourceBlocking": "Automation contexts abort image/font/media + trackers — can break bot-managed SPAs.",
+    "headlessDefault": "RESEARCH_BROWSER_HEADLESS !== true → headed (Akamai note for Housing)."
+  },
+  "portals": [
+    {
+      "portal": "housing",
+      "displayName": "Housing.com",
+      "origin": "https://housing.com",
+      "loginUrl": "https://housing.com/user-profile",
+      "searchUrl": "https://housing.com/rent?city=Mumbai",
+      "stored": {
+        "connectionStatus": "connected",
+        "connectionLastError": null,
+        "sessionStatus": "valid",
+        "hasEncryptedCookies": true,
+        "hasEncryptedStorage": true,
+        "lastVerified": "2026-07-22T06:05:49.845Z",
+        "expiresAt": "2026-07-28T09:22:36.198Z",
+        "lastValidationError": null,
+        "sessionId": "d8b619f5-4392-494b-968a-6a6e0cd7c573"
+      },
+      "statusCard": {
+        "displayState": "connected",
+        "health": "healthy",
+        "availableForResearch": true,
+        "humanError": null,
+        "diagnostics": {
+          "researchReady": true,
+          "validationResult": "passed",
+          "failureReason": null,
+          "suggestedAction": null,
+          "checks": [
+            {
+              "id": "worker",
+              "label": "Worker online",
+              "ok": true,
+              "detail": "Confirmed via worker status"
+            },
+            {
+              "id": "browser",
+              "label": "Browser session record",
+              "ok": true,
+              "detail": "Stored session d8b619f5… (not a live browser probe)"
+            },
+            {
+              "id": "context",
+              "label": "Encrypted cookies stored",
+              "ok": true,
+              "detail": "Cookies present in session store"
+            },
+            {
+              "id": "login",
+              "label": "Login status (stored)",
+              "ok": true,
+              "detail": "sessionStatus=valid"
+            },
+            {
+              "id": "cookies",
+              "label": "Session cookies recorded",
+              "ok": true,
+              "detail": "Presence only — contents never exposed"
+            },
+            {
+              "id": "portal",
+              "label": "Last validation (cached)",
+              "ok": true,
+              "detail": "Inferred from stored session — not a live reachability probe"
+            },
+            {
+              "id": "research_ready",
+              "label": "Available for research",
+              "ok": true,
+              "detail": "Available for research"
+            }
+          ]
+        }
+      },
+      "validate": {
+        "ok": true,
+        "status": "valid",
+        "sessionId": "d8b619f5-4392-494b-968a-6a6e0cd7c573",
+        "httpStatus": 200,
+        "responseKind": "200"
+      },
+      "inspect": {
+        "http": 200,
+        "body": {
+          "ok": true,
+          "httpStatus": 200,
+          "title": "Real Estate in Mumbai | Rent Property in Mumbai | Housing.com",
+          "finalUrl": "https://housing.com/rent?city=Mumbai",
+          "requestedUrl": "https://housing.com/rent?city=Mumbai",
+          "htmlLength": 302710,
+          "securityChallenge": false,
+          "totalAnchorCount": 212,
+          "propertyAnchorCount": 150,
+          "sampleHrefs": [
+            "https://housing.com/in/buy/mumbai/",
+            "https://housing.com/in/buy/mumbai/house-fid/",
+            "https://housing.com/in/buy/mumbai/builder-floors-fid/",
+            "https://housing.com/in/buy/mumbai/plots-fid/",
+            "https://housing.com/in/buy/mumbai/villas-fid/",
+            "https://housing.com/commercial/buy/commercial-property-for-sale-in-mumbai-Pskwz0ocdh7q42r5",
+            "https://housing.com/in/buy/thane/thane-west-gid/",
+            "https://housing.com/in/buy/mumbai/borivali-west-gid/",
+            "https://housing.com/in/buy/mumbai/mira-road-east-mira-bhayandar-gid/",
+            "https://housing.com/in/buy/mumbai/kurla-west-gid/",
+            "https://housing.com/in/buy/mumbai/kurla-east-gid/",
+            "https://housing.com/in/buy/mumbai/santacruz-east-gid/"
+          ],
+          "bodyTextSample": "Your search for property ends here - Buy, Rent, Sell - Housing.com Mumbai For Buyers For Tenants For Sellers Services News & Guide Download App Seller Dashboard Properties for rent in Mumbai 7K+ listings added daily and 70K+ total verified BUY RENT COMMERCIAL PG/CO-LIVING PLOTS Search Popular Localities Powai Kandivali East Andheri West Mira Road East Malad West Are you a Property Owner? Sell / Re"
+        }
+      },
+      "search": {
+        "ok": true,
+        "listingCount": 0,
+        "sessionStatus": "valid",
+        "sampleTitles": []
+      },
+      "failure": {
+        "category": "Inventory extraction failure",
+        "failingStep": "executeSearch_or_extract",
+        "evidence": "HTTP 200 but listingCount=0; title=Real Estate in Mumbai | Rent Property in Mumbai | Housing.com",
+        "suggestedRecovery": "Improve portal-specific selectors; generic anchor harvest insufficient for this SERP DOM."
+      },
+      "dimensions": {
+        "browser": "OK_shared_pool",
+        "network": "OK_or_portal_response",
+        "authentication": "HEALTHY",
+        "session": "PRESENT",
+        "search": "FAILED",
+        "extraction": "FAILED",
+        "inventory": "EMPTY"
+      }
+    },
+    {
+      "portal": "magicbricks",
+      "displayName": "MagicBricks",
+      "origin": "https://www.magicbricks.com",
+      "loginUrl": "https://www.magicbricks.com/userProfile",
+      "searchUrl": "https://www.magicbricks.com/property-for-rent/residential-real-estate?proptype=Multistorey-Apartment,Builder-Floor-Apartment,Penthouse,Studio-Apartment&cityName=Mumbai&keyword=Oberoi%20Sky%20City",
+      "stored": {
+        "connectionStatus": "pending",
+        "connectionLastError": null,
+        "sessionStatus": "needs_login",
+        "hasEncryptedCookies": false,
+        "hasEncryptedStorage": false,
+        "lastVerified": "2026-07-18T11:20:52.868Z",
+        "expiresAt": "2026-07-25T11:20:53.054Z",
+        "lastValidationError": "New Connect started — previous session invalidated until re-validated",
+        "sessionId": "ad3e4911-9760-4d65-ab80-5f851fde3f74"
+      },
+      "statusCard": {
+        "displayState": "session_expired",
+        "health": "degraded",
+        "availableForResearch": false,
+        "humanError": "New Connect started — previous session invalidated until re-validated",
+        "diagnostics": {
+          "researchReady": false,
+          "validationResult": "expired",
+          "failureReason": "New Connect started — previous session invalidated until re-validated",
+          "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
+          "checks": [
+            {
+              "id": "worker",
+              "label": "Worker online",
+              "ok": true,
+              "detail": "Confirmed via worker status"
+            },
+            {
+              "id": "browser",
+              "label": "Browser session record",
+              "ok": true,
+              "detail": "Stored session ad3e4911… (not a live browser probe)"
+            },
+            {
+              "id": "context",
+              "label": "Encrypted cookies stored",
+              "ok": false,
+              "detail": "No saved cookies"
+            },
+            {
+              "id": "login",
+              "label": "Login status (stored)",
+              "ok": false,
+              "detail": "sessionStatus=needs_login"
+            },
+            {
+              "id": "cookies",
+              "label": "Session cookies recorded",
+              "ok": false
+            },
+            {
+              "id": "portal",
+              "label": "Last validation (cached)",
+              "ok": null,
+              "detail": "Inferred from stored session — not a live reachability probe"
+            },
+            {
+              "id": "research_ready",
+              "label": "Available for research",
+              "ok": false,
+              "detail": "Reconnect required"
+            }
+          ]
+        }
+      },
+      "validate": {
+        "ok": false,
+        "status": "needs_login",
+        "message": "Login required.",
+        "sessionId": "ad3e4911-9760-4d65-ab80-5f851fde3f74"
+      },
+      "inspect": null,
+      "search": null,
+      "failure": {
+        "category": "Session expired",
+        "failingStep": "session_missing",
+        "evidence": "login required. | needs_login",
+        "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
+      },
+      "magicbricksProbe": {
+        "accessDenied": false,
+        "referenceMatch": null,
+        "securityChallenge": false,
+        "title": "",
+        "bodySnippet": ""
+      },
+      "dimensions": {
+        "browser": "OK_shared_pool",
+        "network": "N/A_no_session",
+        "authentication": "SESSION_EXPIRED",
+        "session": "MISSING",
+        "search": "BLOCKED_BY_AUTH",
+        "extraction": "NOT_RUN",
+        "inventory": "UNKNOWN"
+      }
+    },
+    {
+      "portal": "99acres",
+      "displayName": "99acres",
+      "origin": "https://www.99acres.com",
+      "loginUrl": "https://www.99acres.com/myaccount",
+      "searchUrl": "https://www.99acres.com/search/property/rent/mumbai?keyword=Oberoi%20Sky%20City&bedroom_num=2",
+      "stored": {
+        "connectionStatus": "pending",
+        "connectionLastError": "Login required.",
+        "sessionStatus": "needs_login",
+        "hasEncryptedCookies": false,
+        "hasEncryptedStorage": false,
+        "lastVerified": "2026-07-18T11:20:52.870Z",
+        "expiresAt": "2026-07-25T11:20:53.056Z",
+        "lastValidationError": "Login required — no encrypted cookies",
+        "sessionId": "e32542c5-7a75-41b9-957e-307a4edbf670"
+      },
+      "statusCard": {
+        "displayState": "session_expired",
+        "health": "degraded",
+        "availableForResearch": false,
+        "humanError": "Portal login expired. Reconnect to continue research.",
+        "diagnostics": {
+          "researchReady": false,
+          "validationResult": "expired",
+          "failureReason": "Portal login expired. Reconnect to continue research.",
+          "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
+          "checks": [
+            {
+              "id": "worker",
+              "label": "Worker online",
+              "ok": true,
+              "detail": "Confirmed via worker status"
+            },
+            {
+              "id": "browser",
+              "label": "Browser session record",
+              "ok": true,
+              "detail": "Stored session e32542c5… (not a live browser probe)"
+            },
+            {
+              "id": "context",
+              "label": "Encrypted cookies stored",
+              "ok": false,
+              "detail": "No saved cookies"
+            },
+            {
+              "id": "login",
+              "label": "Login status (stored)",
+              "ok": false,
+              "detail": "sessionStatus=needs_login"
+            },
+            {
+              "id": "cookies",
+              "label": "Session cookies recorded",
+              "ok": false
+            },
+            {
+              "id": "portal",
+              "label": "Last validation (cached)",
+              "ok": null,
+              "detail": "Inferred from stored session — not a live reachability probe"
+            },
+            {
+              "id": "research_ready",
+              "label": "Available for research",
+              "ok": false,
+              "detail": "Reconnect required"
+            }
+          ]
+        }
+      },
+      "validate": {
+        "ok": false,
+        "status": "needs_login",
+        "message": "Login required.",
+        "sessionId": "e32542c5-7a75-41b9-957e-307a4edbf670"
+      },
+      "inspect": null,
+      "search": null,
+      "failure": {
+        "category": "Session expired",
+        "failingStep": "session_missing",
+        "evidence": "login required. | needs_login",
+        "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
+      },
+      "dimensions": {
+        "browser": "OK_shared_pool",
+        "network": "N/A_no_session",
+        "authentication": "SESSION_EXPIRED",
+        "session": "MISSING",
+        "search": "BLOCKED_BY_AUTH",
+        "extraction": "NOT_RUN",
+        "inventory": "UNKNOWN"
+      }
+    },
+    {
+      "portal": "nobroker",
+      "displayName": "NoBroker",
+      "origin": "https://www.nobroker.in",
+      "loginUrl": "https://www.nobroker.in/profile",
+      "searchUrl": "https://www.nobroker.in/rent/mumbai?searchParam=Oberoi%20Sky%20City&type=2bhk",
+      "stored": {
+        "connectionStatus": "pending",
+        "connectionLastError": "Login required.",
+        "sessionStatus": "needs_login",
+        "hasEncryptedCookies": false,
+        "hasEncryptedStorage": false,
+        "lastVerified": "2026-07-18T11:20:52.869Z",
+        "expiresAt": "2026-07-25T11:20:53.056Z",
+        "lastValidationError": "Login required — no encrypted cookies",
+        "sessionId": "9b2dc63e-7730-4a65-81b4-aeb0372e980d"
+      },
+      "statusCard": {
+        "displayState": "session_expired",
+        "health": "degraded",
+        "availableForResearch": false,
+        "humanError": "Portal login expired. Reconnect to continue research.",
+        "diagnostics": {
+          "researchReady": false,
+          "validationResult": "expired",
+          "failureReason": "Portal login expired. Reconnect to continue research.",
+          "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
+          "checks": [
+            {
+              "id": "worker",
+              "label": "Worker online",
+              "ok": true,
+              "detail": "Confirmed via worker status"
+            },
+            {
+              "id": "browser",
+              "label": "Browser session record",
+              "ok": true,
+              "detail": "Stored session 9b2dc63e… (not a live browser probe)"
+            },
+            {
+              "id": "context",
+              "label": "Encrypted cookies stored",
+              "ok": false,
+              "detail": "No saved cookies"
+            },
+            {
+              "id": "login",
+              "label": "Login status (stored)",
+              "ok": false,
+              "detail": "sessionStatus=needs_login"
+            },
+            {
+              "id": "cookies",
+              "label": "Session cookies recorded",
+              "ok": false
+            },
+            {
+              "id": "portal",
+              "label": "Last validation (cached)",
+              "ok": null,
+              "detail": "Inferred from stored session — not a live reachability probe"
+            },
+            {
+              "id": "research_ready",
+              "label": "Available for research",
+              "ok": false,
+              "detail": "Reconnect required"
+            }
+          ]
+        }
+      },
+      "validate": {
+        "ok": false,
+        "status": "needs_login",
+        "message": "Login required.",
+        "sessionId": "9b2dc63e-7730-4a65-81b4-aeb0372e980d"
+      },
+      "inspect": null,
+      "search": null,
+      "failure": {
+        "category": "Session expired",
+        "failingStep": "session_missing",
+        "evidence": "login required. | needs_login",
+        "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
+      },
+      "dimensions": {
+        "browser": "OK_shared_pool",
+        "network": "N/A_no_session",
+        "authentication": "SESSION_EXPIRED",
+        "session": "MISSING",
+        "search": "BLOCKED_BY_AUTH",
+        "extraction": "NOT_RUN",
+        "inventory": "UNKNOWN"
+      }
+    },
+    {
+      "portal": "squareyards",
+      "displayName": "Square Yards",
+      "origin": "https://www.squareyards.com",
+      "loginUrl": "https://www.squareyards.com/account",
+      "searchUrl": "https://www.squareyards.com/search?q=Oberoi%20Sky%20City&city=Mumbai&propertyType=Apartment&transaction=Rent",
+      "stored": {
+        "connectionStatus": "pending",
+        "connectionLastError": "Login required.",
+        "sessionStatus": "needs_login",
+        "hasEncryptedCookies": false,
+        "hasEncryptedStorage": false,
+        "lastVerified": "2026-07-18T11:20:52.867Z",
+        "expiresAt": "2026-07-25T11:20:53.053Z",
+        "lastValidationError": "Login required — no encrypted cookies",
+        "sessionId": "b0b9df90-a399-4e99-92d9-5dbad1f0b9f1"
+      },
+      "statusCard": {
+        "displayState": "session_expired",
+        "health": "degraded",
+        "availableForResearch": false,
+        "humanError": "Portal login expired. Reconnect to continue research.",
+        "diagnostics": {
+          "researchReady": false,
+          "validationResult": "expired",
+          "failureReason": "Portal login expired. Reconnect to continue research.",
+          "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
+          "checks": [
+            {
+              "id": "worker",
+              "label": "Worker online",
+              "ok": true,
+              "detail": "Confirmed via worker status"
+            },
+            {
+              "id": "browser",
+              "label": "Browser session record",
+              "ok": true,
+              "detail": "Stored session b0b9df90… (not a live browser probe)"
+            },
+            {
+              "id": "context",
+              "label": "Encrypted cookies stored",
+              "ok": false,
+              "detail": "No saved cookies"
+            },
+            {
+              "id": "login",
+              "label": "Login status (stored)",
+              "ok": false,
+              "detail": "sessionStatus=needs_login"
+            },
+            {
+              "id": "cookies",
+              "label": "Session cookies recorded",
+              "ok": false
+            },
+            {
+              "id": "portal",
+              "label": "Last validation (cached)",
+              "ok": null,
+              "detail": "Inferred from stored session — not a live reachability probe"
+            },
+            {
+              "id": "research_ready",
+              "label": "Available for research",
+              "ok": false,
+              "detail": "Reconnect required"
+            }
+          ]
+        }
+      },
+      "validate": {
+        "ok": false,
+        "status": "needs_login",
+        "message": "Login required.",
+        "sessionId": "b0b9df90-a399-4e99-92d9-5dbad1f0b9f1"
+      },
+      "inspect": null,
+      "search": null,
+      "failure": {
+        "category": "Session expired",
+        "failingStep": "session_missing",
+        "evidence": "login required. | needs_login",
+        "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
+      },
+      "dimensions": {
+        "browser": "OK_shared_pool",
+        "network": "N/A_no_session",
+        "authentication": "SESSION_EXPIRED",
+        "session": "MISSING",
+        "search": "BLOCKED_BY_AUTH",
+        "extraction": "NOT_RUN",
+        "inventory": "UNKNOWN"
+      }
+    }
+  ],
+  "relevantWorkerLogs": [
+    {
+      "at": "2026-07-22T06:40:08.154Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:15.780Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:23.389Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:31.030Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:38.666Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:46.288Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:40:53.973Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:01.573Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:09.136Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:16.714Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:24.362Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:32.004Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:39.603Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:47.236Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:41:54.860Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:02.501Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:10.185Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:17.834Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:25.477Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:33.092Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:40.665Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:48.312Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:42:55.983Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:03.665Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:11.280Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:18.970Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:26.658Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:34.305Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:41.900Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:49.460Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:43:57.126Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:04.779Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:12.467Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:20.075Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:27.693Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:35.286Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:42.869Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:50.427Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:44:58.061Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    },
+    {
+      "at": "2026-07-22T06:45:06.022Z",
+      "level": "info",
+      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "u": "https://www.magicbricks.com/userProfile",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.magicbricks.com/mblogin",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.magicbricks.com/login",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.magicbricks.com/bricks/login.html",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://accounts.magicbricks.com/",
+    "status": 200,
+    "loc": null,
+    "title": "Sell or Rent Home Online at Magicbricks",
+    "looksAuth": true,
+    "looksError": false
+  },
+  {
+    "u": "https://www.magicbricks.com/mymagicbricks/dashboard",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.magicbricks.com/mymagicbricks/myProfile",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.magicbricks.com/bricks/loginForm.html",
+    "status": 404,
+    "loc": null,
+    "title": "SERVER - Error report",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.99acres.com/myaccount",
+    "status": 404,
+    "loc": null,
+    "title": "404 Not Found",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.99acres.com/loginpage",
+    "status": 404,
+    "loc": null,
+    "title": "404 Not Found",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.99acres.com/load/Login",
+    "status": 404,
+    "loc": null,
+    "title": "404 Not Found",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.nobroker.in/profile",
+    "status": 200,
+    "loc": null,
+    "title": "Property for rent | Apartments for rent | Flats for rent | Rent property | without brokers | No brokerage | nobroker.in",
+    "looksAuth": false,
+    "looksError": false
+  },
+  {
+    "u": "https://www.nobroker.in/signin",
+    "status": 302,
+    "loc": "http://www.nobroker.in/404",
+    "title": "",
+    "looksAuth": false,
+    "looksError": false
+  },
+  {
+    "u": "https://www.nobroker.in/login",
+    "status": 302,
+    "loc": "http://www.nobroker.in/404",
+    "title": "",
+    "looksAuth": false,
+    "looksError": false
+  },
+  {
+    "u": "https://www.squareyards.com/account",
+    "status": 404,
+    "loc": null,
+    "title": "404",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.squareyards.com/login",
+    "status": 404,
+    "loc": null,
+    "title": "404",
+    "looksAuth": false,
+    "looksError": true
+  },
+  {
+    "u": "https://www.squareyards.com/user/login",
+    "status": 200,
+    "loc": null,
+    "title": "Login",
+    "looksAuth": true,
+    "looksError": false
+  },
+  {
+    "u": "https://housing.com/user-profile",
+    "status": 200,
+    "loc": null,
+    "title": "Real Estate in India | Rent Property in India | Housing.com",
+    "looksAuth": false,
+    "looksError": false
+  }
+]

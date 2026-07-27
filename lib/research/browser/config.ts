@@ -52,25 +52,33 @@ export const RESEARCH_PORTALS: Array<{
     key: 'magicbricks',
     displayName: 'MagicBricks',
     origin: 'https://www.magicbricks.com',
-    loginUrl: 'https://www.magicbricks.com/userProfile',
+    // /userProfile returns HTTP 404 (SERVER - Error report). Homepage ?login=true
+    // returns 200 and exposes the login surface (verified 2026-07-22).
+    loginUrl: 'https://www.magicbricks.com/?login=true',
   },
   {
     key: '99acres',
     displayName: '99acres',
     origin: 'https://www.99acres.com',
-    loginUrl: 'https://www.99acres.com/myaccount',
+    // /myaccount returns HTTP 404. Homepage is the documented login entry
+    // (may present captcha / verifycaptcha for automated clients).
+    loginUrl: 'https://www.99acres.com/',
   },
   {
     key: 'nobroker',
     displayName: 'NoBroker',
     origin: 'https://www.nobroker.in',
-    loginUrl: 'https://www.nobroker.in/profile',
+    // /profile is a soft landing; /users/login returns 200 with a login form
+    // (verified 2026-07-22). /login and /signin redirect to 404.
+    loginUrl: 'https://www.nobroker.in/users/login',
   },
   {
     key: 'squareyards',
     displayName: 'Square Yards',
     origin: 'https://www.squareyards.com',
-    loginUrl: 'https://www.squareyards.com/account',
+    // /account returns HTTP 404. /user/login returns 200 title "Login"
+    // (verified 2026-07-22).
+    loginUrl: 'https://www.squareyards.com/user/login',
   },
 ];
 
