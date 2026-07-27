@@ -17,6 +17,9 @@ export type HousingExtractStats = {
   validListingCount: number;
   filteredOutCount: number;
   sampleListingUrls: string[];
+  /** True when requested BHK matched 0 cards but project SERP had other BHKs. */
+  bhkFilterRelaxed?: boolean;
+  requestedBhk?: number;
 };
 
 type RawHousingCard = {
@@ -443,8 +446,6 @@ export async function collectHousingListings(
   }
 
   const rawListingCount = raw.length;
-  const listings: ResearchListing[] = [];
-  const seen = new Set<string>();
 
   // Project fallback from SERP title: "Sheth Auris Serenity Rent - 52 Flats…"
   const pageTitle = await page.title().catch(() => '');
@@ -481,12 +482,38 @@ export async function collectHousingListings(
     }
   }
 
-  for (const row of raw) {
-    if (listings.length >= limit) break;
-    const listing = toValidListing(row, portal, criteriaWithProject);
-    if (!listing?.url || seen.has(listing.url)) continue;
-    seen.add(listing.url);
-    listings.push(listing);
+  const mapRows = (crit?: ResearchPlanCriteria): ResearchListing[] => {
+    const listings: ResearchListing[] = [];
+    const seen = new Set<string>();
+    for (const row of raw) {
+      if (listings.length >= limit) break;
+      const listing = toValidListing(row, portal, crit);
+      if (!listing?.url || seen.has(listing.url)) continue;
+      seen.add(listing.url);
+      listings.push(listing);
+    }
+    return listings;
+  };
+
+  let listings = mapRows(criteriaWithProject);
+  let bhkFilterRelaxed = false;
+
+  // Project SERPs are often single-config (e.g. Oberoi ≈ all 3 BHK). Strict BHK
+  // must not zero a healthy extract and falsely mark the portal degraded.
+  if (
+    listings.length === 0 &&
+    criteriaWithProject?.bhk != null &&
+    raw.some((r) => isGenuineHousingListingUrl(r.url))
+  ) {
+    const withoutBhk: ResearchPlanCriteria = {
+      ...criteriaWithProject,
+      bhk: undefined,
+    };
+    const relaxed = mapRows(withoutBhk);
+    if (relaxed.length > 0) {
+      listings = relaxed;
+      bhkFilterRelaxed = true;
+    }
   }
 
   const stats: HousingExtractStats = {
@@ -495,13 +522,18 @@ export async function collectHousingListings(
     validListingCount: listings.length,
     filteredOutCount: Math.max(0, rawListingCount - listings.length),
     sampleListingUrls: listings.slice(0, 8).map((l) => l.url || ''),
+    bhkFilterRelaxed: bhkFilterRelaxed || undefined,
+    requestedBhk: criteria?.bhk,
   };
 
   return { listings, stats };
 }
 
-/** Sync URL builder: entry point only — project SERP is resolved in-browser via autocomplete. */
+/** Sync URL builder: prefer verified project rpid seeds; else city /rent shell. */
 export function buildHousingSearchEntryUrl(criteria: ResearchPlanCriteria): string {
+  const seed = criteria.project ? housingProjectRentSeed(criteria.project) : null;
+  if (seed) return seed;
+
   const txn = criteria.transactionType === 'SALE' ? 'buy' : 'rent';
   const city = encodeURIComponent(criteria.city || 'Mumbai');
   // Do not use ?q= shells — they never render listing cards.

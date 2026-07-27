@@ -133,9 +133,10 @@ async function main() {
       continue;
     }
 
+    // Housing Oberoi seed inventory is predominantly 3 BHK (2 BHK over-filters to 0).
     const criteria = {
       city: 'Mumbai',
-      bhk: 2,
+      bhk: portal === 'housing' ? 3 : 2,
       transactionType: 'RENT' as const,
       portals: [portal],
       project: portal === 'housing' ? 'Oberoi Sky City' : undefined,

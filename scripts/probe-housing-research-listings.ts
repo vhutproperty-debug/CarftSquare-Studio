@@ -35,7 +35,7 @@ async function main() {
     workspaceId: 'workspace-default',
     sessionId: v.sessionId,
     skipValidation: true,
-    criteria: { city: 'Mumbai', bhk: 2, transactionType: 'RENT', portals: ['housing'] },
+    criteria: { city: 'Mumbai', bhk: 3, transactionType: 'RENT', portals: ['housing'] },
   });
   console.log(
     JSON.stringify({
@@ -58,7 +58,7 @@ async function main() {
     skipValidation: true,
     criteria: {
       city: 'Mumbai',
-      bhk: 2,
+      bhk: 2, // intentional mismatch — soft fallback should still return 3 BHK cards
       transactionType: 'RENT',
       portals: ['housing'],
       project: 'Oberoi Sky City',
@@ -71,6 +71,7 @@ async function main() {
         n: withProject.listings?.length ?? 0,
         msg: withProject.message,
         degraded: Boolean(withProject.degraded),
+        sampleBhk: (withProject.listings || []).slice(0, 3).map((l) => l.bhk),
       },
     }),
   );
