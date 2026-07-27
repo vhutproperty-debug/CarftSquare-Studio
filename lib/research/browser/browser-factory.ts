@@ -4,6 +4,10 @@ import { chromium, type BrowserContext } from 'playwright';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import { assertPlaywrightRuntimeAllowed } from '@/lib/research/browser/playwright-runtime-guard';
+import {
+  ensureResearchDisplay,
+  researchDisplayEnv,
+} from '@/lib/research/browser/research-display';
 import { ensureDir, poolProfileDir } from '@/lib/research/browser/runtime-paths';
 
 const HEAVY_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
@@ -57,11 +61,23 @@ export class BrowserFactory {
     const userDataDir = await this.ensureProfileDir(workspaceId, portal);
     await clearChromiumProfileLocks(userDataDir);
 
+    // Headed Research on Railway requires a live Xvfb DISPLAY (Connect uses its own).
+    if (!RESEARCH_BROWSER_CONFIG.headless) {
+      await ensureResearchDisplay();
+    }
+
     const launch = async () =>
       chromium.launchPersistentContext(userDataDir, {
         headless: RESEARCH_BROWSER_CONFIG.headless,
         viewport: { width: 1365, height: 900 },
-        args: ['--disable-blink-features=AutomationControlled'],
+        args: [
+          '--disable-blink-features=AutomationControlled',
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--window-position=0,0',
+          '--window-size=1365,900',
+        ],
+        env: researchDisplayEnv(),
       });
 
     let context: BrowserContext;
@@ -71,6 +87,18 @@ export class BrowserFactory {
       const message = error instanceof Error ? error.message : String(error);
       // Stale volume lock from a previous container — clear and retry once.
       if (/profile appears to be in use|SingletonLock|process_singleton/i.test(message)) {
+        await clearChromiumProfileLocks(userDataDir);
+        context = await launch();
+      } else if (
+        !RESEARCH_BROWSER_CONFIG.headless &&
+        /Missing X server|no XServer|DISPLAY/i.test(message)
+      ) {
+        const { pushWorkerLog } = await import('@/lib/research/browser-gateway/worker-state');
+        pushWorkerLog(
+          'warn',
+          `research_display_retry workspaceId=${workspaceId} portal=${portal}`,
+        );
+        await ensureResearchDisplay({ force: true });
         await clearChromiumProfileLocks(userDataDir);
         context = await launch();
       } else {
