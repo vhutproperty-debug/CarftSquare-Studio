@@ -351,12 +351,23 @@ export class RemoteBrowserSessionManager {
           await runNav(target, ctx, input.connectSessionId);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          if (!entry.browserCrashRecovered) {
+          // Only recover when the browser process/context is actually dead.
+          // net::ERR_HTTP_RESPONSE_CODE_FAILURE and WAF blocks are navigation outcomes —
+          // closing the context blanks the VNC desktop and looks like a portal mismatch.
+          const isBrowserDead =
+            /Target closed|browser has been closed|Browser closed|Session closed|has been closed|chromium.*crashed|pipe closed/i.test(
+              message,
+            );
+          if (isBrowserDead && !entry.browserCrashRecovered) {
             entry.browserCrashRecovered = true;
             auditRemote(
               'browser_crash_recover',
               { connectSessionId: input.connectSessionId, error: message },
               'warn',
+            );
+            pushWorkerLog(
+              'warn',
+              `browser_crash_recover connectSessionId=${input.connectSessionId} portal=${input.portal} reason=${message.slice(0, 240)}`,
             );
             await entry.context?.close().catch(() => undefined);
             const fresh = await self.openContext(input.profileDir, display, headless);
@@ -448,10 +459,18 @@ export class RemoteBrowserSessionManager {
     );
     assertPlaywrightRuntimeAllowed('remote-display.openContext');
 
+    // Docker/Railway: no-sandbox + shm flags keep headed Chromium painting on the
+    // per-session Xvfb display that x11vnc mirrors (otherwise CDP works but VNC is blank).
     return chromium.launchPersistentContext(profileDir, {
       headless,
       viewport: { width: 1365, height: 900 },
-      args: ['--disable-blink-features=AutomationControlled'],
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--window-position=0,0',
+        '--window-size=1365,900',
+      ],
       env: {
         ...process.env,
         DISPLAY: display,

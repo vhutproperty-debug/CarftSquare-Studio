@@ -992,10 +992,14 @@ async function main() {
   console.log(`out=${OUT_DIR}\n`);
 
   const startedAt = new Date().toISOString();
-  const worker = await fetchBrowserWorkerStatus().catch(() => ({
-    online: false,
-    healthy: false,
-  }));
+  // Invariants-only is pure in-memory — skip worker/Mongo probe so Node can exit
+  // cleanly on Windows (open Mongo sockets + process.exit → UV_HANDLE_CLOSING crash).
+  const worker = INVARIANTS_ONLY
+    ? { online: false, healthy: false }
+    : await fetchBrowserWorkerStatus().catch(() => ({
+        online: false,
+        healthy: false,
+      }));
   console.log(`Worker online=${worker.online} healthy=${(worker as { healthy?: boolean }).healthy}\n`);
 
   const phaseMachineInvariants = runPhaseMachineInvariants();
@@ -1032,7 +1036,11 @@ async function main() {
       'utf8',
     );
     console.log(`\nInvariants-only report: ${path.join(OUT_DIR, 'REPORT.json')}`);
-    if (phaseMachineInvariants.some((c) => !c.pass)) process.exit(1);
+    if (phaseMachineInvariants.some((c) => !c.pass)) {
+      process.exitCode = 1;
+      return;
+    }
+    process.exitCode = 0;
     return;
   }
 
@@ -1119,7 +1127,7 @@ async function main() {
   console.log(`Markdown: ${mdPath}`);
 
   const invariantFail = phaseMachineInvariants.some((c) => !c.pass);
-  if (invariantFail || summary.fail > 0) process.exit(1);
+  process.exitCode = invariantFail || summary.fail > 0 ? 1 : 0;
 }
 
 main().catch((err) => {

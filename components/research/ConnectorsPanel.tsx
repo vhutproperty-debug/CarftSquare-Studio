@@ -217,16 +217,34 @@ export default function ConnectorsPanel() {
 
   const refreshLogs = useCallback(async () => {
     try {
-      const res = await fetch('/api/research/worker/logs?limit=60', {
+      const res = await fetch('/api/research/worker/logs?limit=120', {
         credentials: 'include',
         cache: 'no-store',
       });
       const json = await res.json();
-      if (res.ok) setLogs(json.logs || []);
+      if (!res.ok) return;
+      const all = (json.logs || []) as WorkerLog[];
+      // Scope to the active connect job so a prior portal's ERR_HTTP line is not
+      // misread as the current MagicBricks/Housing session (false portal mismatch).
+      const sid = liveSession?.id;
+      if (sid) {
+        const scoped = all.filter((l) => {
+          const m = String(l.message || '');
+          return (
+            m.includes(sid) ||
+            m.includes(`portal=${liveSession.portal}`) ||
+            m.includes(`connectSessionId=${sid}`) ||
+            m.includes(`jobId=${sid}`)
+          );
+        });
+        setLogs(scoped.length ? scoped.slice(-60) : all.slice(-20));
+      } else {
+        setLogs(all.slice(-60));
+      }
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [liveSession?.id, liveSession?.portal]);
 
   const refresh = useCallback(async (opts?: { live?: boolean; clearError?: boolean }) => {
     const live = Boolean(opts?.live);

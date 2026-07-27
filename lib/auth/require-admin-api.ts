@@ -45,8 +45,17 @@ function authTrace(
  * Does NOT run migrateLegacyAdmins (legacy migration is not required to authorize
  * an already-signed session; /api/auth/status and admin bootstrap still migrate).
  */
+function isNextProductionBuild(): boolean {
+  return process.env.NEXT_PHASE === 'phase-production-build';
+}
+
 async function loadAdminFromSession(request: Request): Promise<PublicAdminUser | null> {
   const t0 = Date.now();
+  // During `next build` static generation, many routes invoke auth with no cookies.
+  // Hitting Mongo here floods the build with timeouts and can hang past 10+ minutes.
+  if (isNextProductionBuild()) {
+    return null;
+  }
   authTrace('request_start', { mongoReady: isMongoReady() });
 
   const token = getSessionTokenFromRequest(request);

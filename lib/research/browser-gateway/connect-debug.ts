@@ -179,6 +179,18 @@ export async function instrumentConnectNavigation(input: {
   if (/captcha|recaptcha|hcaptcha|verify you are human/.test(hay)) wafHints.push('captcha');
   if (/security alert|bot.?detect|forbidden/.test(hay)) wafHints.push('waf_or_bot');
   const accessDenied = /access denied|security alert|attention required/.test(hay);
+  const captchaHint = wafHints.includes('captcha');
+  // Hard WAF/bot blocks are not a login surface — publishing waiting_for_login here
+  // leaves the operator stuck until TTL with no OTP field (production blocker).
+  // Captcha / "attention required" still needs a human in the remote window.
+  const hardBlock =
+    !error &&
+    !captchaHint &&
+    (accessDenied ||
+      (typeof httpStatus === 'number' && httpStatus >= 400 && !/login|otp|phone|sign/i.test(hay)));
+  if (hardBlock) {
+    error = `Connect navigation blocked before login surface (portal=${input.portal} status=${httpStatus ?? 'n/a'} title=${JSON.stringify(pageTitle)} url=${currentUrl} waf=${wafHints.join(',') || 'none'})`;
+  }
 
   const report: ConnectDebugReport = {
     at: new Date().toISOString(),

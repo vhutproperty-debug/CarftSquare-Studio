@@ -86,7 +86,13 @@ export async function countConnectQueue(): Promise<{
  * Next.js never launches Playwright — it only checks worker health.
  */
 export async function fetchBrowserWorkerStatus(): Promise<BrowserWorkerStatus> {
-  const queue = await countConnectQueue().catch(() => ({ queueSize: 0, activeSessions: 0 }));
+  // Cap Mongo queue probe — unreachable DB must not hang Connect UI / invariants forever.
+  const queue = await Promise.race([
+    countConnectQueue().catch(() => ({ queueSize: 0, activeSessions: 0 })),
+    new Promise<{ queueSize: number; activeSessions: number }>((resolve) =>
+      setTimeout(() => resolve({ queueSize: 0, activeSessions: 0 }), 3_000),
+    ),
+  ]);
   const base = getBrowserWorkerBaseUrl();
   const urlMeta = describeBrowserWorkerUrl(base);
   const controller = new AbortController();

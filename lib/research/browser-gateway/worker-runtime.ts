@@ -202,11 +202,39 @@ export async function processNextConnectJob(): Promise<boolean> {
       // Navigate BEFORE publishing liveViewUrl so noVNC never shows about:blank.
       // Housing / MagicBricks / 99acres all need the login surface visible when the
       // operator opens the remote window (evidence: blank desktop while goto pending).
+      const metaForNav = getPortalMeta(session.portal);
       pushWorkerLog(
         'info',
-        `login_nav_before_liveview sessionId=${session.id} portal=${session.portal} url=${session.loginUrl}`,
+        [
+          `login_nav_before_liveview`,
+          `sessionId=${session.id}`,
+          `portal=${session.portal}`,
+          `connector=${session.portal}`,
+          `url=${session.loginUrl}`,
+          `configLoginUrl=${metaForNav?.loginUrl || 'n/a'}`,
+          `urlMatch=${metaForNav?.loginUrl === session.loginUrl ? 'yes' : 'NO'}`,
+        ].join(' '),
       );
       await handle.gotoLogin(session.loginUrl);
+
+      // Evidence immediately before operator-visible liveView publish.
+      const finalUrlBeforePublish = await handle.currentUrl().catch(() => 'unknown');
+      if (handle.writePreview) {
+        await handle.writePreview(previewFile).catch(() => undefined);
+      }
+      pushWorkerLog(
+        'info',
+        [
+          `publish_liveview_preflight`,
+          `sessionId=${session.id}`,
+          `portal=${session.portal}`,
+          `requestedUrl=${session.loginUrl}`,
+          `finalUrl=${finalUrlBeforePublish}`,
+          `preview=${previewRel}`,
+          `liveView=${handle.liveViewUrl ? 'yes' : 'no'}`,
+          `browserVersion=${handle.browserVersion || 'n/a'}`,
+        ].join(' '),
+      );
 
       await transitionConnectSession({
         sessionId: session.id,
@@ -223,7 +251,7 @@ export async function processNextConnectJob(): Promise<boolean> {
         'info',
         `login_wait_start sessionId=${session.id} portal=${session.portal} url=${session.loginUrl} liveView=${
           handle.liveViewUrl ? 'yes' : 'no'
-        } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'} finalUrl=${await handle.currentUrl()}`,
+        } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'} finalUrl=${finalUrlBeforePublish}`,
       );
 
       const authenticated = await waitForManualLogin({
