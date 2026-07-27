@@ -1,0 +1,258 @@
+{
+  "runId": "pr-1785146081827",
+  "startedAt": "2026-07-27T09:54:41.837Z",
+  "finishedAt": "2026-07-27T09:54:48.180Z",
+  "workerOnline": true,
+  "results": [],
+  "phaseMachineInvariants": [
+    {
+      "name": "happy_path_queued_to_connecting",
+      "pass": true,
+      "detail": "allowed=connecting|cancelled|expired|failed"
+    },
+    {
+      "name": "happy_path_connecting_to_opening_browser",
+      "pass": true,
+      "detail": "allowed=opening_browser|validating|cancelled|expired|failed"
+    },
+    {
+      "name": "happy_path_opening_browser_to_waiting_for_login",
+      "pass": true,
+      "detail": "allowed=waiting_for_login|cancelled|expired|failed"
+    },
+    {
+      "name": "happy_path_waiting_for_login_to_verifying",
+      "pass": true,
+      "detail": "allowed=verifying|cancelled|expired|failed"
+    },
+    {
+      "name": "happy_path_verifying_to_capturing",
+      "pass": true,
+      "detail": "allowed=capturing|failed|cancelled|expired"
+    },
+    {
+      "name": "happy_path_capturing_to_encrypting",
+      "pass": true,
+      "detail": "allowed=encrypting|failed|cancelled|expired"
+    },
+    {
+      "name": "happy_path_encrypting_to_connected",
+      "pass": true,
+      "detail": "allowed=connected|failed|cancelled|expired"
+    },
+    {
+      "name": "waiting_for_login_not_to_validating",
+      "pass": true,
+      "detail": "allowed=verifying|cancelled|expired|failed"
+    },
+    {
+      "name": "waiting_for_login_to_verifying",
+      "pass": true,
+      "detail": "allowed=verifying|cancelled|expired|failed"
+    },
+    {
+      "name": "encrypting_to_connected",
+      "pass": true,
+      "detail": "allowed=connected|failed|cancelled|expired"
+    },
+    {
+      "name": "auth_engine_magicbricks_like_pass",
+      "pass": true,
+      "detail": "confidence=100 authenticated=true"
+    },
+    {
+      "name": "verifyUrl_safe_housing",
+      "pass": true,
+      "detail": "loginUrl=https://housing.com/user-profile verifyUrl=https://housing.com/user-profile"
+    },
+    {
+      "name": "verifyUrl_safe_magicbricks",
+      "pass": true,
+      "detail": "loginUrl=https://www.magicbricks.com/?login=true verifyUrl=https://www.magicbricks.com/"
+    },
+    {
+      "name": "verifyUrl_safe_99acres",
+      "pass": true,
+      "detail": "loginUrl=https://www.99acres.com/ verifyUrl=https://www.99acres.com/"
+    },
+    {
+      "name": "verifyUrl_safe_nobroker",
+      "pass": true,
+      "detail": "loginUrl=https://www.nobroker.in/users/login verifyUrl=https://www.nobroker.in/"
+    },
+    {
+      "name": "verifyUrl_safe_squareyards",
+      "pass": true,
+      "detail": "loginUrl=https://www.squareyards.com/user/login verifyUrl=https://www.squareyards.com/"
+    }
+  ],
+  "codeReview": [
+    {
+      "id": 1,
+      "area": "Memory leaks",
+      "severity": "medium",
+      "finding": "connectorRuntime Map and BrowserPool entries grow per workspace::portal and are only cleared via explicit cleanup/close. Long-lived worker with many workspaces can retain runtime snapshots forever.",
+      "mitigation": "TTL/evict connectorRuntime entries; call researchBrowserPool.closeAll() on SIGTERM (partially present); bound listAll().",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 2,
+      "area": "Browser/context leaks",
+      "severity": "medium",
+      "finding": "acquire() waits up to 60s for inUse; if a caller crashes mid-withPage without finally release, context stays inUse until timeout then throws busy.",
+      "mitigation": "withSessionContext already releases in finally — keep that invariant; add watchdog that force-releases inUse > N minutes.",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 3,
+      "area": "Zombie Chromium",
+      "severity": "high",
+      "finding": "Worker SIGKILL (OOM/deploy) can leave Chromium + Xvfb/x11vnc orphans; connect profiles may remain until cleanupExpiredProfiles runs.",
+      "mitigation": "On worker boot: kill stale chromium for profile root; always run cleanupExpiredProfiles; use process groups / killProcessTree (already used for remote display).",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "id": 4,
+      "area": "Orphaned browser profiles",
+      "severity": "medium",
+      "finding": "Connect profile dirs removed in finally, but crash between prepareConnectProfileDir and finally can orphan dirs under profile root.",
+      "mitigation": "Boot-time sweep of connect-* dirs older than TTL (cleanupExpiredProfiles exists — verify it covers connect dirs).",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 5,
+      "area": "Deadlocks",
+      "severity": "low",
+      "finding": "Profile lock + pool inUse spin-wait could interact poorly if same portal Connect and search overlap on different locks.",
+      "mitigation": "Connect uses connect:sessionId lock; search uses pool key — generally OK. Avoid holding pool lock across Connect.",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 6,
+      "area": "Race conditions",
+      "severity": "medium",
+      "finding": "Superseding Connect cancels prior active sessions in Mongo, but in-flight worker may still finish and write connected after cancel if not checking phase often enough.",
+      "mitigation": "waitForManualLogin and transitions already re-read session; ensure every transition refuses cancelled/expired (partially done).",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 7,
+      "area": "Unhandled promise rejections",
+      "severity": "low",
+      "finding": "Many .catch(() => undefined) swallow errors on close/cleanup — good for shutdown, bad for observability if close fails silently.",
+      "mitigation": "Log close failures at warn; keep swallow on shutdown path.",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "id": 8,
+      "area": "Retry loops",
+      "severity": "medium",
+      "finding": "processNextConnectJob still has while(true) for Connect; after architecture change success returns, but launch retry + browser launch failure paths must not loop forever without backoff.",
+      "mitigation": "Confirm loop only continues on intentional reopen; otherwise return. Add maxIterations guard.",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "id": 9,
+      "area": "Database consistency",
+      "severity": "high",
+      "finding": "Portal connection status and browser session status can diverge (e.g. portal connected but cookies cleared). Status UI merges both — operators can see Connected while search fails.",
+      "mitigation": "Single source of truth: availableForResearch requires sessionStatus=valid AND encrypted storage present (already mostly true in deriveConnectorDisplay).",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "id": 10,
+      "area": "Cleanup failures",
+      "severity": "medium",
+      "finding": "finally removes profileDir even after successful path cleared profileDir=\"\"; good. Failed close of Chromium may leave processes while Mongo says failed.",
+      "mitigation": "browser_close_trigger logs + killProcessTree on remote path; add boot scavenger for local Chromium.",
+      "mustFixBeforePropAi": false
+    }
+  ],
+  "thirtyDayRisks": [
+    {
+      "rank": 1,
+      "risk": "Portal bot wall / Akamai / captcha after cookie restore (headless or IP reputation)",
+      "probability": "high",
+      "impact": "high",
+      "mitigation": "Headed worker, residential IP, detect security wall in AuthEvidenceEngine, alert needs_login",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 2,
+      "risk": "Session cookie expiry / silent logout while UI still shows Connected (fresh validate skip window)",
+      "probability": "high",
+      "impact": "high",
+      "mitigation": "Periodic health monitor validate; shorten validateFreshMs for critical portals",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 3,
+      "risk": "Chromium crash mid-search → empty listings / false research quality",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Existing crash invalidate + RetryManager; ensure parallel failover covers portal",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "rank": 4,
+      "risk": "Disk fill from screenshots/HTML auth traces/profiles",
+      "probability": "medium",
+      "impact": "critical",
+      "mitigation": "Rotate tmp/auth-traces and screenshots; volume monitoring; TTL cleanup",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 5,
+      "risk": "Mongo cold start / auth null causing intermittent 401 on research APIs",
+      "probability": "medium",
+      "impact": "medium",
+      "mitigation": "Already hardened cold-start; keep connection pool warm",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "rank": 6,
+      "risk": "Worker deploy SIGKILL leaves zombie Chromium + orphan profiles",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Boot scavenger; graceful SIGTERM drain; Railway memory headroom",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 7,
+      "risk": "Connect phase / worker code drift after deploy (old worker + new phases)",
+      "probability": "medium",
+      "impact": "critical",
+      "mitigation": "Deploy worker + app together; version handshake on /status",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 8,
+      "risk": "Generic listing parsers return 0 results → research looks broken though auth OK",
+      "probability": "high",
+      "impact": "medium",
+      "mitigation": "Portal-specific extractors; treat 0 listings as degraded not auth failure",
+      "mustFixBeforePropAi": true
+    },
+    {
+      "rank": 9,
+      "risk": "Encryption key rotation invalidates all encrypted storageState",
+      "probability": "low",
+      "impact": "critical",
+      "mitigation": "Key versioning; dual-decrypt; force reconnect playbook",
+      "mustFixBeforePropAi": false
+    },
+    {
+      "rank": 10,
+      "risk": "Pool inUse stuck + concurrent research jobs starve a portal",
+      "probability": "low",
+      "impact": "medium",
+      "mitigation": "Force-release watchdog; per-portal queue depth limits",
+      "mustFixBeforePropAi": false
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "fail": 0,
+    "skipped": 0
+  }
+}

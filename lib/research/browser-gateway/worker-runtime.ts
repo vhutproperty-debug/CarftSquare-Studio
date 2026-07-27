@@ -114,7 +114,10 @@ export async function processNextConnectJob(): Promise<boolean> {
     profileLock = await acquireProfileLock(`connect:${session.id}`);
 
     // Login → same-context verify → capture storageState → persist valid → close.
-    while (true) {
+    // Single-pass loop (kept as while for cancel checks at top); hard-capped against runaway.
+    let connectPasses = 0;
+    while (connectPasses < 2) {
+      connectPasses += 1;
       const stopped = await ensureCancelled(session.id, handle);
       if (stopped) {
         pushWorkerLog(
@@ -238,7 +241,7 @@ export async function processNextConnectJob(): Promise<boolean> {
         `connect_pipeline Authentication Detected sessionId=${session.id} portal=${session.portal}`,
       );
 
-      // Same-context verify on verifyUrl BEFORE capture/persist (architectural requirement).
+      // Same-context verify on verifyUrl BEFORE capture/persist.
       const verifyUrl =
         session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
       pushWorkerLog(
@@ -247,7 +250,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       );
       await transitionConnectSession({
         sessionId: session.id,
-        to: 'validating',
+        to: 'verifying',
         message: CONNECT_USER_MESSAGES.validating,
         caller: 'processNextConnectJob.same_context_verify',
       });
@@ -282,6 +285,10 @@ export async function processNextConnectJob(): Promise<boolean> {
           finishedAt: new Date().toISOString(),
           caller: 'processNextConnectJob.same_context_verify_failed',
         });
+        pushWorkerLog(
+          'info',
+          `browser_close_trigger sessionId=${session.id} reason=same_context_verify_failed`,
+        );
         await handle.close().catch(() => undefined);
         handle = null;
         markWorkerJobDone();
@@ -314,8 +321,6 @@ export async function processNextConnectJob(): Promise<boolean> {
         caller: 'processNextConnectJob.encrypting',
       });
 
-      // Persist as valid — same-context verify already proved auth. Do not reopen a
-      // fresh browser against loginUrl (that was the prior detector bug).
       const browserSession = await upsertBrowserSession({
         workspaceId: session.workspaceId,
         portal: session.portal,
@@ -326,6 +331,10 @@ export async function processNextConnectJob(): Promise<boolean> {
         lastVerified: new Date().toISOString(),
         lastValidationError: '',
       });
+      pushWorkerLog(
+        'info',
+        `connect_pipeline PersistOK sessionId=${session.id} browserSessionId=${browserSession.id} sessionStatus=valid`,
+      );
 
       await upsertPortalConnection({
         workspaceId: session.workspaceId,
@@ -347,12 +356,12 @@ export async function processNextConnectJob(): Promise<boolean> {
       });
       pushWorkerLog(
         'info',
-        `connect_pipeline Connected (same-context verified) sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} browserSessionId=${browserSession.id}`,
+        `connect_pipeline Connected (Research Ready) sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} browserSessionId=${browserSession.id}`,
       );
 
       pushWorkerLog(
         'info',
-        `browser_close_after_persist sessionId=${session.id} portal=${session.portal}`,
+        `browser_close_trigger sessionId=${session.id} reason=persist_complete_normal_shutdown`,
       );
       await handle.close();
       handle = null;
@@ -363,6 +372,21 @@ export async function processNextConnectJob(): Promise<boolean> {
       markWorkerJobDone();
       return true;
     }
+
+    pushWorkerLog(
+      'error',
+      `connect_failed sessionId=${session.id} reason=connect_loop_exhausted passes=${connectPasses}`,
+    );
+    await transitionConnectSession({
+      sessionId: session.id,
+      to: 'failed',
+      errorMessage: 'Connect loop exhausted',
+      message: 'Connect loop exhausted',
+      finishedAt: new Date().toISOString(),
+      caller: 'processNextConnectJob.loop_exhausted',
+    }).catch(() => undefined);
+    markWorkerJobDone();
+    return true;
   } catch (error) {
     const friendly = friendlyConnectError(error);
     const raw = error instanceof Error ? error.message : String(error);
@@ -387,7 +411,10 @@ export async function processNextConnectJob(): Promise<boolean> {
     );
     setWorkerError(friendly);
     if (handle) {
-      pushWorkerLog('info', `browser_close_on_error sessionId=${session.id} portal=${session.portal}`);
+      pushWorkerLog(
+        'info',
+        `browser_close_trigger sessionId=${session.id} reason=exception_cleanup raw=${raw.slice(0, 200)}`,
+      );
       await handle.close().catch(() => undefined);
     }
     markWorkerJobDone();
@@ -727,23 +754,32 @@ export async function validateDueSessions(workspaceId?: string): Promise<number>
 }
 
 export async function cleanupExpiredProfiles(): Promise<number> {
-  // Remove stale connect preview frames (profiles wiped on disconnect).
-  const root = path.join(RESEARCH_BROWSER_CONFIG.screenshotRoot, 'connect');
+  // Prefer full artifact/profile scavenger; fall back to connect-preview TTL sweep.
   try {
-    const dirs = await fs.readdir(root);
-    let removed = 0;
-    for (const dir of dirs) {
-      const full = path.join(root, dir);
-      const stat = await fs.stat(full).catch(() => null);
-      if (!stat?.isDirectory()) continue;
-      if (Date.now() - stat.mtimeMs > 24 * 60 * 60 * 1000) {
-        await fs.rm(full, { recursive: true, force: true });
-        removed += 1;
-      }
-    }
-    return removed;
+    const { scavengeBrowserProfiles, scavengeArtifacts } = await import(
+      '@/lib/research/ops/scavenger'
+    );
+    const profiles = await scavengeBrowserProfiles();
+    const artifacts = await scavengeArtifacts();
+    return profiles + artifacts;
   } catch {
-    return 0;
+    const root = path.join(RESEARCH_BROWSER_CONFIG.screenshotRoot, 'connect');
+    try {
+      const dirs = await fs.readdir(root);
+      let removed = 0;
+      for (const dir of dirs) {
+        const full = path.join(root, dir);
+        const stat = await fs.stat(full).catch(() => null);
+        if (!stat?.isDirectory()) continue;
+        if (Date.now() - stat.mtimeMs > 24 * 60 * 60 * 1000) {
+          await fs.rm(full, { recursive: true, force: true });
+          removed += 1;
+        }
+      }
+      return removed;
+    } catch {
+      return 0;
+    }
   }
 }
 

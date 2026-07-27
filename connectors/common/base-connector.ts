@@ -11,7 +11,14 @@ import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
 import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
 import { isServerlessPlaywrightHost } from '@/lib/research/browser/playwright-runtime-guard';
+import { recordResearchSearch } from '@/lib/research/ops/metrics';
+import {
+  clearPortalDegraded,
+  markPortalDegraded,
+  shouldDegradeOnEmptyExtract,
+} from '@/lib/research/ops/portal-degradation';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
+import { touchBrowserSession } from '@/lib/research/sessions/session-store';
 import {
   findPortalConnection,
   upsertPortalConnection,
@@ -224,6 +231,7 @@ export abstract class BasePortalConnector implements PortalConnector {
           validation.message || validation.status,
           'Reconnect portal before searching.',
         );
+        recordResearchSearch(false);
         return {
           ok: false,
           listings: [],
@@ -232,6 +240,7 @@ export abstract class BasePortalConnector implements PortalConnector {
         };
       }
     } else if (session.sessionStatus !== 'valid' || !session.encryptedCookies) {
+      recordResearchSearch(false);
       return {
         ok: false,
         listings: [],
@@ -271,6 +280,7 @@ export abstract class BasePortalConnector implements PortalConnector {
       const message = outcome.error.message;
       const recovered = await this.recoverBrowser(workspaceId, message);
       connectorRuntime.markSearch(workspaceId, this.key, false);
+      recordResearchSearch(false);
       return {
         ok: false,
         listings: [],
@@ -282,6 +292,7 @@ export abstract class BasePortalConnector implements PortalConnector {
       };
     }
 
+    const listings = outcome.result || [];
     const lastVerifiedMs = session.lastVerified
       ? Date.now() - new Date(session.lastVerified).getTime()
       : Number.POSITIVE_INFINITY;
@@ -289,16 +300,59 @@ export abstract class BasePortalConnector implements PortalConnector {
       await browserSessionManager.renew(session.id).catch(() => undefined);
     }
 
+    // Graceful degradation: empty extract ≠ auth failure.
+    if (listings.length === 0) {
+      const verdict = shouldDegradeOnEmptyExtract({});
+      if (verdict.degrade) {
+        const deg = markPortalDegraded(this.key, verdict.reason);
+        connectorLog(this.key, 'portal_degraded_empty_extract', {
+          consecutiveEmpty: deg.consecutiveEmpty,
+          reason: deg.reason,
+        }, 'warn');
+        await touchBrowserSession(session.id, {
+          extractorDegraded: true,
+          extractorDegradationReason: deg.reason,
+          extractorDegradedAt: deg.at,
+        }).catch(() => undefined);
+        connectorRuntime.markSearch(workspaceId, this.key, true);
+        connectorRuntime.transition(workspaceId, this.key, 'idle');
+        recordResearchSearch(false);
+        researchPerfLog('execute_search_total', tSearch, {
+          portal: this.key,
+          listings: 0,
+          degraded: true,
+        });
+        return {
+          ok: true,
+          listings: [],
+          sessionStatus: 'valid',
+          degraded: true,
+          degradationReason: deg.reason,
+          message: deg.reason,
+        };
+      }
+    } else {
+      clearPortalDegraded(this.key);
+      if (session.extractorDegraded) {
+        await touchBrowserSession(session.id, {
+          extractorDegraded: false,
+          extractorDegradationReason: null,
+          extractorDegradedAt: null,
+        }).catch(() => undefined);
+      }
+    }
+
     connectorRuntime.markSearch(workspaceId, this.key, true);
     connectorRuntime.transition(workspaceId, this.key, 'idle');
+    recordResearchSearch(listings.length > 0);
 
     researchPerfLog('execute_search_total', tSearch, {
       portal: this.key,
-      listings: outcome.result?.length || 0,
+      listings: listings.length,
     });
     return {
       ok: true,
-      listings: outcome.result || [],
+      listings,
       sessionStatus: 'valid',
     };
   }

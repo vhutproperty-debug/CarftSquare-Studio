@@ -153,6 +153,20 @@ export class BrowserPool {
     }
   }
 
+  /** Operational metric — number of pooled contexts in this process. */
+  size(): number {
+    return this.entries.size;
+  }
+
+  /** Count contexts currently marked in-use. */
+  inUseCount(): number {
+    let n = 0;
+    for (const entry of this.entries.values()) {
+      if (entry.inUse) n += 1;
+    }
+    return n;
+  }
+
   private async evictIdle(): Promise<void> {
     let oldestKey: PoolKey | null = null;
     let oldest = Number.POSITIVE_INFINITY;

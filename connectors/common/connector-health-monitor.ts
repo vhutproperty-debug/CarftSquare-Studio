@@ -65,6 +65,30 @@ async function tick(): Promise<void> {
   if (ticking || isServerlessPlaywrightHost()) return;
   ticking = true;
   try {
+    // Metadata heartbeat + automatic stale-session detection (no browser).
+    try {
+      const { heartbeatAllPortals } = await import('@/lib/research/ops/connector-heartbeat');
+      const { DEFAULT_RESEARCH_WORKSPACE } = await import('@/lib/research/business');
+      const beats = await heartbeatAllPortals({
+        workspaceId: DEFAULT_RESEARCH_WORKSPACE.id,
+        markStale: true,
+      });
+      const stale = beats.filter((b) => b.action === 'marked_needs_login');
+      if (stale.length) {
+        connectorLog('framework', 'heartbeat_stale_sessions', {
+          count: stale.length,
+          portals: stale.map((s) => s.portal),
+        });
+      }
+    } catch (error) {
+      connectorLog(
+        'framework',
+        'heartbeat_tick_error',
+        { error: error instanceof Error ? error.message : String(error) },
+        'warn',
+      );
+    }
+
     const pairs = connectorRuntime.listAll().filter(
       (s) => s.state === 'idle' || s.state === 'ready' || s.state === 'health_check',
     );

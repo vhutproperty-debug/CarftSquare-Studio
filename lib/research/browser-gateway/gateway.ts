@@ -18,6 +18,11 @@ import type {
   ConnectorStatusCard,
   PublicConnectSession,
 } from '@/lib/research/browser-gateway/types';
+import {
+  toUnifiedConnectorState,
+  UNIFIED_STATE_LABEL,
+} from '@/lib/research/ops/readiness';
+import { getPortalDegradation } from '@/lib/research/ops/portal-degradation';
 import { createNotification } from '@/lib/research/monitoring/notification-store';
 import {
   findBrowserSession,
@@ -206,11 +211,30 @@ export async function listConnectorStatuses(
     else if (display.displayState === 'reconnecting') status = 'connecting';
     else if (display.displayState === 'connected') status = 'connected';
 
+    const degradation =
+      getPortalDegradation(c.portalKey) ||
+      (browser?.extractorDegraded
+        ? {
+            portal: c.portalKey,
+            at: browser.extractorDegradedAt || browser.updatedAt,
+            reason:
+              browser.extractorDegradationReason ||
+              'Portal extractors degraded (empty results while session valid)',
+            consecutiveEmpty: 1,
+          }
+        : null);
+    const portalDegraded = Boolean(degradation);
+    const opsState = toUnifiedConnectorState({
+      displayState: display.displayState,
+      availableForResearch: display.availableForResearch,
+      portalDegraded,
+    });
+
     return {
       portal: c.portalKey,
       portalName: c.portalName,
       status,
-      health,
+      health: portalDegraded && status === 'connected' ? 'degraded' : health,
       lastLoginAt: browser?.lastVerified || browser?.updatedAt,
       lastValidatedAt: browser?.lastVerified,
       sessionExpiresAt: browser?.expiresAt,
@@ -224,13 +248,21 @@ export async function listConnectorStatuses(
       lastError: humanizeConnectorError(rawError) || undefined,
       displayState: display.displayState,
       displayLabel: display.label,
+      opsState,
+      opsStateLabel: UNIFIED_STATE_LABEL[opsState],
+      portalDegraded,
+      portalDegradationReason: degradation?.reason || null,
       sessionExists: display.sessionExists,
       sessionAgeMs: display.sessionAgeMs,
       sessionAgeLabel: display.sessionAgeLabel,
-      availableForResearch: display.availableForResearch,
-      availableLabel: display.availableLabel,
+      availableForResearch: display.availableForResearch && !portalDegraded,
+      availableLabel: portalDegraded
+        ? 'Connected — extractors degraded (portal may have changed)'
+        : display.availableLabel,
       humanError: display.humanError,
-      detailSummary: display.detailSummary,
+      detailSummary: portalDegraded
+        ? degradation?.reason || display.detailSummary
+        : display.detailSummary,
       liveValidated: Boolean(opts?.liveValidated),
       liveValidationSource: opts?.liveValidated
         ? 'live'
@@ -239,7 +271,7 @@ export async function listConnectorStatuses(
           : 'cached',
       diagnostics: buildConnectorDiagnostics({
         display,
-        health,
+        health: portalDegraded && status === 'connected' ? 'degraded' : health,
         workerOnline,
         browser,
         lastValidatedAt: browser?.lastVerified,

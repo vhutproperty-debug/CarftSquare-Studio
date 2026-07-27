@@ -17,7 +17,9 @@
         "research:browser-worker": "npx tsx scripts/research-browser-worker.ts",
         "research:browser-worker:once": "npx tsx scripts/research-browser-worker.ts --once",
         "research:browser-worker:install-chromium": "npx playwright install chromium",
-        "test:housing-connect": "npx tsx scripts/housing-connect-integration.test.ts"
+        "test:housing-connect": "npx tsx scripts/housing-connect-integration.test.ts",
+        "test:connectors-readiness": "npx tsx scripts/production-readiness/connector-e2e-suite.ts",
+        "test:connectors-readiness:invariants": "npx tsx scripts/production-readiness/connector-e2e-suite.ts --invariants-only"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

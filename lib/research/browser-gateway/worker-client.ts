@@ -1,6 +1,11 @@
 import { RESEARCH_COLLECTIONS } from '@/lib/research/collections';
 import { resolveBrowserProvider } from '@/lib/research/browser-gateway/adapters';
 import { WORKER_HTTP_VERSION } from '@/lib/research/browser-gateway/worker-state';
+import {
+  checkWorkerAppCompat,
+  type CompatCheck,
+  type ProductionMetrics,
+} from '@/lib/research/ops/metrics';
 import { ensureResearchIndexes, getResearchDatabase } from '@/lib/research/store';
 
 export type BrowserWorkerStatus = {
@@ -10,6 +15,9 @@ export type BrowserWorkerStatus = {
   activeSessions: number;
   uptime: number;
   version: string;
+  protocolVersion: string | null;
+  compat: CompatCheck;
+  metrics: ProductionMetrics | null;
   lastHeartbeatAt: string | null;
   lastError: string | null;
   port: number | null;
@@ -62,6 +70,7 @@ export async function countConnectQueue(): Promise<{
           'connecting',
           'opening_browser',
           'waiting_for_login',
+          'verifying',
           'capturing',
           'encrypting',
           'validating',
@@ -101,19 +110,31 @@ export async function fetchBrowserWorkerStatus(): Promise<BrowserWorkerStatus> {
     }
     const json = (await res.json()) as Partial<BrowserWorkerStatus> & {
       online?: boolean;
+      protocolVersion?: string;
+      metrics?: ProductionMetrics | null;
     };
+    const protocolVersion =
+      typeof json.protocolVersion === 'string' ? json.protocolVersion : null;
+    const version = String(json.version || WORKER_HTTP_VERSION);
+    const compat = checkWorkerAppCompat({
+      workerProtocol: protocolVersion,
+      workerHttpVersion: version,
+    });
     return {
       online: json.online !== false,
       provider: String(json.provider || resolveBrowserProvider()),
       queueSize: Number(json.queueSize ?? queue.queueSize),
       activeSessions: Number(json.activeSessions ?? queue.activeSessions),
       uptime: Number(json.uptime || 0),
-      version: String(json.version || WORKER_HTTP_VERSION),
+      version,
+      protocolVersion,
+      compat,
+      metrics: json.metrics || null,
       lastHeartbeatAt: (json.lastHeartbeatAt as string) || new Date().toISOString(),
       lastError: (json.lastError as string | null) ?? null,
       port: typeof json.port === 'number' ? json.port : null,
       workerId: (json.workerId as string | null) ?? null,
-      healthy: json.healthy !== false,
+      healthy: json.healthy !== false && compat.ok,
       source: 'http',
       ...urlMeta,
     };
@@ -317,6 +338,9 @@ export async function requestWorkerExecuteSearch(input: {
       sessionStatus: String(json.sessionStatus || (json.ok ? 'valid' : 'error')) as import('@/lib/research/types').ResearchBrowserSessionStatus,
       message: typeof json.message === 'string' ? json.message : undefined,
       screenshotPath: typeof json.screenshotPath === 'string' ? json.screenshotPath : undefined,
+      degraded: Boolean(json.degraded),
+      degradationReason:
+        typeof json.degradationReason === 'string' ? json.degradationReason : undefined,
     };
   } catch (error) {
     const message =
@@ -340,6 +364,9 @@ function offlineStatus(
     activeSessions: queue.activeSessions,
     uptime: 0,
     version: WORKER_HTTP_VERSION,
+    protocolVersion: null,
+    compat: checkWorkerAppCompat({ workerProtocol: null, workerHttpVersion: WORKER_HTTP_VERSION }),
+    metrics: null,
     lastHeartbeatAt: null,
     lastError,
     port: Number(process.env.RESEARCH_BROWSER_WORKER_PORT || 4173),

@@ -14,6 +14,7 @@ const PHASE_LABEL: Record<ConnectFlowPhase, string> = {
   connecting: 'Preparing Browser',
   opening_browser: 'Opening Secure Browser…',
   waiting_for_login: 'Waiting for Login',
+  verifying: 'Verifying Session',
   capturing: 'Capturing Session',
   encrypting: 'Encrypting',
   validating: 'Validating',
@@ -28,10 +29,9 @@ const CONNECT_STEPS = [
   'Preparing Browser',
   'Browser Ready',
   'Waiting for Login',
-  'Authenticating',
+  'Verifying',
   'Capturing Session',
   'Encrypting',
-  'Validating',
   'Connected',
 ] as const;
 
@@ -42,10 +42,11 @@ function activeConnectStepIndex(session: PublicConnectSession): number {
   if (session.phase === 'waiting_for_login') {
     return session.liveViewUrl ? 2 : 0;
   }
+  if (session.phase === 'verifying') return 3;
   if (session.phase === 'capturing') return 4;
   if (session.phase === 'encrypting') return 5;
-  if (session.phase === 'validating') return 6;
-  if (session.phase === 'connected') return 7;
+  if (session.phase === 'validating') return 3;
+  if (session.phase === 'connected') return 6;
   return 0;
 }
 
@@ -62,22 +63,42 @@ function displayStateOf(c: ConnectorStatusCard): ConnectorDisplayState {
 }
 
 function statusTone(state: ConnectorDisplayState | string): string {
-  if (state === 'connected' || state === 'healthy') {
+  if (
+    state === 'connected' ||
+    state === 'healthy' ||
+    state === 'research_ready'
+  ) {
     return 'bg-emerald-50 text-emerald-800 border-emerald-200';
   }
-  if (state === 'session_expired' || state === 'reconnecting' || state === 'degraded') {
+  if (
+    state === 'session_expired' ||
+    state === 'reconnecting' ||
+    state === 'degraded' ||
+    state === 'reconnect_required'
+  ) {
     return 'bg-amber-50 text-amber-800 border-amber-200';
   }
-  if (state === 'connection_failed' || state === 'failing' || state === 'failed') {
+  if (
+    state === 'connection_failed' ||
+    state === 'failing' ||
+    state === 'failed' ||
+    state === 'error'
+  ) {
     return 'bg-rose-50 text-rose-800 border-rose-200';
   }
   return 'bg-slate-50 text-slate-700 border-slate-200';
 }
 
-function stateDot(state: ConnectorDisplayState): string {
-  if (state === 'connected') return 'bg-emerald-500';
-  if (state === 'session_expired' || state === 'reconnecting') return 'bg-amber-400';
-  if (state === 'connection_failed') return 'bg-rose-500';
+function stateDot(state: ConnectorDisplayState | string): string {
+  if (state === 'connected' || state === 'research_ready') return 'bg-emerald-500';
+  if (
+    state === 'session_expired' ||
+    state === 'reconnecting' ||
+    state === 'reconnect_required'
+  ) {
+    return 'bg-amber-400';
+  }
+  if (state === 'connection_failed' || state === 'error') return 'bg-rose-500';
   return 'bg-slate-300';
 }
 
@@ -95,6 +116,24 @@ type WorkerStatus = {
   provider: string;
   queueSize: number;
   lastError: string | null;
+  protocolVersion?: string | null;
+  compatOk?: boolean;
+  compatReason?: string | null;
+  metrics?: {
+    browsers?: { poolSize?: number; activeContexts?: number };
+    process?: { memoryRssMb?: number; cpuLoad1m?: number | null };
+    sessions?: {
+      restoresOk?: number;
+      restoresFailed?: number;
+      researchSuccessRate?: number | null;
+    };
+  } | null;
+};
+
+type ReadinessSummary = {
+  score: number;
+  grade: string;
+  blockers: string[];
 };
 
 type WorkerLog = { at: string; level: string; message: string };
@@ -109,6 +148,7 @@ export default function ConnectorsPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [liveSession, setLiveSession] = useState<PublicConnectSession | null>(null);
   const [worker, setWorker] = useState<WorkerStatus | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessSummary | null>(null);
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [drawerPortal, setDrawerPortal] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
@@ -141,6 +181,10 @@ export default function ConnectorsPanel() {
           provider: json.provider || 'self_hosted',
           queueSize: Number(json.queueSize || 0),
           lastError: json.lastError || null,
+          protocolVersion: json.protocolVersion || null,
+          compatOk: json.compat?.ok !== false,
+          compatReason: json.compat?.reason || null,
+          metrics: json.metrics || null,
         });
       }
     } catch {
@@ -149,9 +193,27 @@ export default function ConnectorsPanel() {
         provider: 'self_hosted',
         queueSize: 0,
         lastError: 'Worker status unreachable',
+        compatOk: false,
       });
     }
-  }, []);
+
+    try {
+      const r = await fetch(
+        `/api/research/ops/readiness?workspaceId=${encodeURIComponent(workspaceId)}`,
+        { credentials: 'include', cache: 'no-store' },
+      );
+      const j = await r.json();
+      if (r.ok && j.readiness) {
+        setReadiness({
+          score: Number(j.readiness.score || 0),
+          grade: String(j.readiness.grade || 'F'),
+          blockers: Array.isArray(j.readiness.blockers) ? j.readiness.blockers : [],
+        });
+      }
+    } catch {
+      /* readiness optional */
+    }
+  }, [workspaceId]);
 
   const refreshLogs = useCallback(async () => {
     try {
@@ -375,6 +437,20 @@ export default function ConnectorsPanel() {
           whenever possible — never guess from stale cache alone.
         </p>
         <div className="flex items-center gap-2">
+          {readiness ? (
+            <span
+              className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${
+                readiness.score >= 75
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : readiness.score >= 50
+                    ? 'border-amber-200 bg-amber-50 text-amber-800'
+                    : 'border-rose-200 bg-rose-50 text-rose-800'
+              }`}
+              title={readiness.blockers.join(' · ') || 'Production readiness'}
+            >
+              Readiness {readiness.score}% ({readiness.grade})
+            </span>
+          ) : null}
           <span
             className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${
               worker?.online
@@ -385,6 +461,23 @@ export default function ConnectorsPanel() {
             Worker {worker?.online ? 'Online' : 'Offline'}
             {worker?.provider ? ` · ${worker.provider}` : ''}
           </span>
+          {worker?.compatOk === false ? (
+            <span
+              className="inline-flex rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
+              title={worker.compatReason || 'Protocol mismatch'}
+            >
+              Version mismatch
+            </span>
+          ) : null}
+          {worker?.metrics?.browsers ? (
+            <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
+              Browsers {worker.metrics.browsers.activeContexts ?? 0}/
+              {worker.metrics.browsers.poolSize ?? 0}
+              {worker.metrics.process?.memoryRssMb != null
+                ? ` · ${worker.metrics.process.memoryRssMb}MB`
+                : ''}
+            </span>
+          ) : null}
           <span className="hidden text-[11px] text-slate-400 sm:inline">
             {validating
               ? 'Live validating…'
@@ -546,8 +639,11 @@ export default function ConnectorsPanel() {
           {connectors.map((c) => {
             const busy = busyPortal === c.portal;
             const state = displayStateOf(c);
-            const label = c.displayLabel || (
-              state === 'never_connected'
+            const opsState = c.opsState || null;
+            const label =
+              c.opsStateLabel ||
+              c.displayLabel ||
+              (state === 'never_connected'
                 ? 'Not Connected'
                 : state === 'session_expired'
                   ? 'Session Expired'
@@ -555,8 +651,8 @@ export default function ConnectorsPanel() {
                     ? 'Connection Failed'
                     : state === 'reconnecting'
                       ? 'Reconnecting'
-                      : 'Connected'
-            );
+                      : 'Connected');
+            const badgeState = opsState || state;
             const showDetails = detailsOpen === c.portal;
 
             return (
@@ -572,12 +668,18 @@ export default function ConnectorsPanel() {
                     <p className="text-xs capitalize text-slate-500">{c.portal}</p>
                   </div>
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ${statusTone(state)}`}
+                    className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ${statusTone(badgeState)}`}
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${stateDot(state)}`} aria-hidden />
+                    <span className={`h-1.5 w-1.5 rounded-full ${stateDot(badgeState)}`} aria-hidden />
                     {label}
                   </span>
                 </div>
+                {c.portalDegraded ? (
+                  <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-200">
+                    {c.portalDegradationReason ||
+                      'Extractors degraded — session still connected; portal DOM may have changed.'}
+                  </p>
+                ) : null}
 
                 {/* Diagnostics checklist — every portal independently diagnosable */}
                 {c.diagnostics?.checks?.length ? (

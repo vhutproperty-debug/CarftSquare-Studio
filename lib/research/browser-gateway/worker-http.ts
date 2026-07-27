@@ -58,7 +58,27 @@ export async function startWorkerHttpServer(input: {
       if (url.pathname === '/status' && req.method === 'GET') {
         touchWorkerHeartbeat();
         const stats = await input.getQueueStats();
-        json(res, 200, buildWorkerStatusPayload(stats));
+        let metrics: unknown = null;
+        try {
+          const { getProductionMetrics } = await import('@/lib/research/ops/metrics');
+          metrics = getProductionMetrics();
+        } catch {
+          /* metrics optional */
+        }
+        json(res, 200, buildWorkerStatusPayload({ ...stats, metrics }));
+        return;
+      }
+
+      if (url.pathname === '/metrics' && req.method === 'GET') {
+        touchWorkerHeartbeat();
+        const { getProductionMetrics, RESEARCH_PROTOCOL_VERSION } = await import(
+          '@/lib/research/ops/metrics'
+        );
+        json(res, 200, {
+          ok: true,
+          protocolVersion: RESEARCH_PROTOCOL_VERSION,
+          metrics: getProductionMetrics(),
+        });
         return;
       }
 
@@ -142,7 +162,7 @@ export async function startWorkerHttpServer(input: {
         });
         pushWorkerLog(
           result.ok ? 'info' : 'warn',
-          `http_jobs_search done workspaceId=${workspaceId} portal=${portal} ok=${result.ok} listings=${result.listings?.length || 0}`,
+          `http_jobs_search done workspaceId=${workspaceId} portal=${portal} ok=${result.ok} listings=${result.listings?.length || 0} degraded=${Boolean(result.degraded)}`,
         );
         json(res, 200, result);
         return;

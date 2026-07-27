@@ -1,6 +1,7 @@
 import type { BrowserProviderKind } from '@/lib/research/browser-gateway/types';
+import { RESEARCH_PROTOCOL_VERSION } from '@/lib/research/ops/metrics';
 
-export const WORKER_HTTP_VERSION = '1.0.0';
+export const WORKER_HTTP_VERSION = '1.1.0';
 
 export type WorkerLogLine = {
   at: string;
@@ -111,6 +112,7 @@ export function getWorkerLogs(limit = 80): WorkerLogLine[] {
 export function buildWorkerStatusPayload(extra?: {
   queueSize?: number;
   activeSessions?: number;
+  metrics?: unknown;
 }) {
   if (!state) {
     return {
@@ -120,11 +122,13 @@ export function buildWorkerStatusPayload(extra?: {
       activeSessions: extra?.activeSessions ?? 0,
       uptime: 0,
       version: WORKER_HTTP_VERSION,
+      protocolVersion: RESEARCH_PROTOCOL_VERSION,
       lastHeartbeatAt: null as string | null,
       lastError: 'Worker state not initialized',
       port: null as number | null,
       workerId: null as string | null,
       healthy: false,
+      metrics: extra?.metrics ?? null,
     };
   }
   return {
@@ -134,6 +138,7 @@ export function buildWorkerStatusPayload(extra?: {
     activeSessions: extra?.activeSessions ?? (state.activeConnectSessionId ? 1 : 0),
     uptime: Math.floor((Date.now() - state.startedAt) / 1000),
     version: WORKER_HTTP_VERSION,
+    protocolVersion: RESEARCH_PROTOCOL_VERSION,
     lastHeartbeatAt: state.lastHeartbeatAt,
     lastError: state.lastError,
     port: state.port,
@@ -141,5 +146,6 @@ export function buildWorkerStatusPayload(extra?: {
     healthy: state.healthy,
     activePortal: state.activePortal,
     jobsProcessed: state.jobsProcessed,
+    metrics: extra?.metrics ?? null,
   };
 }

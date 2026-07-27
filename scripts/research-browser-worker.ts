@@ -28,11 +28,18 @@ import { startConnectorHealthMonitor, stopConnectorHealthMonitor } from '../conn
 import { RESEARCH_COLLECTIONS } from '../lib/research/collections';
 import { DEFAULT_RESEARCH_WORKSPACE } from '../lib/research/business';
 import { ensureResearchIndexes, getResearchDatabase } from '../lib/research/store';
+import {
+  recordBootScavenge,
+} from '../lib/research/ops/metrics';
+import {
+  runBootScavenger,
+  startPeriodicScavenger,
+} from '../lib/research/ops/scavenger';
 
 // Env must load before Mongo/crypto calls (URI is read at runtime).
 loadEnvLocal();
 
-const WORKER_VERSION = '1.0.0';
+const WORKER_VERSION = '1.1.0';
 
 function arg(name: string, fallback?: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -52,6 +59,7 @@ async function getQueueStats() {
             'connecting',
             'opening_browser',
             'waiting_for_login',
+            'verifying',
             'capturing',
             'encrypting',
             'validating',
@@ -232,12 +240,34 @@ async function main() {
     );
   }
 
+  let stopScavenger: (() => void) | null = null;
+
   // Retry config/Mongo so a missing secret or brief Atlas blip does not leave PORT unbound.
   for (let attempt = 1; ; attempt += 1) {
     if (stopping) break;
     try {
       await validateConfig(provider);
       setWorkerError(null);
+
+      // Boot-time Chromium zombie cleanup + profile/artifact retention.
+      try {
+        const scavenge = await runBootScavenger();
+        recordBootScavenge(scavenge);
+        pushWorkerLog(
+          'info',
+          `ops_boot_scavenge chromiumKilled=${scavenge.chromiumKilled} profiles=${scavenge.profilesRemoved} artifacts=${scavenge.artifactsRemoved}`,
+        );
+        if (scavenge.errors.length) {
+          pushWorkerLog('warn', `ops_boot_scavenge_errors ${scavenge.errors.join('; ')}`);
+        }
+      } catch (error) {
+        pushWorkerLog(
+          'warn',
+          `ops_boot_scavenge_failed ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      stopScavenger = startPeriodicScavenger();
+
       startConnectorHealthMonitor();
       pushWorkerLog('info', 'Ready to claim connect sessions. Playwright will only run in this process.');
       break;
@@ -255,6 +285,7 @@ async function main() {
     if (stopping) return;
     stopping = true;
     pushWorkerLog('warn', `Shutting down (${signal})…`);
+    stopScavenger?.();
     stopConnectorHealthMonitor();
     try {
       await httpServer?.close();

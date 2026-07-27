@@ -99,6 +99,13 @@ export type ResearchBrowserSession = {
   lastUsed?: string;
   /** Exact last validation failure (HTTP status / timeout / exception). */
   lastValidationError?: string;
+  /**
+   * Operational: extractors returned empty while session remained valid
+   * (portal DOM/layout change). Does not imply needs_login.
+   */
+  extractorDegraded?: boolean;
+  extractorDegradationReason?: string | null;
+  extractorDegradedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -329,4 +336,7 @@ export type ConnectorSearchResponse = {
   sessionStatus: ResearchBrowserSessionStatus;
   message?: string;
   screenshotPath?: string;
+  /** True when auth succeeded but extractors returned nothing (portal DOM change). */
+  degraded?: boolean;
+  degradationReason?: string;
 };

@@ -9,8 +9,11 @@ export type ConnectFlowPhase =
   | 'connecting'
   | 'opening_browser'
   | 'waiting_for_login'
+  /** Same-context AuthEvidenceEngine on verifyUrl (headed Connect). */
+  | 'verifying'
   | 'capturing'
   | 'encrypting'
+  /** Re-validate stored session without headed login. */
   | 'validating'
   | 'connected'
   | 'failed'
@@ -85,6 +88,15 @@ export type ConnectorStatusCard = {
   displayState?: ConnectorDisplayState;
   /** Human label for displayState. */
   displayLabel?: string;
+  /**
+   * Unified operator state (Connected / Research Ready / Reconnect Required / Error).
+   * Additive — does not replace displayState.
+   */
+  opsState?: 'connected' | 'research_ready' | 'reconnect_required' | 'error';
+  opsStateLabel?: string;
+  /** Extractors degraded (portal DOM change) while session may still be valid. */
+  portalDegraded?: boolean;
+  portalDegradationReason?: string | null;
   /** True when encrypted session cookies exist (never exposes cookies). */
   sessionExists?: boolean;
   sessionAgeMs?: number | null;
