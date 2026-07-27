@@ -410,6 +410,13 @@ export class RemoteBrowserSessionManager {
     throw new Error('waitForLogin is orchestrated by worker-runtime (login-detect).');
   }
 
+  /** Return the live Playwright page for an in-flight Connect session (OTP assist). */
+  getConnectPage(connectSessionId: string): import('playwright').Page | null {
+    const entry = this.active.get(connectSessionId);
+    if (!entry?.page || entry.page.isClosed()) return null;
+    return entry.page;
+  }
+
   async captureSession(handle: BrowserLaunchHandle) {
     return handle.captureSecrets();
   }

@@ -168,6 +168,186 @@ export async function startWorkerHttpServer(input: {
         return;
       }
 
+      // Assist Connect OTP: type phone/OTP into the live headed page for an active session.
+      if (url.pathname === '/jobs/connect-act' && req.method === 'POST') {
+        if (!authorizeWorkerRequest(req)) {
+          json(res, 401, { error: 'Unauthorized' });
+          return;
+        }
+        const body = (await readJsonBody(req)) as {
+          connectSessionId?: string;
+          action?: string;
+          phone?: string;
+          otp?: string;
+        };
+        const connectSessionId = String(body.connectSessionId || '').trim();
+        const action = String(body.action || '').trim();
+        if (!connectSessionId || !action) {
+          json(res, 400, { error: 'connectSessionId and action are required' });
+          return;
+        }
+        const { remoteBrowserSessionManager } = await import(
+          '@/lib/research/browser-gateway/remote-display/browser-session-manager'
+        );
+        const page = remoteBrowserSessionManager.getConnectPage(connectSessionId);
+        if (!page) {
+          json(res, 404, {
+            ok: false,
+            error: 'No live Connect page for session (expired or not waiting_for_login)',
+          });
+          return;
+        }
+
+        pushWorkerLog(
+          'info',
+          `http_jobs_connect_act start sessionId=${connectSessionId} action=${action}`,
+        );
+
+        if (action === 'fill_phone') {
+          const phone = String(body.phone || '').replace(/\D/g, '');
+          if (phone.length < 10) {
+            json(res, 400, { ok: false, error: 'phone must be at least 10 digits' });
+            return;
+          }
+          const phoneSelectors = [
+            'input[type="tel"]',
+            'input[name*="mobile" i]',
+            'input[name*="phone" i]',
+            'input[placeholder*="mobile" i]',
+            'input[placeholder*="phone" i]',
+            'input[placeholder*="Mobile" i]',
+            '#emailOrMobile',
+            '#mobileNum',
+            'input[type="text"]',
+          ];
+          let filled = false;
+          let used = '';
+          for (const sel of phoneSelectors) {
+            const loc = page.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) === 0) continue;
+            try {
+              await loc.click({ timeout: 2_000 });
+              await loc.fill('');
+              await loc.type(phone, { delay: 40 });
+              filled = true;
+              used = sel;
+              break;
+            } catch {
+              /* try next */
+            }
+          }
+          const clickSelectors = [
+            'button:has-text("Next")',
+            'button:has-text("Continue")',
+            'button:has-text("Get OTP")',
+            'button:has-text("Send OTP")',
+            'button:has-text("Login")',
+            'a:has-text("Get OTP")',
+            '[type="submit"]',
+          ];
+          let clicked = '';
+          for (const sel of clickSelectors) {
+            const loc = page.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) === 0) continue;
+            try {
+              await loc.click({ timeout: 2_000 });
+              clicked = sel;
+              break;
+            } catch {
+              /* try next */
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1_500));
+          json(res, 200, {
+            ok: filled,
+            action,
+            filled,
+            selector: used || null,
+            clicked: clicked || null,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        if (action === 'fill_otp') {
+          const otp = String(body.otp || '').replace(/\D/g, '');
+          if (otp.length < 4) {
+            json(res, 400, { ok: false, error: 'otp must be at least 4 digits' });
+            return;
+          }
+          const otpSelectors = [
+            'input[name*="otp" i]',
+            'input[placeholder*="otp" i]',
+            'input[placeholder*="OTP" i]',
+            'input[autocomplete="one-time-code"]',
+            'input[type="tel"]',
+            'input[type="number"]',
+            'input[maxlength="6"]',
+            'input[maxlength="4"]',
+          ];
+          let filled = false;
+          let used = '';
+          for (const sel of otpSelectors) {
+            const loc = page.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) === 0) continue;
+            try {
+              await loc.click({ timeout: 2_000 });
+              await loc.fill('');
+              await loc.type(otp, { delay: 50 });
+              filled = true;
+              used = sel;
+              break;
+            } catch {
+              /* try next */
+            }
+          }
+          const submitSelectors = [
+            'button:has-text("Verify")',
+            'button:has-text("Submit")',
+            'button:has-text("Continue")',
+            'button:has-text("Login")',
+            '[type="submit"]',
+          ];
+          let clicked = '';
+          for (const sel of submitSelectors) {
+            const loc = page.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) === 0) continue;
+            try {
+              await loc.click({ timeout: 2_000 });
+              clicked = sel;
+              break;
+            } catch {
+              /* try next */
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1_500));
+          json(res, 200, {
+            ok: filled,
+            action,
+            filled,
+            selector: used || null,
+            clicked: clicked || null,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        if (action === 'snapshot') {
+          json(res, 200, {
+            ok: true,
+            action,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        json(res, 400, { ok: false, error: `Unknown action: ${action}` });
+        return;
+      }
+
       // Debug inspect: load authenticated session, open search URL, report DOM signals.
       if (url.pathname === '/jobs/inspect-search' && req.method === 'POST') {
         if (!authorizeWorkerRequest(req)) {
