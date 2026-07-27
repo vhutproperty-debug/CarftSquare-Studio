@@ -131,6 +131,12 @@ export async function listConnectorStatuses(
   const { fetchBrowserWorkerStatus } = await import(
     '@/lib/research/browser-gateway/worker-client'
   );
+  const { expireStaleConnectSessions } = await import(
+    '@/lib/research/browser-gateway/connect-session-store'
+  );
+  // Expire timed-out Connect rows so UI cannot stick on "Connecting…" forever.
+  await expireStaleConnectSessions().catch(() => undefined);
+
   const workerOnline =
     typeof opts?.workerOnline === 'boolean'
       ? opts.workerOnline
@@ -443,11 +449,26 @@ export async function reconnectPortal(input: {
   portal: string;
   createdBy: string;
 }): Promise<{ connectSession: PublicConnectSession }> {
-  await disconnectPortal({
-    workspaceId: input.workspaceId,
+  // Soft reconnect: cancel in-flight Connect + mark needs_login, but do NOT wipe
+  // encryptedCookies/encryptedStorage or pool profiles. Evidence: Reconnect →
+  // disconnectPortal $unset wiped MagicBricks/99acres/NoBroker/SquareYards sessions
+  // that still had lastVerified history, forcing a full OTP redo with no rollback
+  // if the new Connect was cancelled by smoke/timeout.
+  // Explicit Disconnect remains the only path that clears secrets.
+  const active = await listConnectSessions(input.workspaceId, {
     portal: input.portal,
-    actorId: input.createdBy,
+    activeOnly: true,
   });
+  for (const s of active) {
+    await updateConnectSession(s.id, {
+      phase: 'cancelled',
+      message: 'Superseded by reconnect',
+      finishedAt: new Date().toISOString(),
+    });
+  }
+
+  await researchBrowserManager.cleanup(input.workspaceId, input.portal).catch(() => undefined);
+
   return startRemoteConnect(input);
 }
 

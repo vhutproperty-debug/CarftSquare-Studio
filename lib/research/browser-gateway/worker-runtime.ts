@@ -605,6 +605,47 @@ async function waitForManualLogin(input: {
       return true;
     }
 
+    // Evidence: MagicBricks often stays on accounts.* login DOM after OTP until a
+    // homepage navigation; loginForm present → Decision FAIL → login_timeout even
+    // when cookies are strong. Periodically probe verifyUrl in the same context.
+    if (
+      detectState.sawLoginSurface &&
+      poll > 0 &&
+      poll % 15 === 0 &&
+      (result.score || 0) >= 40
+    ) {
+      const verifyUrl =
+        session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
+      if (verifyUrl && verifyUrl !== session.loginUrl) {
+        const gotoVerify = handle.gotoVerify || handle.gotoLogin;
+        pushWorkerLog(
+          'info',
+          `login_wait_verify_probe sessionId=${session.id} portal=${session.portal} verifyUrl=${verifyUrl} poll=${poll}`,
+        );
+        await gotoVerify.call(handle, verifyUrl).catch((err: unknown) => {
+          pushWorkerLog(
+            'warn',
+            `login_wait_verify_probe_nav_failed sessionId=${session.id} err=${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+        const probed = await evaluateOnce('verify_probe');
+        if (probed.authenticated) {
+          pushWorkerLog(
+            'info',
+            `login_wait_success sessionId=${session.id} portal=${session.portal} via=verify_probe authScore=${probed.score}/${probed.threshold}`,
+          );
+          await updateConnectSession(session.id, {
+            message: CONNECT_USER_MESSAGES.authenticated,
+          });
+          return true;
+        }
+        // Return to login surface so the operator can continue OTP if still needed.
+        await handle.gotoLogin(session.loginUrl).catch(() => undefined);
+      }
+    }
+
     poll += 1;
     await sleep(2000);
   }
