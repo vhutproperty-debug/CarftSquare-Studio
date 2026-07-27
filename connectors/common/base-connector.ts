@@ -1,13 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Page } from 'playwright';
-import {
-  LOGIN_CONFIDENCE_THRESHOLD,
-} from '@/connectors/common/connector-lifecycle';
 import { connectorRuntime } from '@/connectors/common/connector-runtime';
-import {
-  evaluatePageLoginConfidence,
-  type LoginConfidenceResult,
-  type LoginConfidenceSignal,
+import type {
+  LoginConfidenceResult,
+  LoginConfidenceSignal,
 } from '@/connectors/common/login-confidence';
 import type { PortalConnector } from '@/connectors/common/portal-connector';
 import { connectorLog } from '@/lib/research/browser/connector-log';
@@ -42,11 +38,18 @@ export abstract class BasePortalConnector implements PortalConnector {
   abstract readonly key: string;
   abstract readonly displayName: string;
 
-  /** Portal login / post-login validation entry URL. */
+  /** Portal login / OTP entry URL (may show a login form). */
   getLoginUrl(): string {
     const meta = getPortalMeta(this.key);
     if (!meta?.loginUrl) throw new Error(`No loginUrl configured for portal ${this.key}`);
     return meta.loginUrl;
+  }
+
+  /** Post-auth verification URL — never a login-only page. */
+  getVerifyUrl(): string {
+    const meta = getPortalMeta(this.key);
+    if (!meta?.verifyUrl) throw new Error(`No verifyUrl configured for portal ${this.key}`);
+    return meta.verifyUrl;
   }
 
   /**
@@ -65,10 +68,28 @@ export abstract class BasePortalConnector implements PortalConnector {
     return [];
   }
 
-  /** Multi-signal login check — never URL-only. */
+  /** Multi-signal login check via AuthEvidenceEngine — never URL-only. */
   async isLoggedIn(page: Page): Promise<LoginConfidenceResult> {
-    const extra = await this.portalAuthExtraSignals(page);
-    return evaluatePageLoginConfidence(page, extra, LOGIN_CONFIDENCE_THRESHOLD);
+    const { evaluatePageAuth } = await import(
+      '@/lib/research/auth-detection/auth-evidence-engine'
+    );
+    const result = await evaluatePageAuth(page, {
+      portal: this.key,
+      mode: 'verify',
+      verifyUrl: this.getVerifyUrl(),
+    });
+    return {
+      authenticated: result.authenticated,
+      confidence: result.confidence,
+      threshold: result.threshold,
+      signals: result.signals.map((s) => ({
+        name: s.id,
+        pass: s.pass,
+        weight: s.maxPoints,
+        detail: s.detail,
+      })),
+      summary: result.summary,
+    };
   }
 
   protected abstract buildSearchUrl(criteria: ConnectorSearchRequest['criteria']): string;

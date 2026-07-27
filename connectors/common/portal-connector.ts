@@ -16,6 +16,7 @@ export interface PortalConnector {
   readonly key: string;
   readonly displayName: string;
   getLoginUrl?(): string;
+  getVerifyUrl?(): string;
   isLoggedIn?(page: Page): Promise<LoginConfidenceResult>;
   connect(workspaceId: string): Promise<ResearchPortalConnection>;
   validateSession(workspaceId: string): Promise<{

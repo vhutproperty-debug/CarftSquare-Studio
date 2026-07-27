@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-07-27T09:06:15.542Z",
+  "verdict": "FIRST AUTH LOSS POINT (evidence): looksLoggedOut() URL heuristic on loginUrl during validateSession. Affected: magicbricks, nobroker, squareyards",
+  "dualDetectors": {
+    "connectWait": "lib/research/browser-gateway/login-detect.ts AUTH_SCORE_THRESHOLD=6",
+    "validateSession": "lib/research/auth-detection/auth-evidence.ts + login-confidence.ts threshold=60"
+  },
+  "portals": [
+    {
+      "portal": "housing",
+      "loginUrl": "https://housing.com/user-profile",
+      "looksLoggedOutOnLoginUrl": false,
+      "firstAuthLossPoint": "Housing loginUrl is /user-profile (URL heuristic OK) — if needs_login, loss is later (confidence DOM / restore)",
+      "rootCause": "URL short-circuit not the primary cause for this portal; inspect live confidence / restore traces.",
+      "tracePath": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\auth-traces\\Housing-auth-trace.json",
+      "liveRan": false
+    },
+    {
+      "portal": "magicbricks",
+      "loginUrl": "https://www.magicbricks.com/?login=true",
+      "looksLoggedOutOnLoginUrl": true,
+      "firstAuthLossPoint": "looksLoggedOut: validateSession navigates to loginUrl containing \"login\"",
+      "rootCause": "ROOT CAUSE (evidence): looksLoggedOut short-circuit on loginUrl during post-Connect validateSession.",
+      "tracePath": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\auth-traces\\MagicBricks-auth-trace.json",
+      "liveRan": false
+    },
+    {
+      "portal": "99acres",
+      "loginUrl": "https://www.99acres.com/",
+      "looksLoggedOutOnLoginUrl": false,
+      "firstAuthLossPoint": "99acres loginUrl is homepage (URL heuristic OK) — if needs_login, loss is later (confidence DOM / captcha / restore)",
+      "rootCause": "URL short-circuit not the primary cause for this portal; inspect live confidence / restore traces.",
+      "tracePath": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\auth-traces\\99acres-auth-trace.json",
+      "liveRan": false
+    },
+    {
+      "portal": "nobroker",
+      "loginUrl": "https://www.nobroker.in/users/login",
+      "looksLoggedOutOnLoginUrl": true,
+      "firstAuthLossPoint": "looksLoggedOut: validateSession navigates to loginUrl containing \"login\"",
+      "rootCause": "ROOT CAUSE (evidence): looksLoggedOut short-circuit on loginUrl during post-Connect validateSession.",
+      "tracePath": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\auth-traces\\NoBroker-auth-trace.json",
+      "liveRan": false
+    },
+    {
+      "portal": "squareyards",
+      "loginUrl": "https://www.squareyards.com/user/login",
+      "looksLoggedOutOnLoginUrl": true,
+      "firstAuthLossPoint": "looksLoggedOut: validateSession navigates to loginUrl containing \"login\"",
+      "rootCause": "ROOT CAUSE (evidence): looksLoggedOut short-circuit on loginUrl during post-Connect validateSession.",
+      "tracePath": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\auth-traces\\SquareYards-auth-trace.json",
+      "liveRan": false
+    }
+  ]
+}

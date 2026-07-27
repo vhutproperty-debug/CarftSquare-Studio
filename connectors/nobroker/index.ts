@@ -13,6 +13,10 @@ export class NobrokerConnector extends BasePortalConnector {
     return 'https://www.nobroker.in/users/login';
   }
 
+  getVerifyUrl(): string {
+    return 'https://www.nobroker.in/';
+  }
+
   protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
     const body = (await page.content().catch(() => '')).toLowerCase();
     return [

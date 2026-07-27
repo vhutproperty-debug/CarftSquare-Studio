@@ -1,0 +1,111 @@
+{
+  "portal": "housing",
+  "portalDisplayName": "Housing.com",
+  "generatedAt": "2026-07-27T09:06:10.671Z",
+  "phase": "static_pipeline_analysis",
+  "lifecycle": {
+    "browserLaunched": false,
+    "persistentProfileRestored": false,
+    "loginPageOpened": false,
+    "userCompletedLogin": null,
+    "waitedNetworkIdle": false,
+    "waitedExtraSettleMs": 0
+  },
+  "page": {
+    "url": "https://housing.com/user-profile",
+    "title": "(static analysis — no live page)",
+    "httpStatus": null,
+    "screenshotPath": null,
+    "htmlPath": null,
+    "htmlLength": 0
+  },
+  "cookies": {
+    "count": 0,
+    "names": []
+  },
+  "storage": {
+    "localStorageKeys": [],
+    "sessionStorageKeys": [],
+    "localStorageEmpty": true,
+    "sessionStorageEmpty": true
+  },
+  "signals": [
+    {
+      "id": "looks_logged_out_on_login_url",
+      "category": "pipeline",
+      "label": "looksLoggedOut(loginUrl)",
+      "pass": true,
+      "points": 0,
+      "maxPoints": 0,
+      "detail": "FALSE — URL \"https://housing.com/user-profile\" does not trip looksLoggedOut by URL alone"
+    },
+    {
+      "id": "dual_detector",
+      "category": "pipeline",
+      "label": "Dual detector systems",
+      "pass": false,
+      "points": 0,
+      "maxPoints": 0,
+      "detail": "Connect: login-detect.ts (threshold 6). Validate: login-confidence.ts (threshold 60%). Different signals and thresholds."
+    },
+    {
+      "id": "browser_closed_before_validate",
+      "category": "pipeline",
+      "label": "Browser closed before validate",
+      "pass": false,
+      "points": 0,
+      "maxPoints": 0,
+      "detail": "worker-runtime closes Connect Chromium and deletes connect profile, then opens a new automation context and re-navigates to loginUrl."
+    }
+  ],
+  "confidence": {
+    "cookies": 0,
+    "profile": 0,
+    "logout": 0,
+    "storage": 0,
+    "api": 0,
+    "navigation": 0,
+    "security": 0,
+    "other": 0,
+    "rawTotal": 0,
+    "total": 0,
+    "maxPossible": 0,
+    "threshold": 60,
+    "pass": false,
+    "pointsLost": []
+  },
+  "failureReport": {
+    "whichSignalsFailed": [
+      "dual_detector",
+      "browser_closed_before_validate"
+    ],
+    "whichSelectorsFailed": [],
+    "expectedCookies": [
+      "session",
+      "token",
+      "auth",
+      "user",
+      "login"
+    ],
+    "missingCookies": [],
+    "localStorageEmpty": true,
+    "sessionStorageEmpty": true,
+    "authenticatedDomExisted": false,
+    "unexpectedRedirect": false,
+    "confidenceDroppedBecause": "Housing loginUrl is /user-profile (URL heuristic OK) — if needs_login, loss is later (confidence DOM / restore)",
+    "firstAuthLossPoint": "Housing loginUrl is /user-profile (URL heuristic OK) — if needs_login, loss is later (confidence DOM / restore)"
+  },
+  "sessionRestore": null,
+  "pipelineNotes": [
+    "Evidence source: code path in lib/research/sessions/browser-session-manager.ts looksLoggedOut()",
+    "Evidence source: worker-runtime.ts stores sessionStatus=needs_login then validateSession()",
+    "Evidence source: RESEARCH_PORTALS loginUrl config",
+    "Portal loginUrl: https://housing.com/user-profile",
+    "urlLooksLogin=false",
+    "CODE: browser-session-manager.ts looksLoggedOut() — URL does not trip looksLoggedOut",
+    "CODE: worker-runtime.ts upsertBrowserSession(... sessionStatus: \"needs_login\") BEFORE validateSession",
+    "CODE: worker-runtime.ts await handle.close(); await removeConnectProfileDir(profileDir); THEN validate",
+    "LIVE skipped: no encryptedCookies in Mongo for this portal"
+  ],
+  "rootCauseHypothesis": "URL short-circuit not the primary cause for this portal; inspect live confidence / restore traces."
+}

@@ -4,6 +4,7 @@
  */
 
 import { LOGIN_CONFIDENCE_THRESHOLD } from '@/connectors/common/connector-lifecycle';
+import { getPortalMeta } from '@/lib/research/browser/config';
 import { friendlyConnectError } from '@/lib/research/browser-gateway/connect-messages';
 import type { ConnectFlowPhase } from '@/lib/research/browser-gateway/types';
 import type {
@@ -287,6 +288,7 @@ export function buildConnectorDiagnostics(input: {
   liveValidated?: boolean;
   validationLatencyMs?: number | null;
   rawError?: string | null;
+  portalKey?: string;
   runtime?: {
     state?: string | null;
     workerPid?: number | null;
@@ -314,7 +316,11 @@ export function buildConnectorDiagnostics(input: {
     validationLatencyMs,
     rawError,
     runtime,
+    portalKey,
   } = input;
+
+  const meta = portalKey ? getPortalMeta(portalKey) : undefined;
+  const verifyUrl = meta?.verifyUrl ?? null;
 
   const loginOk = browser?.sessionStatus === 'valid' && display.sessionExists;
   const researchReady = display.availableForResearch;
@@ -382,15 +388,34 @@ export function buildConnectorDiagnostics(input: {
           : `${loginConfidence}/100 (threshold ${LOGIN_CONFIDENCE_THRESHOLD})`,
     },
     {
-      id: 'cookies',
-      label: 'Session cookies recorded',
-      ok: display.sessionExists,
+      id: 'verify_url',
+      label: 'Verify URL',
+      ok: Boolean(verifyUrl),
+      detail: verifyUrl || 'Not configured',
+    },
+    {
+      id: 'storage_state',
+      label: 'storageState persisted',
+      ok: Boolean(browser?.encryptedStorage) || runtime?.storageRestored || null,
+      detail: browser?.encryptedStorage
+        ? 'Encrypted storageState present in session store'
+        : 'No encrypted storageState',
+    },
+    {
+      id: 'cookie_evidence',
+      label: 'Cookie evidence',
+      ok:
+        runtime?.cookieCount != null
+          ? runtime.cookieCount >= 2
+          : display.sessionExists
+            ? true
+            : null,
       detail:
         runtime?.cookieCount != null
-          ? `Last live cookie count=${runtime.cookieCount}`
+          ? `cookieCount=${runtime.cookieCount}`
           : display.sessionExists
-            ? 'Presence only — contents never exposed'
-            : undefined,
+            ? 'Cookies stored (count unknown until live validate)'
+            : 'No cookies',
     },
     {
       id: 'portal',
@@ -405,7 +430,7 @@ export function buildConnectorDiagnostics(input: {
         display.displayState === 'connection_failed'
           ? display.humanError || 'Stored validation failed'
           : liveValidated
-            ? 'Result from live worker validate'
+            ? 'Result from live worker validate on verifyUrl'
             : 'Inferred from stored session — not a live reachability probe',
     },
     {
@@ -467,5 +492,22 @@ export function buildConnectorDiagnostics(input: {
     loginConfidence,
     portalReachable: runtime?.portalReachable ?? null,
     recoveryAttempts: runtime?.recoveryAttempts ?? null,
+    verifyUrl,
+    storageStatePresent: Boolean(browser?.encryptedStorage) || runtime?.storageRestored || null,
+    authEvidenceSummary:
+      loginConfidence != null
+        ? `confidence=${loginConfidence}/100 threshold=${LOGIN_CONFIDENCE_THRESHOLD} cookies=${runtime?.cookieCount ?? 'n/a'} storage=${
+            browser?.encryptedStorage ? 'persisted' : 'missing'
+          }`
+        : null,
+    confidenceBreakdown:
+      loginConfidence != null
+        ? {
+            cookies: runtime?.cookieCount != null && runtime.cookieCount >= 3 ? 40 : 0,
+            storage: runtime?.storageRestored ? 20 : browser?.encryptedStorage ? 20 : 0,
+            total: loginConfidence,
+            threshold: LOGIN_CONFIDENCE_THRESHOLD,
+          }
+        : null,
   };
 }

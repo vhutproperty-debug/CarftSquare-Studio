@@ -13,6 +13,10 @@ export class NinetyNineAcresConnector extends BasePortalConnector {
     return 'https://www.99acres.com/';
   }
 
+  getVerifyUrl(): string {
+    return 'https://www.99acres.com/';
+  }
+
   protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
     const body = (await page.content().catch(() => '')).toLowerCase();
     return [

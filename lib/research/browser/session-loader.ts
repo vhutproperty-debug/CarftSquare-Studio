@@ -70,22 +70,35 @@ export class SessionLoader {
   ): Promise<void> {
     const portal = input.portal || 'unknown';
     const t0 = researchPerfNow();
-    const cookies = this.decryptCookies(input.encryptedCookies, portal);
-    if (cookies.length) {
+
+    // Prefer full Playwright storageState when encryptedStorage carries cookies + origins.
+    const storage = this.decryptStorage(input.encryptedStorage);
+    const stateCookies = (storage.cookies || []) as Cookie[];
+    const legacyCookies = stateCookies.length
+      ? stateCookies
+      : this.decryptCookies(input.encryptedCookies, portal);
+
+    if (legacyCookies.length) {
       const tInject = researchPerfNow();
-      await context.addCookies(cookies);
-      researchPerfLog('cookie_injection', tInject, { portal, cookieCount: cookies.length });
+      await context.addCookies(legacyCookies);
+      researchPerfLog('cookie_injection', tInject, {
+        portal,
+        cookieCount: legacyCookies.length,
+        source: stateCookies.length ? 'storageState' : 'encryptedCookies',
+      });
+      connectorLog(portal, 'storage_state_restore', {
+        cookieCount: legacyCookies.length,
+        origins: (storage.origins || []).length,
+        source: stateCookies.length ? 'storageState' : 'encryptedCookies',
+      });
     }
 
-    const storage = this.decryptStorage(input.encryptedStorage);
     const origins = (storage.origins || []).filter((o) => o.localStorage?.length);
     if (origins.length) {
-      // Reuse one page across origins instead of open/close per origin.
       const page = await context.newPage();
       try {
         for (const originEntry of origins) {
           await page.goto(originEntry.origin, { waitUntil: 'domcontentloaded' });
-          // Plain string expression — never pass a TS/tsx-compiled closure (avoids `__name`).
           await page.evaluate(
             `((items) => { for (const item of items) { window.localStorage.setItem(item.name, item.value); } })(${JSON.stringify(
               originEntry.localStorage,
@@ -96,9 +109,17 @@ export class SessionLoader {
         await page.close().catch(() => undefined);
       }
     }
-    researchPerfLog('session_apply', t0, { portal, origins: origins.length });
+    researchPerfLog('session_apply', t0, {
+      portal,
+      origins: origins.length,
+      cookieCount: legacyCookies.length,
+    });
   }
 
+  /**
+   * Capture Playwright storageState (cookies + origins/localStorage) and encrypt.
+   * encryptedStorage is the canonical session blob; encryptedCookies is derived for compat.
+   */
   async captureFromContext(
     context: BrowserContext,
     portal = 'unknown',
@@ -106,10 +127,15 @@ export class SessionLoader {
     encryptedCookies: string;
     encryptedStorage: string;
     cookieCount: number;
+    storageStateOrigins: number;
   }> {
     const state = await context.storageState();
     const cookies = state.cookies as Cookie[];
-    connectorLog(portal, 'cookie_capture', { cookieCount: cookies.length });
+    const origins = state.origins?.length ?? 0;
+    connectorLog(portal, 'storage_state_capture', {
+      cookieCount: cookies.length,
+      origins,
+    });
     return {
       encryptedCookies: this.encryptCookies(cookies, portal),
       encryptedStorage: this.encryptStorage({
@@ -117,6 +143,7 @@ export class SessionLoader {
         origins: state.origins,
       }),
       cookieCount: cookies.length,
+      storageStateOrigins: origins,
     };
   }
 }

@@ -18,6 +18,10 @@ export class HousingConnector extends BasePortalConnector {
     return 'https://housing.com/user-profile';
   }
 
+  getVerifyUrl(): string {
+    return 'https://housing.com/user-profile';
+  }
+
   protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
     const body = (await page.content().catch(() => '')).toLowerCase();
     return [

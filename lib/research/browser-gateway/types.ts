@@ -32,6 +32,8 @@ export type ConnectSession = {
   previewPath?: string;
   previewUpdatedAt?: string;
   loginUrl: string;
+  /** Post-auth verification URL (never a login-only page). */
+  verifyUrl?: string;
   message?: string;
   errorMessage?: string;
   browserSessionId?: string;
@@ -134,6 +136,18 @@ export type ConnectorDiagnostics = {
   loginConfidence?: number | null;
   portalReachable?: boolean | null;
   recoveryAttempts?: number | null;
+  /** AuthEvidenceEngine diagnostics */
+  verifyUrl?: string | null;
+  storageStatePresent?: boolean | null;
+  authEvidenceSummary?: string | null;
+  confidenceBreakdown?: {
+    cookies?: number;
+    storage?: number;
+    dom?: number;
+    security?: number;
+    total?: number;
+    threshold?: number;
+  } | null;
 };
 
 export type BrowserLaunchHandle = {
@@ -162,6 +176,9 @@ export type BrowserLaunchHandle = {
     title?: string;
     bodySnippet: string;
     cookieCount?: number;
+    cookieNames?: string[];
+    localStorageKeys?: string[];
+    sessionStorageKeys?: string[];
     readyState?: string;
     settled?: boolean;
     networkIdleMs?: number;
@@ -187,8 +204,10 @@ export type BrowserLaunchHandle = {
   }>;
   /** Write a JPEG/PNG preview frame for UI polling. */
   writePreview?: (absolutePath: string) => Promise<void>;
-  /** Navigate to login URL. */
-  gotoLogin: (loginUrl: string) => Promise<void>;
+  /** Navigate to login or verify URL (same context). */
+  gotoLogin: (url: string) => Promise<void>;
+  /** Alias — navigate to portal verifyUrl on the same browser context. */
+  gotoVerify?: (verifyUrl: string) => Promise<void>;
 };
 
 export interface BrowserProviderAdapter {

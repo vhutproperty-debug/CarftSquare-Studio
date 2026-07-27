@@ -80,6 +80,7 @@ export async function startRemoteConnect(input: {
     portal: input.portal,
     portalName: meta.displayName,
     loginUrl: meta.loginUrl,
+    verifyUrl: meta.verifyUrl,
     createdBy: input.createdBy,
     provider: resolveBrowserProvider(),
   });
@@ -245,6 +246,7 @@ export async function listConnectorStatuses(
         liveValidated: Boolean(opts?.liveValidated),
         validationLatencyMs: null,
         rawError,
+        portalKey: c.portalKey,
         runtime: connectorRuntime.peek(workspaceId, c.portalKey),
       }),
     };

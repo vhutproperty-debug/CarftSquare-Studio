@@ -13,6 +13,10 @@ export class MagicbricksConnector extends BasePortalConnector {
     return 'https://www.magicbricks.com/?login=true';
   }
 
+  getVerifyUrl(): string {
+    return 'https://www.magicbricks.com/';
+  }
+
   protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
     const body = (await page.content().catch(() => '')).toLowerCase();
     return [

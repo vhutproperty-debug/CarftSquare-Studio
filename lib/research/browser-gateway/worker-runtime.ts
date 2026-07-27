@@ -1,8 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { hostname } from 'os';
-import { requirePortalConnector } from '@/connectors/registry';
-import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
+import { RESEARCH_BROWSER_CONFIG, getPortalMeta } from '@/lib/research/browser/config';
 import { acquireProfileLock } from '@/lib/research/browser/profile-lock';
 import {
   prepareConnectProfileDir,
@@ -107,7 +106,6 @@ export async function processNextConnectJob(): Promise<boolean> {
   await fs.mkdir(previewDir, { recursive: true }).catch(() => undefined);
 
   let handle: BrowserLaunchHandle | null = null;
-  let validationAttempt = 0;
   let profileDir = '';
   let profileLock: { release: () => Promise<void> } | null = null;
 
@@ -115,8 +113,7 @@ export async function processNextConnectJob(): Promise<boolean> {
     // Exclusive lock: one browser per Connect session across workers/processes.
     profileLock = await acquireProfileLock(`connect:${session.id}`);
 
-    // Outer loop: wait for login → capture → validate. On recoverable validation
-    // failures (e.g. HTTP 406), reopen the browser and let the user log in again.
+    // Login → same-context verify → capture storageState → persist valid → close.
     while (true) {
       const stopped = await ensureCancelled(session.id, handle);
       if (stopped) {
@@ -240,6 +237,62 @@ export async function processNextConnectJob(): Promise<boolean> {
         'info',
         `connect_pipeline Authentication Detected sessionId=${session.id} portal=${session.portal}`,
       );
+
+      // Same-context verify on verifyUrl BEFORE capture/persist (architectural requirement).
+      const verifyUrl =
+        session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
+      pushWorkerLog(
+        'info',
+        `connect_pipeline SameContextVerify start sessionId=${session.id} portal=${session.portal} verifyUrl=${verifyUrl}`,
+      );
+      await transitionConnectSession({
+        sessionId: session.id,
+        to: 'validating',
+        message: CONNECT_USER_MESSAGES.validating,
+        caller: 'processNextConnectJob.same_context_verify',
+      });
+
+      const gotoVerify = handle.gotoVerify || handle.gotoLogin;
+      await gotoVerify.call(handle, verifyUrl);
+      await new Promise((r) => setTimeout(r, 4_000));
+      const verifySignals = await handle.pageSignals({
+        settle: true,
+        settleTimeoutMs: 20_000,
+        log: (line) => pushWorkerLog('info', line),
+      });
+      const verifyScore = scoreAuthentication({
+        ...verifySignals,
+        settled: true,
+        readyState: 'complete',
+      });
+      for (const line of verifyScore.summary.split('\n')) {
+        pushWorkerLog('info', `same_context_verify ${line}`);
+      }
+
+      if (!verifyScore.authenticated) {
+        pushWorkerLog(
+          'error',
+          `connect_failed sessionId=${session.id} reason=same_context_verify_failed confidence=${verifyScore.score}/${verifyScore.threshold}`,
+        );
+        await transitionConnectSession({
+          sessionId: session.id,
+          to: 'failed',
+          errorMessage: friendlyConnectError(verifyScore.summary),
+          message: friendlyConnectError(verifyScore.summary),
+          finishedAt: new Date().toISOString(),
+          caller: 'processNextConnectJob.same_context_verify_failed',
+        });
+        await handle.close().catch(() => undefined);
+        handle = null;
+        markWorkerJobDone();
+        return true;
+      }
+
+      pushWorkerLog(
+        'info',
+        `connect_pipeline SameContextVerify PASS sessionId=${session.id} confidence=${verifyScore.score}/${verifyScore.threshold}`,
+      );
+
       await transitionConnectSession({
         sessionId: session.id,
         to: 'capturing',
@@ -250,7 +303,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       const cookieCount = secrets.cookieCount ?? 0;
       pushWorkerLog(
         'info',
-        `connect_pipeline Cookies Captured sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount}`,
+        `connect_pipeline storageState Captured sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} encryptedCookiesBytes=${secrets.encryptedCookies?.length ?? 0} encryptedStorageBytes=${secrets.encryptedStorage?.length ?? 0}`,
       );
 
       await transitionConnectSession({
@@ -260,120 +313,55 @@ export async function processNextConnectJob(): Promise<boolean> {
         cookieCount,
         caller: 'processNextConnectJob.encrypting',
       });
-      pushWorkerLog(
-        'info',
-        `connect_pipeline Encrypted sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount}`,
-      );
 
-      pushWorkerLog(
-        'info',
-        `browser_close_before_validation sessionId=${session.id} portal=${session.portal}`,
-      );
-      await handle.close();
-      handle = null;
-      await removeConnectProfileDir(profileDir);
-
-      // Store encrypted secrets but do NOT mark session valid until validateSession succeeds.
+      // Persist as valid — same-context verify already proved auth. Do not reopen a
+      // fresh browser against loginUrl (that was the prior detector bug).
       const browserSession = await upsertBrowserSession({
         workspaceId: session.workspaceId,
         portal: session.portal,
         browserProfile: `encrypted:${session.portal}`,
         encryptedCookies: secrets.encryptedCookies,
         encryptedStorage: secrets.encryptedStorage,
-        sessionStatus: 'needs_login',
+        sessionStatus: 'valid',
+        lastVerified: new Date().toISOString(),
+        lastValidationError: '',
+      });
+
+      await upsertPortalConnection({
+        workspaceId: session.workspaceId,
+        portalKey: session.portal,
+        portalName: session.portalName,
+        status: 'connected',
+        lastError: null,
       });
 
       await transitionConnectSession({
         sessionId: session.id,
-        to: 'validating',
-        message: CONNECT_USER_MESSAGES.validating,
+        to: 'connected',
+        message: CONNECT_USER_MESSAGES.connected,
+        finishedAt: new Date().toISOString(),
         browserSessionId: browserSession.id,
         cookieCount,
-        caller: 'processNextConnectJob.validating',
+        validationOk: true,
+        caller: 'processNextConnectJob.same_context_connected',
       });
       pushWorkerLog(
         'info',
-        `connect_pipeline Validation Started sessionId=${session.id} portal=${session.portal} attempt=${validationAttempt + 1} browserSessionId=${browserSession.id}`,
+        `connect_pipeline Connected (same-context verified) sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} browserSessionId=${browserSession.id}`,
       );
 
-      const connector = requirePortalConnector(session.portal);
-      const validation = await connector.validateSession(session.workspaceId);
-      const validationHttp =
-        'httpStatus' in validation ? (validation as { httpStatus?: number | null }).httpStatus : undefined;
       pushWorkerLog(
-        validation.ok ? 'info' : 'warn',
-        `validation_result sessionId=${session.id} portal=${session.portal} ok=${validation.ok} status=${validation.status} httpStatus=${
-          validationHttp ?? 'n/a'
-        } message=${validation.message || ''}`,
+        'info',
+        `browser_close_after_persist sessionId=${session.id} portal=${session.portal}`,
       );
-
-      if (validation.ok) {
-        await upsertPortalConnection({
-          workspaceId: session.workspaceId,
-          portalKey: session.portal,
-          portalName: session.portalName,
-          status: 'connected',
-          lastError: null,
-        });
-
-        await transitionConnectSession({
-          sessionId: session.id,
-          to: 'connected',
-          message: CONNECT_USER_MESSAGES.connected,
-          finishedAt: new Date().toISOString(),
-          browserSessionId: browserSession.id,
-          cookieCount,
-          validationOk: true,
-          caller: 'processNextConnectJob.validation_passed',
-        });
-        pushWorkerLog(
-          'info',
-          `connect_pipeline Validation Passed → Connected sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount}`,
-        );
-        setWorkerError(null);
-        markWorkerJobDone();
-        return true;
-      }
-
-      const detail =
-        validation.message ||
-        `Validation failed after login (status=${validation.status})`;
-      const recoverable = isRecoverableValidationFailure(detail, validation);
-
-      if (!recoverable || validationAttempt + 1 >= MAX_VALIDATION_RETRIES) {
-        const friendly = friendlyConnectError(detail);
-        await transitionConnectSession({
-          sessionId: session.id,
-          to: 'failed',
-          errorMessage: friendly,
-          message: friendly,
-          finishedAt: new Date().toISOString(),
-          caller: 'processNextConnectJob.validation_failed',
-        });
-        pushWorkerLog(
-          'error',
-          `connect_failed sessionId=${session.id} reason=validation_failed detail=${detail}`,
-        );
-        setWorkerError(friendly);
-        markWorkerJobDone();
-        return true;
-      }
-
-      validationAttempt += 1;
-      pushWorkerLog(
-        'warn',
-        `validation_retry sessionId=${session.id} portal=${session.portal} attempt=${validationAttempt}/${MAX_VALIDATION_RETRIES} reason=${detail}`,
-      );
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'waiting_for_login',
-        message: CONNECT_USER_MESSAGES.browserRetry,
-        errorMessage: friendlyConnectError(detail),
-        caller: 'processNextConnectJob.validation_retry',
-      });
-      setWorkerError(friendlyConnectError(detail));
-      // Fresh profile on retry — never reuse Chromium user-data-dir.
+      await handle.close();
+      handle = null;
       await removeConnectProfileDir(profileDir);
+      profileDir = '';
+
+      setWorkerError(null);
+      markWorkerJobDone();
+      return true;
     }
   } catch (error) {
     const friendly = friendlyConnectError(error);
@@ -448,7 +436,12 @@ async function waitForManualLogin(input: {
       pollIndex: poll,
       log: (line) => pushWorkerLog('info', line),
     });
-    const merged = { ...signals, loginUrl: session.loginUrl };
+    const merged = {
+      ...signals,
+      cookieNames: signals.cookieNames,
+      localStorageKeys: signals.localStorageKeys,
+      sessionStorageKeys: signals.sessionStorageKeys,
+    };
     detectState = observeLoginSignals(merged, detectState);
     const result = scoreAuthentication(merged, detectState);
     const remainingMs = Math.max(0, deadline - Date.now());
@@ -526,38 +519,15 @@ async function waitForManualLogin(input: {
 
     const result = await evaluateOnce('poll');
     if (result.authenticated) {
-      // Guard: Housing login URL == profile URL. Accept when:
-      // 1) we observed a login/OTP surface this session, OR
-      // 2) strong profile chrome (avatar+name+edit), OR
-      // 3) established session: profile URL + cookies + no login form + ≥2 DOM signals
-      //    (covers already-authenticated browsers that never show a login form).
-      const pass = (name: string) =>
-        Boolean(result.signals.find((s) => s.name === name)?.pass);
-      const avatar = pass('Avatar');
-      const accountName = pass('Profile name');
-      const editProfile = pass('Edit profile');
-      const logoutOrLink = pass('Logout/profile link');
-      const strongDom = avatar && accountName && editProfile;
-      const establishedSession =
-        pass('URL') &&
-        pass('Cookies') &&
-        pass('Login form absent') &&
-        [avatar, accountName, editProfile, logoutOrLink].filter(Boolean).length >= 2;
-      if (!detectState.sawLoginSurface && !strongDom && !establishedSession) {
-        pushWorkerLog(
-          'warn',
-          `login_wait_reject_premature sessionId=${session.id} score=${result.score} sawLoginSurface=false strongDom=false establishedSession=false — keep waiting`,
-        );
-      } else {
-        pushWorkerLog(
-          'info',
-          `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} sawLoginSurface=${detectState.sawLoginSurface} strongDom=${strongDom} establishedSession=${establishedSession}`,
-        );
-        await updateConnectSession(session.id, {
-          message: CONNECT_USER_MESSAGES.authenticated,
-        });
-        return true;
-      }
+      // AuthEvidenceEngine already scored cookies/storage/DOM — no URL heuristics.
+      pushWorkerLog(
+        'info',
+        `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} sawLoginSurface=${detectState.sawLoginSurface}`,
+      );
+      await updateConnectSession(session.id, {
+        message: CONNECT_USER_MESSAGES.authenticated,
+      });
+      return true;
     }
 
     poll += 1;

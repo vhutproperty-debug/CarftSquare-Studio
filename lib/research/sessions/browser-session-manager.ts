@@ -45,15 +45,6 @@ function isBrowserLifecycleError(message: string): boolean {
   );
 }
 
-function looksLoggedOut(url: string, body: string): boolean {
-  const u = url.toLowerCase();
-  const b = body.toLowerCase();
-  const loginSignals = ['login', 'sign in', 'otp', 'password', 'verify'];
-  return loginSignals.some(
-    (s) => (u.includes(s) && !u.includes('profile')) || b.includes('enter otp'),
-  );
-}
-
 function isSecurityChallenge(status: number | null, title: string, body: string): boolean {
   if (status === 406) return true;
   const t = title.toLowerCase();
@@ -129,10 +120,13 @@ export class BrowserSessionManager implements SessionManager {
     if (!session) return { ok: false, status: 'error', message: 'Session not found.' };
 
     const portal = session.portal || session.portalKey || 'unknown';
+    const meta = getPortalMeta(session.portal);
     connectorLog(portal, 'validation_request', {
       sessionId,
-      loginUrl: getPortalMeta(portal)?.loginUrl,
+      verifyUrl: meta?.verifyUrl,
+      loginUrl: meta?.loginUrl,
       hasEncryptedCookies: Boolean(session.encryptedCookies),
+      hasEncryptedStorage: Boolean(session.encryptedStorage),
       expiresAt: session.expiresAt,
     });
 
@@ -146,15 +140,14 @@ export class BrowserSessionManager implements SessionManager {
       return { ok: false, status: 'needs_login', message, responseKind: 'other' };
     }
 
-    const meta = getPortalMeta(session.portal);
     if (!meta) {
       return { ok: false, status: 'error', message: 'Unknown portal.' };
     }
 
-    if (!session.encryptedCookies) {
+    if (!session.encryptedCookies && !session.encryptedStorage) {
       await touchBrowserSession(sessionId, {
         sessionStatus: 'needs_login',
-        lastValidationError: 'Login required — no encrypted cookies',
+        lastValidationError: 'Login required — no encrypted storageState',
       });
       return { ok: false, status: 'needs_login', message: 'Login required.' };
     }
@@ -186,19 +179,23 @@ export class BrowserSessionManager implements SessionManager {
         let title = '';
         let bodySnippet = '';
         try {
-          // Prefer BaseConnector.getLoginUrl when available (portal-specific).
-          let loginUrl = meta.loginUrl;
+          // Always verify against verifyUrl — never loginUrl.
+          let verifyUrl = meta.verifyUrl;
           try {
             const { getPortalConnector } = await import('@/connectors/registry');
             const connector = getPortalConnector(portal);
-            if (connector && 'getLoginUrl' in connector && typeof connector.getLoginUrl === 'function') {
-              loginUrl = (connector as { getLoginUrl: () => string }).getLoginUrl();
+            if (
+              connector &&
+              'getVerifyUrl' in connector &&
+              typeof (connector as { getVerifyUrl?: () => string }).getVerifyUrl === 'function'
+            ) {
+              verifyUrl = (connector as { getVerifyUrl: () => string }).getVerifyUrl();
             }
           } catch {
-            /* registry unavailable — use config */
+            /* config fallback */
           }
 
-          const response = await this.pages.goto(page, loginUrl);
+          const response = await this.pages.goto(page, verifyUrl);
           httpStatus = response?.status() ?? null;
           finalUrl = page.url();
           title = await page.title().catch(() => '');
@@ -210,6 +207,7 @@ export class BrowserSessionManager implements SessionManager {
             httpStatus,
             kind,
             finalUrl,
+            verifyUrl,
             title,
             bodySnippet,
           });
@@ -238,59 +236,72 @@ export class BrowserSessionManager implements SessionManager {
             } satisfies ValidationProbe;
           }
 
-          if (looksLoggedOut(finalUrl, body)) {
-            return {
-              httpStatus,
-              finalUrl,
-              title,
-              bodySnippet,
-              kind: kind === '200' ? '200' : kind,
-              authenticated: false,
-              message: 'Login expired — portal shows login/OTP surface',
-            } satisfies ValidationProbe;
-          }
+          const {
+            evaluatePageAuth,
+          } = await import('@/lib/research/auth-detection/auth-evidence-engine');
+          const {
+            writePortalAuthTrace,
+          } = await import('@/lib/research/auth-detection/auth-evidence');
 
-          // Multi-signal login confidence (BaseConnector) — never URL-only / bare 200.
-          let confidence = 0;
-          let authenticated = false;
-          let confidenceSummary = '';
+          await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+          await new Promise((r) => setTimeout(r, 4_000));
+
+          const evidence = await evaluatePageAuth(page, {
+            portal,
+            mode: 'verify',
+            verifyUrl,
+            settled: true,
+            readyState: 'complete',
+          });
+
+          // Persist diagnostic trace (best-effort).
           try {
-            const { getPortalConnector } = await import('@/connectors/registry');
-            const connector = getPortalConnector(portal);
-            if (connector && 'isLoggedIn' in connector && typeof (connector as { isLoggedIn: (p: typeof page) => Promise<unknown> }).isLoggedIn === 'function') {
-              const result = await (connector as { isLoggedIn: (p: typeof page) => Promise<{ authenticated: boolean; confidence: number; summary: string }> }).isLoggedIn(page);
-              authenticated = result.authenticated;
-              confidence = result.confidence;
-              confidenceSummary = result.summary;
-            } else {
-              const { evaluatePageLoginConfidence } = await import(
-                '@/connectors/common/login-confidence'
-              );
-              const result = await evaluatePageLoginConfidence(page);
-              authenticated = result.authenticated;
-              confidence = result.confidence;
-              confidenceSummary = result.summary;
-            }
+            const { collectPageAuthEvidence } = await import(
+              '@/lib/research/auth-detection/auth-evidence'
+            );
+            const trace = await collectPageAuthEvidence(page, {
+              portal,
+              phase: 'validateSession_verifyUrl',
+              httpStatus,
+              loginUrl: meta.loginUrl,
+              waitedExtraSettleMs: 0,
+            });
+            // Overlay engine result onto trace confidence for operators.
+            trace.confidence = {
+              cookies: evidence.breakdown.cookies,
+              profile: evidence.breakdown.dom,
+              logout: 0,
+              storage: evidence.breakdown.storage,
+              api: 0,
+              navigation: 0,
+              security: evidence.breakdown.security,
+              other: 0,
+              rawTotal: evidence.breakdown.rawTotal,
+              total: evidence.confidence,
+              maxPossible: evidence.breakdown.maxPossible,
+              threshold: evidence.threshold,
+              pass: evidence.authenticated,
+              pointsLost: evidence.breakdown.pointsLost,
+            };
+            trace.rootCauseHypothesis = evidence.authenticated
+              ? null
+              : evidence.summary;
+            await writePortalAuthTrace(trace);
           } catch {
-            authenticated = /edit\s*profile|log\s*out|sign\s*out/.test(body);
-            confidence = authenticated ? 70 : 20;
-            confidenceSummary = authenticated
-              ? 'Fallback chrome match'
-              : 'Fallback: no auth chrome';
+            /* trace optional */
           }
 
           const { connectorRuntime } = await import('@/connectors/common/connector-runtime');
-          const cookies = await page.context().cookies().catch(() => []);
           connectorRuntime.markSessionRestored(session.workspaceId, portal, {
-            cookieCount: cookies.length,
-            storageRestored: Boolean(session.encryptedStorage),
+            cookieCount: evidence.cookieCount,
+            storageRestored: evidence.storageStatePresent,
           });
           connectorRuntime.markLogin(session.workspaceId, portal, {
-            confidence,
-            ok: authenticated,
+            confidence: evidence.confidence,
+            ok: evidence.authenticated,
           });
 
-          if (!authenticated) {
+          if (!evidence.authenticated) {
             return {
               httpStatus,
               finalUrl,
@@ -298,8 +309,8 @@ export class BrowserSessionManager implements SessionManager {
               bodySnippet,
               kind: kind === '200' ? '200' : kind,
               authenticated: false,
-              message: confidenceSummary || 'Login confidence below threshold.',
-              loginConfidence: confidence,
+              message: evidence.summary,
+              loginConfidence: evidence.confidence,
             } satisfies ValidationProbe;
           }
 
@@ -310,7 +321,7 @@ export class BrowserSessionManager implements SessionManager {
             bodySnippet,
             kind: kind === '200' ? '200' : kind,
             authenticated: true,
-            loginConfidence: confidence,
+            loginConfidence: evidence.confidence,
           } satisfies ValidationProbe;
         } catch (error) {
           const errMessage = error instanceof Error ? error.message : String(error);
@@ -321,7 +332,6 @@ export class BrowserSessionManager implements SessionManager {
             { httpStatus, finalUrl: page.url(), kind, error: errMessage },
             'error',
           );
-          // Do not swallow crash/lifecycle errors — withPage must invalidate + RetryManager retry.
           if (isBrowserLifecycleError(errMessage)) {
             throw error instanceof Error ? error : new Error(errMessage);
           }

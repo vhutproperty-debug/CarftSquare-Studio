@@ -55,4 +55,4 @@ export function transitionOrThrow(
 }
 
 /** Minimum login confidence (0–100) to mark Research Ready. */
-export const LOGIN_CONFIDENCE_THRESHOLD = 60;
+export { AUTH_CONFIDENCE_THRESHOLD as LOGIN_CONFIDENCE_THRESHOLD } from '@/lib/research/auth-detection/auth-evidence-engine';

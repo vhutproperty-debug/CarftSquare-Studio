@@ -13,6 +13,10 @@ export class SquareyardsConnector extends BasePortalConnector {
     return 'https://www.squareyards.com/user/login';
   }
 
+  getVerifyUrl(): string {
+    return 'https://www.squareyards.com/';
+  }
+
   protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
     const body = (await page.content().catch(() => '')).toLowerCase();
     return [

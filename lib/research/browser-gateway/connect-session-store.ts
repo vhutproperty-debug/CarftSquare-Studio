@@ -40,6 +40,7 @@ export async function createConnectSession(input: {
   portal: string;
   portalName: string;
   loginUrl: string;
+  verifyUrl?: string;
   createdBy: string;
   provider: BrowserProviderKind;
 }): Promise<ConnectSession> {
@@ -80,6 +81,7 @@ export async function createConnectSession(input: {
     phase: 'queued',
     provider: input.provider,
     loginUrl: input.loginUrl,
+    verifyUrl: input.verifyUrl,
     message: 'Queueing…',
     createdBy: input.createdBy,
     createdAt: now,

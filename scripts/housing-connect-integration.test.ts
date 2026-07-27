@@ -167,10 +167,12 @@ async function main() {
     });
     const score = scoreAuthentication({
       ...probeSignals,
-      loginUrl: 'https://housing.com/user-profile',
       // Integration fixture is fully loaded; avoid soft-skip if networkidle is noisy.
       settled: true,
       readyState: 'complete',
+      cookieNames: ['housing_session', 'auth_token', 'uid'],
+      localStorageKeys: ['housing_auth'],
+      sessionStorageKeys: [],
     });
     stage(
       'login_detection',

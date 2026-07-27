@@ -50,6 +50,9 @@ export type PageAuthProbe = {
   title: string;
   bodySnippet: string;
   cookieCount: number;
+  cookieNames: string[];
+  localStorageKeys: string[];
+  sessionStorageKeys: string[];
   readyState: string;
   settled: boolean;
   networkIdleMs: number;
@@ -332,14 +335,24 @@ export async function collectPageAuthProbe(
   const url = page.url();
   const title = await page.title().catch(() => '');
   const cookies = await context.cookies().catch(() => []);
-  const cookieCount =
-    cookies.filter((c) => {
-      const d = (c.domain || '').toLowerCase();
-      return !d || d.includes('housing') || d.includes('99acres') || d.includes('magicbricks');
-    }).length || cookies.length;
+  const cookieNames = cookies.map((c) => c.name);
+  const cookieCount = cookies.length;
+
+  const storageKeys = await page
+    .evaluate(() => {
+      try {
+        return {
+          localStorageKeys: Object.keys(localStorage),
+          sessionStorageKeys: Object.keys(sessionStorage),
+        };
+      } catch {
+        return { localStorageKeys: [] as string[], sessionStorageKeys: [] as string[] };
+      }
+    })
+    .catch(() => ({ localStorageKeys: [] as string[], sessionStorageKeys: [] as string[] }));
 
   log?.(
-    `page_inspect url=${url} title=${JSON.stringify(title)} readyState=${readyState} settled=${settled} networkIdleMs=${networkIdleMs} frames=${page.frames().length}`,
+    `page_inspect url=${url} title=${JSON.stringify(title)} readyState=${readyState} settled=${settled} networkIdleMs=${networkIdleMs} frames=${page.frames().length} cookies=${cookieCount} localStorage=${storageKeys.localStorageKeys.length} sessionStorage=${storageKeys.sessionStorageKeys.length}`,
   );
 
   // Do not score-quality-scan until settled; still return structural diagnostics.
@@ -504,6 +517,9 @@ export async function collectPageAuthProbe(
     title,
     bodySnippet: `${merged.textSample}\n${merged.htmlSample}`.slice(0, 4000).toLowerCase(),
     cookieCount,
+    cookieNames,
+    localStorageKeys: storageKeys.localStorageKeys,
+    sessionStorageKeys: storageKeys.sessionStorageKeys,
     readyState,
     settled,
     networkIdleMs,

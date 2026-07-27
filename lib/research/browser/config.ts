@@ -1,3 +1,9 @@
+/**
+ * Portal login vs verify URLs.
+ * loginUrl  — human OTP / Connect entry (may show a login form).
+ * verifyUrl — post-auth proof page (never a login-only URL).
+ */
+
 import {
   getResearchProfileRoot,
   getResearchScreenshotRoot,
@@ -40,45 +46,48 @@ export const RESEARCH_PORTALS: Array<{
   key: ResearchPortalKey;
   displayName: string;
   origin: string;
+  /** Human Connect / OTP entry. May intentionally show a login form. */
   loginUrl: string;
+  /** Post-auth verification page — never a login-only URL. */
+  verifyUrl: string;
 }> = [
   {
     key: 'housing',
     displayName: 'Housing.com',
     origin: 'https://housing.com',
     loginUrl: 'https://housing.com/user-profile',
+    // Dual-purpose profile route: shows login when anonymous, profile when authed.
+    verifyUrl: 'https://housing.com/user-profile',
   },
   {
     key: 'magicbricks',
     displayName: 'MagicBricks',
     origin: 'https://www.magicbricks.com',
-    // /userProfile returns HTTP 404 (SERVER - Error report). Homepage ?login=true
-    // returns 200 and exposes the login surface (verified 2026-07-22).
     loginUrl: 'https://www.magicbricks.com/?login=true',
+    // Homepage after auth — do not re-open ?login=true for verification.
+    verifyUrl: 'https://www.magicbricks.com/',
   },
   {
     key: '99acres',
     displayName: '99acres',
     origin: 'https://www.99acres.com',
-    // /myaccount returns HTTP 404. Homepage is the documented login entry
-    // (may present captcha / verifycaptcha for automated clients).
     loginUrl: 'https://www.99acres.com/',
+    verifyUrl: 'https://www.99acres.com/',
   },
   {
     key: 'nobroker',
     displayName: 'NoBroker',
     origin: 'https://www.nobroker.in',
-    // /profile is a soft landing; /users/login returns 200 with a login form
-    // (verified 2026-07-22). /login and /signin redirect to 404.
     loginUrl: 'https://www.nobroker.in/users/login',
+    // Origin home after auth — never /users/login for verification.
+    verifyUrl: 'https://www.nobroker.in/',
   },
   {
     key: 'squareyards',
     displayName: 'Square Yards',
     origin: 'https://www.squareyards.com',
-    // /account returns HTTP 404. /user/login returns 200 title "Login"
-    // (verified 2026-07-22).
     loginUrl: 'https://www.squareyards.com/user/login',
+    verifyUrl: 'https://www.squareyards.com/',
   },
 ];
 

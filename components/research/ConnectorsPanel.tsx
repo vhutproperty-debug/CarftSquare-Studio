@@ -658,11 +658,38 @@ export default function ConnectorsPanel() {
                           'ready'}
                       </dd>
                     </div>
+                    {c.diagnostics?.verifyUrl ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">Verify URL</dt>
+                        <dd className="max-w-[55%] truncate text-right text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.verifyUrl}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {c.diagnostics?.authEvidenceSummary ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">Auth evidence</dt>
+                        <dd className="max-w-[55%] text-right text-[11px] text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.authEvidenceSummary}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {c.diagnostics?.storageStatePresent != null ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">storageState</dt>
+                        <dd className="text-right text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.storageStatePresent ? 'persisted' : 'missing'}
+                        </dd>
+                      </div>
+                    ) : null}
                     {c.diagnostics?.loginConfidence != null ? (
                       <div className="flex justify-between gap-2">
                         <dt className="text-slate-400">Login confidence</dt>
                         <dd className="text-right text-slate-800 dark:text-slate-100">
                           {c.diagnostics.loginConfidence}/100
+                          {c.diagnostics.confidenceBreakdown
+                            ? ` (cookies ${c.diagnostics.confidenceBreakdown.cookies ?? 0}, storage ${c.diagnostics.confidenceBreakdown.storage ?? 0})`
+                            : ''}
                         </dd>
                       </div>
                     ) : null}

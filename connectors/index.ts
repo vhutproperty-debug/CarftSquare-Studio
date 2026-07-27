@@ -19,3 +19,9 @@ export {
   scoreLoginConfidence,
   evaluatePageLoginConfidence,
 } from '@/connectors/common/login-confidence';
+export {
+  AUTH_CONFIDENCE_THRESHOLD,
+  scoreAuthEvidence,
+  evaluatePageAuth,
+  verifyAuthOnPage,
+} from '@/lib/research/auth-detection/auth-evidence-engine';
