@@ -93,10 +93,8 @@ export class BrowserFactory {
         !RESEARCH_BROWSER_CONFIG.headless &&
         /Missing X server|no XServer|DISPLAY/i.test(message)
       ) {
-        const { pushWorkerLog } = await import('@/lib/research/browser-gateway/worker-state');
-        pushWorkerLog(
-          'warn',
-          `research_display_retry workspaceId=${workspaceId} portal=${portal}`,
+        console.warn(
+          `[browser-factory] research_display_retry workspaceId=${workspaceId} portal=${portal}`,
         );
         await ensureResearchDisplay({ force: true });
         await clearChromiumProfileLocks(userDataDir);
