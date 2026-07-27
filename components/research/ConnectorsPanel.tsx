@@ -653,9 +653,36 @@ export default function ConnectorsPanel() {
                     <div className="flex justify-between gap-2">
                       <dt className="text-slate-400">Browser state</dt>
                       <dd className="text-right text-slate-800 dark:text-slate-100">
-                        {c.diagnostics?.browserState || 'ready'}
+                        {c.diagnostics?.lifecycleState ||
+                          c.diagnostics?.browserState ||
+                          'ready'}
                       </dd>
                     </div>
+                    {c.diagnostics?.loginConfidence != null ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">Login confidence</dt>
+                        <dd className="text-right text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.loginConfidence}/100
+                        </dd>
+                      </div>
+                    ) : null}
+                    {c.diagnostics?.recoveryAttempts != null &&
+                    c.diagnostics.recoveryAttempts > 0 ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">Recoveries</dt>
+                        <dd className="text-right text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.recoveryAttempts}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {c.diagnostics?.cookieCount != null ? (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-slate-400">Cookie count</dt>
+                        <dd className="text-right text-slate-800 dark:text-slate-100">
+                          {c.diagnostics.cookieCount}
+                        </dd>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between gap-2">
                       <dt className="text-slate-400">Availability</dt>
                       <dd

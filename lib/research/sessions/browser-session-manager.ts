@@ -21,6 +21,7 @@ type ValidationProbe = {
   kind: '200' | '401' | '403' | '406' | 'timeout' | 'network_error' | 'other' | 'exception';
   authenticated: boolean;
   message?: string;
+  loginConfidence?: number;
 };
 
 function classifyHttpStatus(status: number | null): ValidationProbe['kind'] {
@@ -121,6 +122,7 @@ export class BrowserSessionManager implements SessionManager {
     message?: string;
     httpStatus?: number | null;
     responseKind?: ValidationProbe['kind'];
+    loginConfidence?: number;
   }> {
     const t0 = researchPerfNow();
     const session = await getBrowserSessionById(sessionId);
@@ -184,7 +186,19 @@ export class BrowserSessionManager implements SessionManager {
         let title = '';
         let bodySnippet = '';
         try {
-          const response = await this.pages.goto(page, meta.loginUrl);
+          // Prefer BaseConnector.getLoginUrl when available (portal-specific).
+          let loginUrl = meta.loginUrl;
+          try {
+            const { getPortalConnector } = await import('@/connectors/registry');
+            const connector = getPortalConnector(portal);
+            if (connector && 'getLoginUrl' in connector && typeof connector.getLoginUrl === 'function') {
+              loginUrl = (connector as { getLoginUrl: () => string }).getLoginUrl();
+            }
+          } catch {
+            /* registry unavailable — use config */
+          }
+
+          const response = await this.pages.goto(page, loginUrl);
           httpStatus = response?.status() ?? null;
           finalUrl = page.url();
           title = await page.title().catch(() => '');
@@ -236,11 +250,47 @@ export class BrowserSessionManager implements SessionManager {
             } satisfies ValidationProbe;
           }
 
-          // Do NOT default to authenticated. Housing /user-profile is also the login entry
-          // URL — require explicit post-login chrome (never treat bare 200 as Connected).
-          const looksAuthenticated = /edit\s*profile|log\s*out|sign\s*out/.test(body);
+          // Multi-signal login confidence (BaseConnector) — never URL-only / bare 200.
+          let confidence = 0;
+          let authenticated = false;
+          let confidenceSummary = '';
+          try {
+            const { getPortalConnector } = await import('@/connectors/registry');
+            const connector = getPortalConnector(portal);
+            if (connector && 'isLoggedIn' in connector && typeof (connector as { isLoggedIn: (p: typeof page) => Promise<unknown> }).isLoggedIn === 'function') {
+              const result = await (connector as { isLoggedIn: (p: typeof page) => Promise<{ authenticated: boolean; confidence: number; summary: string }> }).isLoggedIn(page);
+              authenticated = result.authenticated;
+              confidence = result.confidence;
+              confidenceSummary = result.summary;
+            } else {
+              const { evaluatePageLoginConfidence } = await import(
+                '@/connectors/common/login-confidence'
+              );
+              const result = await evaluatePageLoginConfidence(page);
+              authenticated = result.authenticated;
+              confidence = result.confidence;
+              confidenceSummary = result.summary;
+            }
+          } catch {
+            authenticated = /edit\s*profile|log\s*out|sign\s*out/.test(body);
+            confidence = authenticated ? 70 : 20;
+            confidenceSummary = authenticated
+              ? 'Fallback chrome match'
+              : 'Fallback: no auth chrome';
+          }
 
-          if (!looksAuthenticated) {
+          const { connectorRuntime } = await import('@/connectors/common/connector-runtime');
+          const cookies = await page.context().cookies().catch(() => []);
+          connectorRuntime.markSessionRestored(session.workspaceId, portal, {
+            cookieCount: cookies.length,
+            storageRestored: Boolean(session.encryptedStorage),
+          });
+          connectorRuntime.markLogin(session.workspaceId, portal, {
+            confidence,
+            ok: authenticated,
+          });
+
+          if (!authenticated) {
             return {
               httpStatus,
               finalUrl,
@@ -248,8 +298,8 @@ export class BrowserSessionManager implements SessionManager {
               bodySnippet,
               kind: kind === '200' ? '200' : kind,
               authenticated: false,
-              message:
-                'Validation did not find authenticated profile chrome (Edit Profile / Log out).',
+              message: confidenceSummary || 'Login confidence below threshold.',
+              loginConfidence: confidence,
             } satisfies ValidationProbe;
           }
 
@@ -260,6 +310,7 @@ export class BrowserSessionManager implements SessionManager {
             bodySnippet,
             kind: kind === '200' ? '200' : kind,
             authenticated: true,
+            loginConfidence: confidence,
           } satisfies ValidationProbe;
         } catch (error) {
           const errMessage = error instanceof Error ? error.message : String(error);
@@ -331,6 +382,7 @@ export class BrowserSessionManager implements SessionManager {
         message: probe.message || `Validation failed (${probe.kind})`,
         httpStatus: probe.httpStatus,
         responseKind: probe.kind,
+        loginConfidence: probe.loginConfidence,
       };
     }
 
@@ -348,12 +400,14 @@ export class BrowserSessionManager implements SessionManager {
       httpStatus: probe.httpStatus,
       kind: probe.kind,
       finalUrl: probe.finalUrl,
+      loginConfidence: probe.loginConfidence,
     });
     return {
       ok: true,
       status: 'valid',
       httpStatus: probe.httpStatus,
       responseKind: probe.kind,
+      loginConfidence: probe.loginConfidence,
     };
   }
 

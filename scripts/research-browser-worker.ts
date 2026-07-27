@@ -24,6 +24,7 @@ import {
   processNextConnectJob,
   validateDueSessions,
 } from '../lib/research/browser-gateway/worker-runtime';
+import { startConnectorHealthMonitor, stopConnectorHealthMonitor } from '../connectors/common/connector-health-monitor';
 import { RESEARCH_COLLECTIONS } from '../lib/research/collections';
 import { DEFAULT_RESEARCH_WORKSPACE } from '../lib/research/business';
 import { ensureResearchIndexes, getResearchDatabase } from '../lib/research/store';
@@ -237,6 +238,7 @@ async function main() {
     try {
       await validateConfig(provider);
       setWorkerError(null);
+      startConnectorHealthMonitor();
       pushWorkerLog('info', 'Ready to claim connect sessions. Playwright will only run in this process.');
       break;
     } catch (error) {
@@ -253,6 +255,7 @@ async function main() {
     if (stopping) return;
     stopping = true;
     pushWorkerLog('warn', `Shutting down (${signal})…`);
+    stopConnectorHealthMonitor();
     try {
       await httpServer?.close();
     } catch {

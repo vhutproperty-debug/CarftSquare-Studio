@@ -111,6 +111,8 @@ export type ConnectorDiagnosticCheck = {
 export type ConnectorDiagnostics = {
   checks: ConnectorDiagnosticCheck[];
   currentState: ConnectorDisplayState;
+  /** Shared connector lifecycle state machine value when known (worker). */
+  lifecycleState?: string | null;
   health: ConnectorStatusCard['health'];
   lastVerification?: string;
   researchReady: boolean;
@@ -120,6 +122,18 @@ export type ConnectorDiagnostics = {
   latencyMs?: number | null;
   failureReason?: string | null;
   suggestedAction?: string | null;
+  /** Expanded production observability (null when not on worker / unknown). */
+  workerPid?: number | null;
+  browserUptimeMs?: number | null;
+  contextAgeMs?: number | null;
+  sessionAgeMs?: number | null;
+  cookieCount?: number | null;
+  storageRestored?: boolean | null;
+  lastSuccessfulLoginAt?: string | null;
+  lastSuccessfulSearchAt?: string | null;
+  loginConfidence?: number | null;
+  portalReachable?: boolean | null;
+  recoveryAttempts?: number | null;
 };
 
 export type BrowserLaunchHandle = {

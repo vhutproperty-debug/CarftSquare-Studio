@@ -6,3 +6,16 @@ export {
   getPortalConnector,
   requirePortalConnector,
 } from '@/connectors/registry';
+export { BasePortalConnector } from '@/connectors/common/base-connector';
+export { connectorRuntime } from '@/connectors/common/connector-runtime';
+export {
+  startConnectorHealthMonitor,
+  stopConnectorHealthMonitor,
+} from '@/connectors/common/connector-health-monitor';
+export { LOGIN_CONFIDENCE_THRESHOLD } from '@/connectors/common/connector-lifecycle';
+export type { ConnectorLifecycleState } from '@/connectors/common/connector-lifecycle';
+export type { ConnectorRuntimeSnapshot } from '@/connectors/common/connector-runtime';
+export {
+  scoreLoginConfidence,
+  evaluatePageLoginConfidence,
+} from '@/connectors/common/login-confidence';

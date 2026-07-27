@@ -1,5 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Page } from 'playwright';
+import {
+  LOGIN_CONFIDENCE_THRESHOLD,
+} from '@/connectors/common/connector-lifecycle';
+import { connectorRuntime } from '@/connectors/common/connector-runtime';
+import {
+  evaluatePageLoginConfidence,
+  type LoginConfidenceResult,
+  type LoginConfidenceSignal,
+} from '@/connectors/common/login-confidence';
+import type { PortalConnector } from '@/connectors/common/portal-connector';
 import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
 import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
@@ -10,7 +20,6 @@ import {
   findPortalConnection,
   upsertPortalConnection,
 } from '@/lib/research/store/portal-connections';
-import type { PortalConnector } from '@/connectors/common/portal-connector';
 import type {
   ConnectorSearchRequest,
   ConnectorSearchResponse,
@@ -22,17 +31,55 @@ import type {
 const LISTING_READY_SELECTOR =
   'a[href*="property"], a[href*="/rent"], a[href*="/buy"], a[href*="flat"], a[href*="apartment"], a[href*="resale"]';
 
+/**
+ * Production BaseConnector — owns browser/session lifecycle via BrowserManager + ConnectorRuntime.
+ * Portal subclasses only supply login URL, optional auth extras, search URL, and extractors.
+ *
+ * Interactive login (OTP) remains on the Connect / Browser Worker remote-display path;
+ * `performLogin` documents that contract and must not launch ad-hoc browsers.
+ */
 export abstract class BasePortalConnector implements PortalConnector {
   abstract readonly key: string;
   abstract readonly displayName: string;
+
+  /** Portal login / post-login validation entry URL. */
+  getLoginUrl(): string {
+    const meta = getPortalMeta(this.key);
+    if (!meta?.loginUrl) throw new Error(`No loginUrl configured for portal ${this.key}`);
+    return meta.loginUrl;
+  }
+
+  /**
+   * Interactive login is performed via Research Connect (remote headed browser).
+   * Portal subclasses must not spawn their own Chromium for OTP flows.
+   */
+  async performLogin(_workspaceId: string): Promise<never> {
+    throw new Error(
+      `${this.displayName}: use Research Connectors → Connect for interactive login. ` +
+        `BaseConnector does not own the remote login UI.`,
+    );
+  }
+
+  /** Portal-specific DOM auth extras (optional). */
+  protected async portalAuthExtraSignals(_page: Page): Promise<LoginConfidenceSignal[]> {
+    return [];
+  }
+
+  /** Multi-signal login check — never URL-only. */
+  async isLoggedIn(page: Page): Promise<LoginConfidenceResult> {
+    const extra = await this.portalAuthExtraSignals(page);
+    return evaluatePageLoginConfidence(page, extra, LOGIN_CONFIDENCE_THRESHOLD);
+  }
 
   protected abstract buildSearchUrl(criteria: ConnectorSearchRequest['criteria']): string;
   protected abstract parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]>;
 
   async connect(workspaceId: string): Promise<ResearchPortalConnection> {
     connectorLog(this.key, 'connect', { workspaceId });
-    // Never mark Connected from stale encrypted cookies alone — requires validateSession().
+    connectorRuntime.reset(workspaceId, this.key);
+    connectorRuntime.transition(workspaceId, this.key, 'open_browser');
     await browserSessionManager.getOrCreate(workspaceId, this.key);
+    connectorRuntime.transition(workspaceId, this.key, 'load_persistent_profile');
     const connection = await upsertPortalConnection({
       workspaceId,
       portalKey: this.key,
@@ -50,11 +97,10 @@ export abstract class BasePortalConnector implements PortalConnector {
     sessionId?: string;
     httpStatus?: number | null;
     responseKind?: string;
+    loginConfidence?: number;
   }> {
     connectorLog(this.key, 'validateSession', { workspaceId });
 
-    // Vercel / serverless: same Chromium path Connectors use (worker /jobs/validate).
-    // Never launch Playwright on the Next.js host.
     if (isServerlessPlaywrightHost()) {
       const { requestWorkerValidateSession } = await import(
         '@/lib/research/browser-gateway/worker-client'
@@ -73,7 +119,13 @@ export abstract class BasePortalConnector implements PortalConnector {
 
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
     try {
-      // Explicit validate/connect must always hit the portal (never use fresh TTL cache).
+      const current = connectorRuntime.snapshot(workspaceId, this.key).state;
+      if (current === 'disconnected') {
+        connectorRuntime.transition(workspaceId, this.key, 'open_browser');
+        connectorRuntime.transition(workspaceId, this.key, 'load_persistent_profile');
+      }
+      connectorRuntime.transition(workspaceId, this.key, 'restore_session');
+      connectorRuntime.transition(workspaceId, this.key, 'verify_login');
       const result = await browserSessionManager.validateSession(session.id, { force: true });
       const portalStatus = result.ok
         ? 'connected'
@@ -87,17 +139,32 @@ export abstract class BasePortalConnector implements PortalConnector {
         status: portalStatus,
         lastError: result.ok ? null : result.message || `Validation failed (${result.status})`,
       });
+      if (result.ok) {
+        connectorRuntime.transition(workspaceId, this.key, 'ready');
+        connectorRuntime.transition(workspaceId, this.key, 'idle');
+      } else {
+        connectorRuntime.markFailure(
+          workspaceId,
+          this.key,
+          result.message || result.status,
+          result.status === 'needs_login'
+            ? 'Reconnect this portal and complete login in the secure browser.'
+            : 'Retry validation; if browser crashed, recovery will reopen the context.',
+        );
+      }
       connectorLog(this.key, 'validateSession_result', {
         ok: result.ok,
         status: result.status,
         httpStatus: result.httpStatus,
         responseKind: result.responseKind,
+        loginConfidence: result.loginConfidence,
         message: result.message,
       });
       return { ...result, sessionId: session.id };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       connectorLog(this.key, 'validateSession_exception', { error: message }, 'error');
+      await this.recoverBrowser(workspaceId, message);
       await upsertPortalConnection({
         workspaceId,
         portalKey: this.key,
@@ -110,7 +177,6 @@ export abstract class BasePortalConnector implements PortalConnector {
   }
 
   async executeSearch(request: ConnectorSearchRequest): Promise<ConnectorSearchResponse> {
-    // Vercel / serverless: run authenticated search on the Browser Worker (same cookies/session).
     if (isServerlessPlaywrightHost()) {
       const { requestWorkerExecuteSearch } = await import(
         '@/lib/research/browser-gateway/worker-client'
@@ -125,11 +191,18 @@ export abstract class BasePortalConnector implements PortalConnector {
     }
 
     const tSearch = researchPerfNow();
-    const session = await browserSessionManager.getOrCreate(request.workspaceId, this.key);
+    const workspaceId = request.workspaceId;
+    const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
 
     if (!request.skipValidation) {
       const validation = await browserSessionManager.validateSession(session.id);
       if (!validation.ok) {
+        connectorRuntime.markFailure(
+          workspaceId,
+          this.key,
+          validation.message || validation.status,
+          'Reconnect portal before searching.',
+        );
         return {
           ok: false,
           listings: [],
@@ -149,15 +222,16 @@ export abstract class BasePortalConnector implements PortalConnector {
     const searchUrl = this.buildSearchUrl(request.criteria);
     connectorLog(this.key, 'executeSearch_url', {
       searchUrl,
-      workspaceId: request.workspaceId,
+      workspaceId,
     });
+    connectorRuntime.transition(workspaceId, this.key, 'searching');
+
     const outcome = await researchBrowserManager.withPage(
       session,
       `search-${this.key}`,
       async (page) => {
         const tNav = researchPerfNow();
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
-        // Targeted wait: listing anchors (≤2.5s) instead of networkidle (≤8s on trackers).
         await page
           .waitForSelector(LISTING_READY_SELECTOR, { timeout: 2_500 })
           .catch(() => undefined);
@@ -173,22 +247,29 @@ export abstract class BasePortalConnector implements PortalConnector {
     );
 
     if (outcome.error) {
+      const message = outcome.error.message;
+      const recovered = await this.recoverBrowser(workspaceId, message);
+      connectorRuntime.markSearch(workspaceId, this.key, false);
       return {
         ok: false,
         listings: [],
         sessionStatus: 'error',
-        message: outcome.error.message,
+        message: recovered
+          ? `${message} (browser recovered — retry search)`
+          : message,
         screenshotPath: outcome.screenshotPath,
       };
     }
 
-    // Throttle renew — full storageState capture is expensive and usually unnecessary.
     const lastVerifiedMs = session.lastVerified
       ? Date.now() - new Date(session.lastVerified).getTime()
       : Number.POSITIVE_INFINITY;
     if (lastVerifiedMs >= RESEARCH_BROWSER_CONFIG.renewMinIntervalMs) {
       await browserSessionManager.renew(session.id).catch(() => undefined);
     }
+
+    connectorRuntime.markSearch(workspaceId, this.key, true);
+    connectorRuntime.transition(workspaceId, this.key, 'idle');
 
     researchPerfLog('execute_search_total', tSearch, {
       portal: this.key,
@@ -199,6 +280,38 @@ export abstract class BasePortalConnector implements PortalConnector {
       listings: outcome.result || [],
       sessionStatus: 'valid',
     };
+  }
+
+  /**
+   * Fatal browser failure recovery: close context → reopen profile → ready for re-validate.
+   * Does not invent credentials; caller must re-validate if cookies are still present.
+   */
+  async recoverBrowser(workspaceId: string, reason: string): Promise<boolean> {
+    connectorLog(this.key, 'browser_recover_start', { reason }, 'warn');
+    try {
+      connectorRuntime.markFailure(
+        workspaceId,
+        this.key,
+        reason,
+        'Automatic browser restart in progress; re-validate session.',
+      );
+      connectorRuntime.transition(workspaceId, this.key, 'close_context');
+      connectorRuntime.transition(workspaceId, this.key, 'close_browser');
+      await researchBrowserManager.cleanup(workspaceId, this.key);
+      connectorRuntime.transition(workspaceId, this.key, 'open_new_browser');
+      connectorRuntime.transition(workspaceId, this.key, 'restore_profile');
+      // Warm path recreates persistent context on next withPage / validate.
+      connectorLog(this.key, 'browser_recover_done', { reason });
+      return true;
+    } catch (error) {
+      connectorLog(
+        this.key,
+        'browser_recover_failed',
+        { error: error instanceof Error ? error.message : String(error) },
+        'error',
+      );
+      return false;
+    }
   }
 
   async collectListings(request: ConnectorSearchRequest): Promise<ResearchListing[]> {
@@ -243,14 +356,43 @@ export abstract class BasePortalConnector implements PortalConnector {
     await researchBrowserManager.cleanup(workspaceId, this.key);
     const session = await browserSessionManager.getOrCreate(workspaceId, this.key);
     await browserSessionManager.expire(session.id);
+    connectorRuntime.reset(workspaceId, this.key);
   }
 
-  async healthCheck(): Promise<{ ok: boolean; message?: string }> {
+  async healthCheck(workspaceIdOrConnectionId?: string): Promise<{
+    ok: boolean;
+    message?: string;
+    runtime?: ReturnType<typeof connectorRuntime.snapshot>;
+  }> {
+    const workspaceId =
+      workspaceIdOrConnectionId && workspaceIdOrConnectionId !== 'health-monitor'
+        ? workspaceIdOrConnectionId
+        : 'workspace-default';
     const meta = getPortalMeta(this.key);
+    const runtime = connectorRuntime.snapshot(workspaceId, this.key);
+    const healthyStates = new Set([
+      'ready',
+      'idle',
+      'searching',
+      'health_check',
+      'disconnected',
+      'load_persistent_profile',
+      'restore_session',
+      'verify_login',
+      'restore_profile',
+    ]);
+    const ok = Boolean(meta) && healthyStates.has(runtime.state);
     return {
-      ok: Boolean(meta),
-      message: meta ? `${this.displayName} connector ready` : 'Unknown portal',
+      ok,
+      message: meta
+        ? `${this.displayName} state=${runtime.state} confidence=${runtime.loginConfidence ?? 'n/a'} recoveries=${runtime.recoveryAttempts}`
+        : 'Unknown portal',
+      runtime,
     };
+  }
+
+  getRuntime(workspaceId: string) {
+    return connectorRuntime.snapshot(workspaceId, this.key);
   }
 
   protected listingId(portal: string, url?: string): string {

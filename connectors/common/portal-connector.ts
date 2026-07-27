@@ -1,22 +1,29 @@
+import type { Page } from 'playwright';
 import type {
   ConnectorSearchRequest,
   ConnectorSearchResponse,
   ResearchListing,
   ResearchPortalConnection,
 } from '@/lib/research/types';
+import type { LoginConfidenceResult } from '@/connectors/common/login-confidence';
 
 /**
  * Real portal connector contract used by the research execution engine.
+ * Shared browser/session lifecycle lives on BasePortalConnector;
+ * portals implement login URL, auth extras, search URL, and listing parse.
  */
 export interface PortalConnector {
   readonly key: string;
   readonly displayName: string;
+  getLoginUrl?(): string;
+  isLoggedIn?(page: Page): Promise<LoginConfidenceResult>;
   connect(workspaceId: string): Promise<ResearchPortalConnection>;
   validateSession(workspaceId: string): Promise<{
     ok: boolean;
     status: string;
     message?: string;
     sessionId?: string;
+    loginConfidence?: number;
   }>;
   executeSearch(request: ConnectorSearchRequest): Promise<ConnectorSearchResponse>;
   collectListings(request: ConnectorSearchRequest): Promise<ResearchListing[]>;
@@ -26,6 +33,6 @@ export interface PortalConnector {
     url?: string;
   }): Promise<Record<string, unknown>>;
   disconnect(workspaceId: string): Promise<void>;
-  /** Phase 1 compatibility */
-  healthCheck?(connectionId: string): Promise<{ ok: boolean; message?: string }>;
+  /** Phase 1 compatibility — workspaceId preferred. */
+  healthCheck?(workspaceIdOrConnectionId: string): Promise<{ ok: boolean; message?: string }>;
 }

@@ -1,5 +1,6 @@
 import type { Page } from 'playwright';
 import { BasePortalConnector } from '@/connectors/common/base-connector';
+import type { LoginConfidenceSignal } from '@/connectors/common/login-confidence';
 import {
   buildHousingSearchEntryUrl,
   collectHousingListings,
@@ -12,6 +13,27 @@ export class HousingConnector extends BasePortalConnector {
 
   /** Stashed for Housing-specific SERP resolution + field filtering (BHK/project). */
   private lastCriteria?: ConnectorSearchRequest['criteria'];
+
+  getLoginUrl(): string {
+    return 'https://housing.com/user-profile';
+  }
+
+  protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
+    const body = (await page.content().catch(() => '')).toLowerCase();
+    return [
+      {
+        name: 'housing_edit_profile',
+        pass: /edit\s*profile/.test(body),
+        weight: 15,
+      },
+      {
+        name: 'housing_user_profile_path',
+        pass: /\/user-profile/.test(page.url()) && !/login|otp/.test(body),
+        weight: 5,
+        detail: page.url(),
+      },
+    ];
+  }
 
   async executeSearch(request: ConnectorSearchRequest) {
     this.lastCriteria = request.criteria;
@@ -28,7 +50,6 @@ export class HousingConnector extends BasePortalConnector {
       portal,
       this.lastCriteria,
     );
-    // Structured extract stats for worker logs / offline validation.
     console.info(
       JSON.stringify({
         scope: 'research-connector',

@@ -31,6 +31,7 @@ import {
   upsertPortalConnection,
 } from '@/lib/research/store/portal-connections';
 import { listPortalConnectors } from '@/connectors/registry';
+import { connectorRuntime } from '@/connectors/common/connector-runtime';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -244,6 +245,7 @@ export async function listConnectorStatuses(
         liveValidated: Boolean(opts?.liveValidated),
         validationLatencyMs: null,
         rawError,
+        runtime: connectorRuntime.peek(workspaceId, c.portalKey),
       }),
     };
   });

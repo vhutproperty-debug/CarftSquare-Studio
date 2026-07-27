@@ -1,12 +1,33 @@
 import type { Page } from 'playwright';
 import { BasePortalConnector } from '@/connectors/common/base-connector';
 import { collectGenericListings } from '@/connectors/common/listing-parser';
+import type { LoginConfidenceSignal } from '@/connectors/common/login-confidence';
 import { buildPortalSearchUrl } from '@/connectors/common/search-url';
 import type { ConnectorSearchRequest, ResearchListing } from '@/lib/research/types';
 
 export class MagicbricksConnector extends BasePortalConnector {
   readonly key = 'magicbricks';
   readonly displayName = 'MagicBricks';
+
+  getLoginUrl(): string {
+    return 'https://www.magicbricks.com/?login=true';
+  }
+
+  protected async portalAuthExtraSignals(page: Page): Promise<LoginConfidenceSignal[]> {
+    const body = (await page.content().catch(() => '')).toLowerCase();
+    return [
+      {
+        name: 'magicbricks_logout',
+        pass: /log\s*out|sign\s*out/.test(body),
+        weight: 15,
+      },
+      {
+        name: 'magicbricks_my_activity',
+        pass: /my\s*activity|my\s*property|post\s*property/.test(body),
+        weight: 10,
+      },
+    ];
+  }
 
   protected buildSearchUrl(criteria: ConnectorSearchRequest['criteria']): string {
     return buildPortalSearchUrl(this.key, criteria);

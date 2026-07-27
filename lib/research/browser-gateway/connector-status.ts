@@ -3,6 +3,7 @@
  * Does not change persistence enums; maps stored + live signals to UX states.
  */
 
+import { LOGIN_CONFIDENCE_THRESHOLD } from '@/connectors/common/connector-lifecycle';
 import { friendlyConnectError } from '@/lib/research/browser-gateway/connect-messages';
 import type { ConnectFlowPhase } from '@/lib/research/browser-gateway/types';
 import type {
@@ -275,7 +276,7 @@ function suggestedActionFor(input: {
 }
 
 /**
- * Build a self-diagnosing checklist from existing status signals (no new infra).
+ * Build a self-diagnosing checklist from existing status signals + optional runtime snapshot.
  */
 export function buildConnectorDiagnostics(input: {
   display: ConnectorDisplayMeta;
@@ -286,6 +287,22 @@ export function buildConnectorDiagnostics(input: {
   liveValidated?: boolean;
   validationLatencyMs?: number | null;
   rawError?: string | null;
+  runtime?: {
+    state?: string | null;
+    workerPid?: number | null;
+    browserUptimeMs?: number | null;
+    contextAgeMs?: number | null;
+    sessionAgeMs?: number | null;
+    cookieCount?: number | null;
+    storageRestored?: boolean | null;
+    lastSuccessfulLoginAt?: string | null;
+    lastSuccessfulSearchAt?: string | null;
+    loginConfidence?: number | null;
+    portalReachable?: boolean | null;
+    recoveryAttempts?: number | null;
+    failureReason?: string | null;
+    suggestedAction?: string | null;
+  } | null;
 }): import('@/lib/research/browser-gateway/types').ConnectorDiagnostics {
   const {
     display,
@@ -296,10 +313,14 @@ export function buildConnectorDiagnostics(input: {
     liveValidated,
     validationLatencyMs,
     rawError,
+    runtime,
   } = input;
 
   const loginOk = browser?.sessionStatus === 'valid' && display.sessionExists;
   const researchReady = display.availableForResearch;
+  const loginConfidence = runtime?.loginConfidence ?? null;
+  const confidenceOk =
+    loginConfidence == null ? null : loginConfidence >= LOGIN_CONFIDENCE_THRESHOLD;
 
   const checks: import('@/lib/research/browser-gateway/types').ConnectorDiagnosticCheck[] = [
     {
@@ -317,12 +338,31 @@ export function buildConnectorDiagnostics(input: {
         : 'No browser session row',
     },
     {
+      id: 'lifecycle',
+      label: 'Connector lifecycle',
+      ok: runtime?.state
+        ? !['error', 'disconnected'].includes(runtime.state)
+        : null,
+      detail: runtime?.state ? `state=${runtime.state}` : 'Runtime snapshot unavailable (cached UI)',
+    },
+    {
       id: 'context',
       label: 'Encrypted cookies stored',
       ok: display.sessionExists,
       detail: display.sessionExists
         ? 'Cookies present in session store'
         : 'No saved cookies',
+    },
+    {
+      id: 'storage',
+      label: 'Storage restored',
+      ok: runtime?.storageRestored ?? null,
+      detail:
+        runtime?.storageRestored == null
+          ? 'Unknown until live validate'
+          : runtime.storageRestored
+            ? 'Local/session storage present on last restore'
+            : 'No encrypted storage on session',
     },
     {
       id: 'login',
@@ -333,10 +373,24 @@ export function buildConnectorDiagnostics(input: {
         : undefined,
     },
     {
+      id: 'login_confidence',
+      label: 'Login confidence',
+      ok: confidenceOk,
+      detail:
+        loginConfidence == null
+          ? 'Not scored yet'
+          : `${loginConfidence}/100 (threshold ${LOGIN_CONFIDENCE_THRESHOLD})`,
+    },
+    {
       id: 'cookies',
       label: 'Session cookies recorded',
       ok: display.sessionExists,
-      detail: display.sessionExists ? 'Presence only — contents never exposed' : undefined,
+      detail:
+        runtime?.cookieCount != null
+          ? `Last live cookie count=${runtime.cookieCount}`
+          : display.sessionExists
+            ? 'Presence only — contents never exposed'
+            : undefined,
     },
     {
       id: 'portal',
@@ -363,14 +417,17 @@ export function buildConnectorDiagnostics(input: {
   ];
 
   const failureReason =
-    display.displayState === 'connected' ? null : display.humanError || humanizeConnectorError(rawError);
+    runtime?.failureReason ||
+    (display.displayState === 'connected' ? null : display.humanError || humanizeConnectorError(rawError));
 
-  let browserState = 'idle';
-  if (display.displayState === 'reconnecting') browserState = 'connecting';
-  else if (display.displayState === 'connected') browserState = 'session_valid_stored';
-  else if (display.displayState === 'connection_failed') browserState = 'error_stored';
-  else if (display.displayState === 'session_expired') browserState = 'needs_login';
-  else if (display.sessionExists) browserState = 'cookies_stored';
+  let browserState = runtime?.state || 'idle';
+  if (!runtime?.state) {
+    if (display.displayState === 'reconnecting') browserState = 'connecting';
+    else if (display.displayState === 'connected') browserState = 'session_valid_stored';
+    else if (display.displayState === 'connection_failed') browserState = 'error_stored';
+    else if (display.displayState === 'session_expired') browserState = 'needs_login';
+    else if (display.sessionExists) browserState = 'cookies_stored';
+  }
 
   let validationResult = 'not_run';
   if (display.displayState === 'connected') validationResult = 'passed';
@@ -382,6 +439,7 @@ export function buildConnectorDiagnostics(input: {
   return {
     checks,
     currentState: display.displayState,
+    lifecycleState: runtime?.state ?? null,
     health,
     lastVerification: lastValidatedAt || browser?.lastVerified,
     researchReady,
@@ -390,11 +448,24 @@ export function buildConnectorDiagnostics(input: {
     validationResult,
     latencyMs: validationLatencyMs ?? null,
     failureReason,
-    suggestedAction: suggestedActionFor({
-      displayState: display.displayState,
-      humanError: failureReason,
-      workerOnline,
-      rawError,
-    }),
+    suggestedAction:
+      runtime?.suggestedAction ||
+      suggestedActionFor({
+        displayState: display.displayState,
+        humanError: failureReason,
+        workerOnline,
+        rawError,
+      }),
+    workerPid: runtime?.workerPid ?? null,
+    browserUptimeMs: runtime?.browserUptimeMs ?? null,
+    contextAgeMs: runtime?.contextAgeMs ?? null,
+    sessionAgeMs: runtime?.sessionAgeMs ?? display.sessionAgeMs ?? null,
+    cookieCount: runtime?.cookieCount ?? null,
+    storageRestored: runtime?.storageRestored ?? null,
+    lastSuccessfulLoginAt: runtime?.lastSuccessfulLoginAt ?? null,
+    lastSuccessfulSearchAt: runtime?.lastSuccessfulSearchAt ?? null,
+    loginConfidence,
+    portalReachable: runtime?.portalReachable ?? null,
+    recoveryAttempts: runtime?.recoveryAttempts ?? null,
   };
 }
