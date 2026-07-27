@@ -81,11 +81,12 @@ export function handleRemoteHttp(
   const session = getRemoteSessionByViewId(viewId)!;
 
   if (token) {
+    // SameSite=None so CraftSquare can embed /remote/* in an iframe and still
+    // authenticate noVNC asset + websockify requests with the view cookie.
+    // Token remains required on first HTML load; cookie is HttpOnly.
     res.setHeader(
       'Set-Cookie',
-      `rb_view_${viewId}=${encodeURIComponent(token)}; Path=/remote/${viewId}; HttpOnly; SameSite=Strict; Max-Age=900${
-        process.env.NODE_ENV === 'production' ? '; Secure' : ''
-      }`,
+      `rb_view_${viewId}=${encodeURIComponent(token)}; Path=/remote/${viewId}; HttpOnly; SameSite=None; Secure; Max-Age=900`,
     );
   }
 
@@ -107,8 +108,11 @@ export function handleRemoteHttp(
       res.writeHead(200, {
         'Content-Type': contentType(local),
         'Cache-Control': 'no-store',
-        'X-Frame-Options': 'SAMEORIGIN',
-        'Content-Security-Policy': "frame-ancestors 'self' https://craftsquare.co.in https://*.vercel.app",
+        // Prefer CSP frame-ancestors over X-Frame-Options so CraftSquare UI can
+        // embed the live view. SAMEORIGIN blocked in-app iframe → operators only
+        // got a popup button that browsers often suppress.
+        'Content-Security-Policy':
+          "frame-ancestors 'self' https://craftsquare.co.in https://*.vercel.app http://localhost:3000 http://127.0.0.1:3000",
       });
       res.end(body);
       auditRemote('remote_http_static', { viewId, rest: fileRel });

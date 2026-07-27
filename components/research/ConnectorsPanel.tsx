@@ -40,7 +40,8 @@ function activeConnectStepIndex(session: PublicConnectSession): number {
     return 0;
   }
   if (session.phase === 'waiting_for_login') {
-    return session.liveViewUrl ? 2 : 0;
+    // Prefer Browser Ready once liveViewUrl is published.
+    return session.liveViewUrl ? 1 : 0;
   }
   if (session.phase === 'verifying') return 3;
   if (session.phase === 'capturing') return 4;
@@ -261,6 +262,28 @@ export default function ConnectorsPanel() {
       setConnectors(json.connectors || []);
       setLiveValidated(Boolean(json.liveValidated));
       if (opts?.clearError) setError(null);
+
+      // Attach in-flight Connect sessions started outside this tab (agent/API),
+      // so liveViewUrl is actually surfaced — previously only Connect clicks set liveSession.
+      const active = (json.activeConnectSessions || []) as PublicConnectSession[];
+      const attachable = active.find(
+        (s) =>
+          s &&
+          !['connected', 'failed', 'expired', 'cancelled'].includes(s.phase),
+      );
+      if (attachable) {
+        setLiveSession((prev) => {
+          if (prev && prev.id === attachable.id) return prev;
+          if (
+            prev &&
+            !['connected', 'failed', 'expired', 'cancelled'].includes(prev.phase)
+          ) {
+            return prev;
+          }
+          setQueuedSince(Date.now());
+          return attachable;
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -584,29 +607,43 @@ export default function ConnectorsPanel() {
                   </p>
                 </div>
               ) : liveSession.liveViewUrl && liveSession.phase === 'waiting_for_login' ? (
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-base font-medium text-white">Browser Ready</p>
+                <div className="flex w-full flex-col gap-3">
+                  <div className="space-y-1 px-1 text-left">
+                    <p className="text-base font-medium text-white">Secure login window</p>
                     <p className="text-xs text-slate-400">
-                      Sign in inside the secure remote window. This tab stays on CraftSquare.
+                      Complete OTP in the embedded view below. If it is blank, use Open in new tab.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(
-                        liveSession.liveViewUrl,
-                        `cs-remote-${liveSession.id}`,
-                        'noopener,noreferrer',
-                      );
-                    }}
-                    className="inline-flex h-10 items-center justify-center rounded-md bg-orange-500 px-5 text-sm font-semibold text-white hover:bg-orange-600"
-                  >
-                    Open Secure Login Window
-                  </button>
-                  <p className="text-[11px] text-slate-500">
-                    Session expires automatically. Cookies never pass through the remote view.
-                  </p>
+                  <div className="overflow-hidden rounded-md border border-slate-700 bg-black">
+                    <iframe
+                      title={`Secure login — ${liveSession.portalName}`}
+                      src={liveSession.liveViewUrl}
+                      className="h-[420px] w-full bg-black"
+                      allow="clipboard-read; clipboard-write"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <a
+                      href={liveSession.liveViewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-10 items-center justify-center rounded-md bg-orange-500 px-5 text-sm font-semibold text-white hover:bg-orange-600"
+                    >
+                      Open in new tab
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(liveSession.liveViewUrl || '');
+                        setMessage('Live view URL copied.');
+                      }}
+                      className="inline-flex h-10 items-center justify-center rounded-md border border-slate-600 px-4 text-sm font-medium text-slate-200 hover:bg-slate-800"
+                    >
+                      Copy liveView URL
+                    </button>
+                  </div>
+                  <p className="break-all px-1 text-[10px] text-slate-500">{liveSession.liveViewUrl}</p>
                 </div>
               ) : (
                 <div className="space-y-2 text-sm text-slate-300">
