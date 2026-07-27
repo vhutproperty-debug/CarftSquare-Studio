@@ -199,6 +199,15 @@ export async function processNextConnectJob(): Promise<boolean> {
         .relative(RESEARCH_BROWSER_CONFIG.screenshotRoot, previewFile)
         .replace(/\\/g, '/');
 
+      // Navigate BEFORE publishing liveViewUrl so noVNC never shows about:blank.
+      // Housing / MagicBricks / 99acres all need the login surface visible when the
+      // operator opens the remote window (evidence: blank desktop while goto pending).
+      pushWorkerLog(
+        'info',
+        `login_nav_before_liveview sessionId=${session.id} portal=${session.portal} url=${session.loginUrl}`,
+      );
+      await handle.gotoLogin(session.loginUrl);
+
       await transitionConnectSession({
         sessionId: session.id,
         to: 'waiting_for_login',
@@ -214,10 +223,8 @@ export async function processNextConnectJob(): Promise<boolean> {
         'info',
         `login_wait_start sessionId=${session.id} portal=${session.portal} url=${session.loginUrl} liveView=${
           handle.liveViewUrl ? 'yes' : 'no'
-        } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'}`,
+        } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'} finalUrl=${await handle.currentUrl()}`,
       );
-
-      await handle.gotoLogin(session.loginUrl);
 
       const authenticated = await waitForManualLogin({
         session,

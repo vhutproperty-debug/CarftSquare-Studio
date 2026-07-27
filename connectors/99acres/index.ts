@@ -10,7 +10,7 @@ export class NinetyNineAcresConnector extends BasePortalConnector {
   readonly displayName = '99acres';
 
   getLoginUrl(): string {
-    return 'https://www.99acres.com/';
+    return 'https://www.99acres.com/login-lrfv';
   }
 
   getVerifyUrl(): string {

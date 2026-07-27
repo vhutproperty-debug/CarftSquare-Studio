@@ -60,6 +60,14 @@ export abstract class BasePortalConnector implements PortalConnector {
   }
 
   /**
+   * Optional Connect post-navigation: open modal / ensure OTP UI is visible.
+   * Default no-op — portals with homepage modals override (e.g. NoBroker).
+   */
+  async ensureConnectLoginSurface(_page: Page): Promise<void> {
+    /* no-op */
+  }
+
+  /**
    * Interactive login is performed via Research Connect (remote headed browser).
    * Portal subclasses must not spawn their own Chromium for OTP flows.
    */

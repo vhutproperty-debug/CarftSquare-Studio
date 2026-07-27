@@ -25,10 +25,10 @@ async function check(u: string) {
 
 async function main() {
   await check('https://www.magicbricks.com/');
-  await check('https://www.magicbricks.com/?login=true');
-  await check('https://www.nobroker.in/users/login');
+  await check('https://accounts.magicbricks.com/userauth/login');
+  await check('https://www.nobroker.in/');
   await check('https://www.squareyards.com/user/login');
-  await check('https://www.99acres.com/');
+  await check('https://www.99acres.com/login-lrfv');
 }
 
 main();

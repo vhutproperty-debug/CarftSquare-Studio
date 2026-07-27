@@ -31,8 +31,8 @@ async function main() {
   const urls = [
     'https://accounts.magicbricks.com/',
     'https://accounts.magicbricks.com/login',
-    'https://www.magicbricks.com/?login=true',
-    'https://www.99acres.com/',
+    'https://accounts.magicbricks.com/userauth/login',
+    'https://www.99acres.com/login-lrfv',
     'https://www.99acres.com/login',
     'https://www.99acres.com/userlogin',
     'https://authn.99acres.com/login',

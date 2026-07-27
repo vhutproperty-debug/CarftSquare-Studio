@@ -26,9 +26,9 @@ async function probe(u: string) {
 }
 
 const urls = [
-  'https://www.magicbricks.com/?login=true',
+  'https://accounts.magicbricks.com/userauth/login',
   'https://www.magicbricks.com/property-for-rent/residential-real-estate?cityName=Mumbai',
-  'https://www.99acres.com/',
+  'https://www.99acres.com/login-lrfv',
   'https://www.99acres.com/myprofile',
   'https://www.99acres.com/profile',
   'https://www.99acres.com/owneractivity',

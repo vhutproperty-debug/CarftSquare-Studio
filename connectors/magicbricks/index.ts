@@ -10,7 +10,7 @@ export class MagicbricksConnector extends BasePortalConnector {
   readonly displayName = 'MagicBricks';
 
   getLoginUrl(): string {
-    return 'https://www.magicbricks.com/?login=true';
+    return 'https://accounts.magicbricks.com/userauth/login';
   }
 
   getVerifyUrl(): string {

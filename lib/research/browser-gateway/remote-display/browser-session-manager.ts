@@ -316,14 +316,39 @@ export class RemoteBrowserSessionManager {
       },
       async gotoLogin(loginUrl: string) {
         pushWorkerLog('info', `navigation_start portal=${input.portal} url=${loginUrl}`);
-        try {
-          const response = await (entry.page || page).goto(loginUrl, {
-            waitUntil: 'domcontentloaded',
+        const target = entry.page || page;
+        const ctx = entry.context || context;
+        const runNav = async (p: typeof target, c: typeof ctx, jobId: string) => {
+          const { instrumentConnectNavigation } = await import(
+            '@/lib/research/browser-gateway/connect-debug'
+          );
+          const { runEnsureConnectLoginSurface } = await import(
+            '@/lib/research/browser-gateway/ensure-login-surface'
+          );
+          const report = await instrumentConnectNavigation({
+            page: p,
+            context: c,
+            portal: input.portal,
+            jobId,
+            navigationUrl: loginUrl,
+            browserId: browserPid != null ? String(browserPid) : null,
           });
           pushWorkerLog(
             'info',
-            `navigation_done portal=${input.portal} status=${response?.status() ?? 'n/a'} finalUrl=${(entry.page || page).url()}`,
+            `navigation_done portal=${input.portal} status=${report.httpStatus ?? 'n/a'} finalUrl=${report.finalUrl} cookies=${report.cookiesCount}`,
           );
+          if (report.error) throw new Error(report.error);
+          const surfaceShot = report.screenshotAfter5s
+            ? report.screenshotAfter5s.replace(/-after-5s\.jpg$/i, '-after-login-surface.jpg')
+            : undefined;
+          await runEnsureConnectLoginSurface(input.portal, p, {
+            screenshotPath: surfaceShot,
+          });
+          return report;
+        };
+
+        try {
+          await runNav(target, ctx, input.connectSessionId);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           if (!entry.browserCrashRecovered) {
@@ -338,11 +363,7 @@ export class RemoteBrowserSessionManager {
             entry.context = fresh;
             entry.page = fresh.pages()[0] || (await fresh.newPage());
             page = entry.page;
-            const response = await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
-            pushWorkerLog(
-              'info',
-              `navigation_done_after_recover portal=${input.portal} status=${response?.status() ?? 'n/a'}`,
-            );
+            await runNav(page, fresh, `${input.connectSessionId}-recover`);
             return;
           }
           throw error;

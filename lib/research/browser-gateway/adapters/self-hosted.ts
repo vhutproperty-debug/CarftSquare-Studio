@@ -120,11 +120,31 @@ async function launchLocalFallback(input: {
     },
     async gotoLogin(loginUrl: string) {
       pushWorkerLog('info', `navigation_start portal=${input.portal} url=${loginUrl}`);
-      const response = await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
+      const { instrumentConnectNavigation } = await import(
+        '@/lib/research/browser-gateway/connect-debug'
+      );
+      const { runEnsureConnectLoginSurface } = await import(
+        '@/lib/research/browser-gateway/ensure-login-surface'
+      );
+      const report = await instrumentConnectNavigation({
+        page,
+        context,
+        portal: input.portal,
+        jobId: `local-${input.workspaceId}-${input.portal}`,
+        navigationUrl: loginUrl,
+        browserId: browserPid != null ? String(browserPid) : null,
+      });
       pushWorkerLog(
         'info',
-        `navigation_done portal=${input.portal} status=${response?.status() ?? 'n/a'} finalUrl=${page.url()}`,
+        `navigation_done portal=${input.portal} status=${report.httpStatus ?? 'n/a'} finalUrl=${report.finalUrl}`,
       );
+      if (report.error) throw new Error(report.error);
+      const surfaceShot = report.screenshotAfter5s
+        ? report.screenshotAfter5s.replace(/-after-5s\.jpg$/i, '-after-login-surface.jpg')
+        : undefined;
+      await runEnsureConnectLoginSurface(input.portal, page, {
+        screenshotPath: surfaceShot,
+      });
     },
   };
 }

@@ -17,6 +17,11 @@ export interface PortalConnector {
   readonly displayName: string;
   getLoginUrl?(): string;
   getVerifyUrl?(): string;
+  /**
+   * Optional Connect post-navigation step (e.g. open homepage login modal).
+   * Called by Browser Worker after goto(loginUrl), before liveView is published.
+   */
+  ensureConnectLoginSurface?(page: Page): Promise<void>;
   isLoggedIn?(page: Page): Promise<LoginConfidenceResult>;
   connect(workspaceId: string): Promise<ResearchPortalConnection>;
   validateSession(workspaceId: string): Promise<{

@@ -63,29 +63,35 @@ export const RESEARCH_PORTALS: Array<{
     key: 'magicbricks',
     displayName: 'MagicBricks',
     origin: 'https://www.magicbricks.com',
-    loginUrl: 'https://www.magicbricks.com/?login=true',
-    // Homepage after auth — do not re-open ?login=true for verification.
+    // Dedicated auth host — `?login=true` on www does NOT open the login modal
+    // (live probe: homepage only) and can aggravate Akamai on datacenter IPs.
+    loginUrl: 'https://accounts.magicbricks.com/userauth/login',
+    // Post-auth proof on www (SSO cookies from accounts.*). Never re-open login.
     verifyUrl: 'https://www.magicbricks.com/',
   },
   {
     key: '99acres',
     displayName: '99acres',
     origin: 'https://www.99acres.com',
-    loginUrl: 'https://www.99acres.com/',
+    // Dedicated Login/Register surface (OTP). Homepage does NOT open login.
+    loginUrl: 'https://www.99acres.com/login-lrfv',
     verifyUrl: 'https://www.99acres.com/',
   },
   {
     key: 'nobroker',
     displayName: 'NoBroker',
     origin: 'https://www.nobroker.in',
-    loginUrl: 'https://www.nobroker.in/users/login',
-    // Origin home after auth — never /users/login for verification.
+    // Homepage — /users/login redirects here without opening OTP modal.
+    // Connector.ensureConnectLoginSurface clicks "Log in" to open the modal.
+    loginUrl: 'https://www.nobroker.in/',
+    // Origin home after auth — never a login-only URL for verification.
     verifyUrl: 'https://www.nobroker.in/',
   },
   {
     key: 'squareyards',
     displayName: 'Square Yards',
     origin: 'https://www.squareyards.com',
+    // Dedicated login page with mobile OTP ("Login to Continue").
     loginUrl: 'https://www.squareyards.com/user/login',
     verifyUrl: 'https://www.squareyards.com/',
   },
