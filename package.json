@@ -22,7 +22,8 @@
         "test:connectors-readiness": "npx tsx scripts/production-readiness/connector-e2e-suite.ts",
         "test:connectors-readiness:invariants": "npx tsx scripts/production-readiness/connector-e2e-suite.ts --invariants-only",
         "test:connect-login-fix": "npx tsx scripts/validate-connect-login-fix.ts",
-        "test:connect-login-nb-sy": "npx tsx scripts/validate-nobroker-squareyards-login.ts"
+        "test:connect-login-nb-sy": "npx tsx scripts/validate-nobroker-squareyards-login.ts",
+        "test:connect-smoke-prod": "npx tsx scripts/smoke-connect-production.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

@@ -31,6 +31,14 @@ export function friendlyConnectError(error: unknown): string {
   if (/could not acquire profile lock|session busy|already active/i.test(msg)) {
     return 'Another browser is already open for this Connect session. Wait or cancel, then retry.';
   }
+  // Portal WAF / empty HTTP error pages (headed Chromium) — not a browser crash.
+  if (
+    /blocked before login surface|access denied|security alert|err_http_response_code_failure|net::err_http/i.test(
+      msg,
+    )
+  ) {
+    return 'Portal blocked this login page (security / WAF). Retry later or from a trusted network.';
+  }
   if (/browser|chromium|launch|executable|xvfb|display/i.test(msg)) {
     return CONNECT_USER_MESSAGES.browserRetry;
   }

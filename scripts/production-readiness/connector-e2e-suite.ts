@@ -27,6 +27,7 @@ import {
 } from '../../lib/research/browser-gateway/connect-phase-machine';
 import type { ConnectFlowPhase } from '../../lib/research/browser-gateway/types';
 import { fetchBrowserWorkerStatus } from '../../lib/research/browser-gateway/worker-client';
+import { friendlyConnectError } from '../../lib/research/browser-gateway/connect-messages';
 import { listConnectorStatuses, startRemoteConnect } from '../../lib/research/browser-gateway/gateway';
 import {
   getConnectSessionById,
@@ -231,6 +232,23 @@ function runPhaseMachineInvariants() {
       name: `verifyUrl_safe_${p.key}`,
       pass: !loginHasLogin || !verifyHasLogin || p.loginUrl === p.verifyUrl,
       detail: `loginUrl=${p.loginUrl} verifyUrl=${p.verifyUrl}`,
+    });
+  }
+
+  // WAF / HTTP response failures must map to operator-safe copy (not raw Playwright).
+  const wafSamples = [
+    'page.goto: net::ERR_HTTP_RESPONSE_CODE_FAILURE at https://www.99acres.com/login-lrfv',
+    'Connect navigation blocked before login surface (portal=magicbricks status=403 title="Access Denied")',
+  ];
+  for (const sample of wafSamples) {
+    const friendly = friendlyConnectError(new Error(sample));
+    const pass =
+      /WAF|security|blocked|trusted network/i.test(friendly) &&
+      !/page\.goto|ERR_HTTP|net::/i.test(friendly);
+    checks.push({
+      name: `friendly_waf_${sample.slice(0, 24).replace(/\W+/g, '_')}`,
+      pass,
+      detail: `in=${sample.slice(0, 60)}… out=${friendly}`,
     });
   }
 

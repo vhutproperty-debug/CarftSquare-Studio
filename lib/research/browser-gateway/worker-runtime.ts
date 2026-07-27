@@ -262,6 +262,19 @@ export async function processNextConnectJob(): Promise<boolean> {
       });
 
       if (!authenticated) {
+        const afterWait = await getConnectSessionById(session.id);
+        if (
+          afterWait?.phase === 'cancelled' ||
+          afterWait?.phase === 'expired' ||
+          afterWait?.phase === 'failed'
+        ) {
+          pushWorkerLog(
+            'info',
+            `connect_done sessionId=${session.id} reason=${afterWait.phase}_during_login_wait`,
+          );
+          markWorkerJobDone();
+          return true;
+        }
         handle = null;
         pushWorkerLog(
           'error',
