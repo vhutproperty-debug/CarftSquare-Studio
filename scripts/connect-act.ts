@@ -56,11 +56,15 @@ async function main() {
   if (captcha) body.captcha = captcha;
   const x = arg('x');
   const y = arg('y');
-  const text = arg('text');
+  const typeText = arg('text');
   const bodyAny = body as Record<string, unknown>;
   if (x) bodyAny.x = Number(x);
   if (y) bodyAny.y = Number(y);
-  if (text) bodyAny.text = text;
+  if (typeText) bodyAny.text = typeText;
+  const gotoUrl = arg('url');
+  if (gotoUrl) bodyAny.url = gotoUrl;
+  const probeUrls = arg('urls');
+  if (probeUrls) bodyAny.urls = probeUrls.split(',');
 
   const res = await fetch(`${base}/jobs/connect-act`, {
     method: 'POST',

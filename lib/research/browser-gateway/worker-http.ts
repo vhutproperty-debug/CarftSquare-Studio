@@ -457,6 +457,78 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Navigate the live page to an operator-supplied URL, restricted to the
+        // session portal's own registrable domain (WAF diagnosis / recovery).
+        if (action === 'goto_url') {
+          const target = String((body as { url?: string }).url || '').trim();
+          if (!target) {
+            json(res, 400, { ok: false, error: 'url required' });
+            return;
+          }
+          const { getConnectSessionById } = await import(
+            '@/lib/research/browser-gateway/connect-session-store'
+          );
+          const { getPortalMeta } = await import('@/lib/research/browser/config');
+          const sess = await getConnectSessionById(connectSessionId);
+          const meta = sess ? getPortalMeta(sess.portal) : null;
+          const portalHost = meta ? new URL(meta.origin).hostname.replace(/^www\./, '') : '';
+          let targetHost = '';
+          try {
+            targetHost = new URL(target).hostname;
+          } catch {
+            json(res, 400, { ok: false, error: 'invalid url' });
+            return;
+          }
+          if (!portalHost || !targetHost.endsWith(portalHost)) {
+            json(res, 403, { ok: false, error: `url must be on ${portalHost}` });
+            return;
+          }
+          const { resilientPageGoto } = await import('@/lib/research/browser/resilient-goto');
+          const nav = await resilientPageGoto(page, target, { maxAttempts: 2 });
+          json(res, 200, {
+            ok: !nav.error,
+            action,
+            target,
+            navError: nav.error,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        // Probe HTTP statuses from the worker's network/IP using the browser
+        // context's request stack (real cookies + TLS). No page navigation.
+        if (action === 'probe_http') {
+          const urls = (body as { urls?: string[] }).urls;
+          const list = Array.isArray(urls) ? urls.slice(0, 8).map(String) : [];
+          if (!list.length) {
+            json(res, 400, { ok: false, error: 'urls[] required' });
+            return;
+          }
+          const results: Array<Record<string, unknown>> = [];
+          for (const u of list) {
+            try {
+              const resp = await page.request.get(u, {
+                timeout: 20_000,
+                maxRedirects: 5,
+              });
+              const bodyText = await resp.text().catch(() => '');
+              results.push({
+                url: u,
+                status: resp.status(),
+                finalUrl: resp.url(),
+                server: resp.headers()['server'] || null,
+                bodyBytes: bodyText.length,
+                bodyHead: bodyText.slice(0, 200),
+              });
+            } catch (e) {
+              results.push({ url: u, error: e instanceof Error ? e.message : String(e) });
+            }
+          }
+          json(res, 200, { ok: true, action, results });
+          return;
+        }
+
         json(res, 400, { ok: false, error: `Unknown action: ${action}` });
         return;
       }
