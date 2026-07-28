@@ -66,10 +66,17 @@ export class BrowserFactory {
       await ensureResearchDisplay();
     }
 
+    const { resolvePortalProxy } = await import('@/lib/research/browser/portal-proxy');
+    const proxy = resolvePortalProxy(portal);
+    if (proxy) {
+      console.info(`[browser-factory] browser_proxy portal=${portal} server=${proxy.server}`);
+    }
+
     const launch = async () =>
       chromium.launchPersistentContext(userDataDir, {
         headless: RESEARCH_BROWSER_CONFIG.headless,
         viewport: { width: 1365, height: 900 },
+        ...(proxy ? { proxy } : {}),
         args: [
           '--disable-blink-features=AutomationControlled',
           '--no-sandbox',

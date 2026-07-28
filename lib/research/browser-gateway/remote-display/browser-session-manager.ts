@@ -238,7 +238,7 @@ export class RemoteBrowserSessionManager {
       `browser_launch portal=${input.portal} connectSessionId=${input.connectSessionId} headless=${headless} display=${display} profile=${input.profileDir} workerPid=${process.pid}`,
     );
 
-    const context = await this.openContext(input.profileDir, display, headless);
+    const context = await this.openContext(input.profileDir, display, headless, input.portal);
     let page = context.pages()[0] || (await context.newPage());
     entry.context = context;
     entry.page = page;
@@ -377,7 +377,7 @@ export class RemoteBrowserSessionManager {
               `browser_crash_recover connectSessionId=${input.connectSessionId} portal=${input.portal} reason=${message.slice(0, 240)}`,
             );
             await entry.context?.close().catch(() => undefined);
-            const fresh = await self.openContext(input.profileDir, display, headless);
+            const fresh = await self.openContext(input.profileDir, display, headless, input.portal);
             entry.context = fresh;
             entry.page = fresh.pages()[0] || (await fresh.newPage());
             page = entry.page;
@@ -474,17 +474,25 @@ export class RemoteBrowserSessionManager {
     profileDir: string,
     display: string,
     headless: boolean,
+    portal: string,
   ): Promise<BrowserContext> {
     const { assertPlaywrightRuntimeAllowed } = await import(
       '@/lib/research/browser/playwright-runtime-guard'
     );
     assertPlaywrightRuntimeAllowed('remote-display.openContext');
 
+    const { resolvePortalProxy } = await import('@/lib/research/browser/portal-proxy');
+    const proxy = resolvePortalProxy(portal);
+    if (proxy) {
+      pushWorkerLog('info', `browser_proxy portal=${portal} server=${proxy.server}`);
+    }
+
     // Docker/Railway: no-sandbox + shm flags keep headed Chromium painting on the
     // per-session Xvfb display that x11vnc mirrors (otherwise CDP works but VNC is blank).
     return chromium.launchPersistentContext(profileDir, {
       headless,
       viewport: { width: 1365, height: 900 },
+      ...(proxy ? { proxy } : {}),
       args: [
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
