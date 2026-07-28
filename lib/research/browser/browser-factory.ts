@@ -76,7 +76,9 @@ export class BrowserFactory {
       chromium.launchPersistentContext(userDataDir, {
         headless: RESEARCH_BROWSER_CONFIG.headless,
         viewport: { width: 1365, height: 900 },
-        ...(proxy ? { proxy } : {}),
+        // scrape.do and similar MITM the TLS chain with their own CA; accept it
+        // only for the proxied context, never for direct connections.
+        ...(proxy ? { proxy, ignoreHTTPSErrors: true } : {}),
         args: [
           '--disable-blink-features=AutomationControlled',
           '--no-sandbox',

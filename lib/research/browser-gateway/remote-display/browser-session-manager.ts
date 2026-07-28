@@ -492,7 +492,9 @@ export class RemoteBrowserSessionManager {
     return chromium.launchPersistentContext(profileDir, {
       headless,
       viewport: { width: 1365, height: 900 },
-      ...(proxy ? { proxy } : {}),
+      // Proxy services like scrape.do terminate TLS with their own CA, so the
+      // proxied context must accept it. Only relaxed when a proxy is present.
+      ...(proxy ? { proxy, ignoreHTTPSErrors: true } : {}),
       args: [
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
