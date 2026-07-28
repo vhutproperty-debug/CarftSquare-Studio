@@ -39,7 +39,7 @@ import {
 // Env must load before Mongo/crypto calls (URI is read at runtime).
 loadEnvLocal();
 
-const WORKER_VERSION = '1.2.1';
+const WORKER_VERSION = '1.2.2';
 
 function arg(name: string, fallback?: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

@@ -103,7 +103,9 @@ export function buildLiveViewUrl(viewId: string, token: string): string {
   const qs = new URLSearchParams({
     autoconnect: '1',
     resize: 'scale',
-    path: `remote/${viewId}/websockify`,
+    // Token inside the websockify path: the WS upgrade authenticates by query
+    // token even when third-party cookie blocking strips the iframe cookie.
+    path: `remote/${viewId}/websockify?t=${token}`,
     t: token,
   });
   return `${base}/${path}?${qs.toString()}`;

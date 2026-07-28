@@ -70,24 +70,38 @@ export function handleRemoteHttp(
   const token =
     url.searchParams.get('t') || extractTokenFromCookie(req, viewId) || null;
 
-  // Initial page requires signed token; subsequent assets may use SameSite cookie.
-  const auth = authorizeView(viewId, token);
-  if (auth.ok === false) {
-    auditRemote('remote_http_denied', { viewId, rest, reason: auth.reason }, 'warn');
-    unauthorized(res, auth.reason);
-    return true;
+  // Generic noVNC library assets (app/, core/, vendor/) carry no session data.
+  // Embedded iframes lose the auth cookie under third-party cookie blocking and
+  // the browser fetches assets without the signed token → 401 → blank window.
+  // Serve them for any live (non-destroyed, unexpired) view without a token.
+  const isStaticAsset =
+    rest !== 'websockify' &&
+    !rest.endsWith('.html') &&
+    /^(app|core|vendor)\//.test(rest);
+  const liveSession = getRemoteSessionByViewId(viewId);
+  const sessionAlive =
+    Boolean(liveSession) &&
+    !liveSession!.destroyed &&
+    Date.now() <= new Date(liveSession!.expiresAt).getTime();
+
+  if (!(isStaticAsset && sessionAlive)) {
+    // vnc.html + websockify + anything non-static requires the signed token (or cookie).
+    const auth = authorizeView(viewId, token);
+    if (auth.ok === false) {
+      auditRemote('remote_http_denied', { viewId, rest, reason: auth.reason }, 'warn');
+      unauthorized(res, auth.reason);
+      return true;
+    }
   }
 
   const session = getRemoteSessionByViewId(viewId)!;
 
   if (token) {
-    // SameSite=None so CraftSquare can embed /remote/* in an iframe and still
-    // authenticate noVNC asset + websockify requests with the view cookie.
+    // SameSite=None + Partitioned (CHIPS): embedded iframes get a partitioned
+    // cookie that survives third-party cookie blocking in modern Chrome.
     // Token remains required on first HTML load; cookie is HttpOnly.
-    res.setHeader(
-      'Set-Cookie',
-      `rb_view_${viewId}=${encodeURIComponent(token)}; Path=/remote/${viewId}; HttpOnly; SameSite=None; Secure; Max-Age=900`,
-    );
+    const cookieBase = `rb_view_${viewId}=${encodeURIComponent(token)}; Path=/remote/${viewId}; HttpOnly; SameSite=None; Secure; Max-Age=900`;
+    res.setHeader('Set-Cookie', [cookieBase, `${cookieBase}; Partitioned`]);
   }
 
   if (rest === 'websockify') {
@@ -112,7 +126,7 @@ export function handleRemoteHttp(
         // embed the live view. SAMEORIGIN blocked in-app iframe → operators only
         // got a popup button that browsers often suppress.
         'Content-Security-Policy':
-          "frame-ancestors 'self' https://craftsquare.co.in https://*.vercel.app http://localhost:3000 http://127.0.0.1:3000",
+          "frame-ancestors 'self' https://craftsquare.co.in https://*.craftsquare.co.in https://*.vercel.app http://localhost:3000 http://127.0.0.1:3000",
       });
       res.end(body);
       auditRemote('remote_http_static', { viewId, rest: fileRel });
