@@ -265,6 +265,35 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Diagnostic: dump every input element (incl. inside frames) with attributes.
+        if (action === 'dump_inputs') {
+          const collect = async (frame: import('playwright').Frame) => {
+            return frame
+              .evaluate(() =>
+                Array.from(document.querySelectorAll('input')).map((el) => {
+                  const r = el.getBoundingClientRect();
+                  const attrs: Record<string, string> = {};
+                  for (const a of Array.from(el.attributes)) attrs[a.name] = a.value;
+                  return {
+                    attrs,
+                    value: (el as HTMLInputElement).value || '',
+                    visible: r.width > 0 && r.height > 0,
+                    w: Math.round(r.width),
+                    h: Math.round(r.height),
+                  };
+                }),
+              )
+              .catch(() => []);
+          };
+          const all: unknown[] = [];
+          for (const fr of page.frames()) {
+            const rows = await collect(fr);
+            if (rows.length) all.push({ frameUrl: fr.url().slice(0, 120), inputs: rows });
+          }
+          json(res, 200, { ok: true, action, url: page.url(), frames: all });
+          return;
+        }
+
         // Live page screenshot (base64) — lets the operator see CAPTCHA/state in chat.
         if (action === 'page_screenshot') {
           const buf = await page
