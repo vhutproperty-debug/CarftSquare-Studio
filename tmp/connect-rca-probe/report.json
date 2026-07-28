@@ -1,0 +1,112 @@
+[
+  {
+    "mode": "headless",
+    "portal": "housing",
+    "url": "https://housing.com/user-profile",
+    "status": 406,
+    "finalUrl": "https://housing.com/user-profile",
+    "title": "Security Alert",
+    "body": "ALERT Request Blocked Our security system detected suspicious activity. Your request was temporarily blocked to protect ",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headless",
+    "portal": "magicbricks",
+    "url": "https://accounts.magicbricks.com/userauth/login",
+    "status": 403,
+    "finalUrl": "https://accounts.magicbricks.com/userauth/login",
+    "title": "Access Denied",
+    "body": "Access Denied You don't have permission to access \"http://accounts.magicbricks.com/userauth/login\" on this server. Refer",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headless",
+    "portal": "99acres",
+    "url": "https://www.99acres.com/login-lrfv",
+    "status": 403,
+    "finalUrl": "https://www.99acres.com/login-lrfv",
+    "title": "Access Denied",
+    "body": "Access Denied You don't have permission to access \"http://www.99acres.com/login-lrfv\" on this server. Reference #18.c54b",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headless",
+    "portal": "nobroker",
+    "url": "https://www.nobroker.in/",
+    "status": 200,
+    "finalUrl": "https://www.nobroker.in/",
+    "title": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+    "body": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lo",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headless",
+    "portal": "squareyards",
+    "url": "https://www.squareyards.com/user/login",
+    "status": 403,
+    "finalUrl": "https://www.squareyards.com/user/login",
+    "title": "Access Denied",
+    "body": "Access Denied You don't have permission to access \"http://www.squareyards.com/user/login\" on this server. Reference #18.",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headed",
+    "portal": "housing",
+    "url": "https://housing.com/user-profile",
+    "status": 200,
+    "finalUrl": "https://housing.com/user-profile",
+    "title": "Real Estate in India | Rent Property in India | Housing.com",
+    "body": "Your search for property ends here - Buy, Rent, Sell - Housing.com Your Trusted Real Estate Partner +91 Enter Phone Numb",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headed",
+    "portal": "magicbricks",
+    "url": "https://accounts.magicbricks.com/userauth/login",
+    "status": 200,
+    "finalUrl": "https://accounts.magicbricks.com/userauth/login",
+    "title": "User Login",
+    "body": "Things you Can Do with Magicbricks Account Post one Single Property for FREE Set property alerts for your requirement Ge",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headed",
+    "portal": "99acres",
+    "url": "https://www.99acres.com/login-lrfv",
+    "status": 200,
+    "finalUrl": "https://www.99acres.com/login-lrfv",
+    "title": "Login/Register",
+    "body": "EXPLORE 10L+ PROPERTIES IN INDIA Login to continue browsing Phone Number +91 +44 +1 +61 +60 +971 +93 +355 +213 +1684 +37",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headed",
+    "portal": "nobroker",
+    "url": "https://www.nobroker.in/",
+    "status": 200,
+    "finalUrl": "https://www.nobroker.in/",
+    "title": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+    "body": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lo",
+    "pagesOpened": [],
+    "error": null
+  },
+  {
+    "mode": "headed",
+    "portal": "squareyards",
+    "url": "https://www.squareyards.com/user/login",
+    "status": 200,
+    "finalUrl": "https://www.squareyards.com/user/login",
+    "title": "Login",
+    "body": "Take control of the service experience during your property search & ownership journey Provide more information about yo",
+    "pagesOpened": [],
+    "error": null
+  }
+]

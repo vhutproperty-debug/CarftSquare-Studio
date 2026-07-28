@@ -1,0 +1,41 @@
+{
+  "at": "2026-07-27T15:57:36.455Z",
+  "portal": "squareyards",
+  "jobId": "validation-squareyards",
+  "browserId": null,
+  "navigationUrl": "https://www.squareyards.com/user/login",
+  "finalUrl": "https://www.squareyards.com/user/login",
+  "httpStatus": 200,
+  "redirectChain": [
+    "200 https://www.squareyards.com/user/login",
+    "200 https://accounts.google.com/gsi/button?theme=filled_black&size=large&Text=continue_with&width=322&logo_alignment=right&click_listener=()%3D%3E%7B%22undefined%22!%3Dtypeof%20_paq%26%26_paq.push(%5B%22trackEvent%22%2C%22Gmail_Login%22%2C%22gmail_clicked%22%2CJSON.stringify(%7BpageUrl%3Awindow.location.href%2CDeviceType%3AhelperJS.isMobileBrowser()%3F%22Mobile%22%3A%22Desktop%22%7D)%5D)%7D&is_fedcm_supported=true&client_id=564751759450-vtb0dd3querv3per5rcaj5od070q19p7.apps.googleusercontent.com&iframe_id=gsi_850200_742271&cas=Ph6IJm0LM0ONpDr6EYuAZNmlW6QFKrZsHL7ochcEVOw"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "Login",
+  "currentUrl": "https://www.squareyards.com/user/login",
+  "cookiesCount": 6,
+  "storageStateBytes": 1742,
+  "consoleErrors": [
+    "Access to XMLHttpRequest at 'https://accounts.google.com/gsi/style' from origin 'https://www.squareyards.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "requestFailures": [
+    {
+      "url": "https://accounts.google.com/gsi/style",
+      "failure": "net::ERR_FAILED"
+    },
+    {
+      "url": "https://www.squareyards.com/sy-pulse/events",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785167832280-nb-sy-validation\\squareyards-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785167832280-nb-sy-validation\\squareyards-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 6679,
+  "error": null
+}

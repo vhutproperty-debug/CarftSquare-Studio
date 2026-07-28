@@ -1,0 +1,24 @@
+{
+  "at": "2026-07-28T04:56:12.078Z",
+  "commit": "53585f0",
+  "workerUrl": "https://unique-endurance-production-57a8.up.railway.app",
+  "rows": [
+    {
+      "portal": "housing",
+      "sessionExists": true,
+      "availableForResearch": true,
+      "displayState": "connected",
+      "validateOk": true,
+      "validateMessage": "valid",
+      "searchOk": true,
+      "listingCount": 29,
+      "searchMessage": "valid",
+      "pass": true,
+      "reason": "search ok listings=29"
+    }
+  ],
+  "withSession": 1,
+  "passCount": 1,
+  "failCount": 0,
+  "skippedNoSession": 0
+}

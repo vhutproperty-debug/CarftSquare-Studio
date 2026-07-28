@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-07-22T06:45:40.341Z",
+  "checkedAt": "2026-07-27T18:46:12.219Z",
   "worker": {
     "online": true,
     "healthy": true,
@@ -22,15 +22,15 @@
       "displayName": "Housing.com",
       "origin": "https://housing.com",
       "loginUrl": "https://housing.com/user-profile",
-      "searchUrl": "https://housing.com/rent?city=Mumbai",
+      "searchUrl": "https://housing.com/rent-oberoi-sky-city-for-rent-in-borivali-east-mumbai-rpid-AG6z6iAH0",
       "stored": {
         "connectionStatus": "connected",
         "connectionLastError": null,
         "sessionStatus": "valid",
         "hasEncryptedCookies": true,
         "hasEncryptedStorage": true,
-        "lastVerified": "2026-07-22T06:05:49.845Z",
-        "expiresAt": "2026-07-28T09:22:36.198Z",
+        "lastVerified": "2026-07-27T18:43:05.727Z",
+        "expiresAt": "2026-08-03T13:06:02.026Z",
         "lastValidationError": null,
         "sessionId": "d8b619f5-4392-494b-968a-6a6e0cd7c573"
       },
@@ -58,10 +58,22 @@
               "detail": "Stored session d8b619f5… (not a live browser probe)"
             },
             {
+              "id": "lifecycle",
+              "label": "Connector lifecycle",
+              "ok": null,
+              "detail": "Runtime snapshot unavailable (cached UI)"
+            },
+            {
               "id": "context",
               "label": "Encrypted cookies stored",
               "ok": true,
               "detail": "Cookies present in session store"
+            },
+            {
+              "id": "storage",
+              "label": "Storage restored",
+              "ok": null,
+              "detail": "Unknown until live validate"
             },
             {
               "id": "login",
@@ -70,10 +82,28 @@
               "detail": "sessionStatus=valid"
             },
             {
-              "id": "cookies",
-              "label": "Session cookies recorded",
+              "id": "login_confidence",
+              "label": "Login confidence",
+              "ok": null,
+              "detail": "Not scored yet"
+            },
+            {
+              "id": "verify_url",
+              "label": "Verify URL",
               "ok": true,
-              "detail": "Presence only — contents never exposed"
+              "detail": "https://housing.com/user-profile"
+            },
+            {
+              "id": "storage_state",
+              "label": "storageState persisted",
+              "ok": true,
+              "detail": "Encrypted storageState present in session store"
+            },
+            {
+              "id": "cookie_evidence",
+              "label": "Cookie evidence",
+              "ok": true,
+              "detail": "Cookies stored (count unknown until live validate)"
             },
             {
               "id": "portal",
@@ -98,49 +128,20 @@
         "responseKind": "200"
       },
       "inspect": {
-        "http": 200,
-        "body": {
-          "ok": true,
-          "httpStatus": 200,
-          "title": "Real Estate in Mumbai | Rent Property in Mumbai | Housing.com",
-          "finalUrl": "https://housing.com/rent?city=Mumbai",
-          "requestedUrl": "https://housing.com/rent?city=Mumbai",
-          "htmlLength": 302710,
-          "securityChallenge": false,
-          "totalAnchorCount": 212,
-          "propertyAnchorCount": 150,
-          "sampleHrefs": [
-            "https://housing.com/in/buy/mumbai/",
-            "https://housing.com/in/buy/mumbai/house-fid/",
-            "https://housing.com/in/buy/mumbai/builder-floors-fid/",
-            "https://housing.com/in/buy/mumbai/plots-fid/",
-            "https://housing.com/in/buy/mumbai/villas-fid/",
-            "https://housing.com/commercial/buy/commercial-property-for-sale-in-mumbai-Pskwz0ocdh7q42r5",
-            "https://housing.com/in/buy/thane/thane-west-gid/",
-            "https://housing.com/in/buy/mumbai/borivali-west-gid/",
-            "https://housing.com/in/buy/mumbai/mira-road-east-mira-bhayandar-gid/",
-            "https://housing.com/in/buy/mumbai/kurla-west-gid/",
-            "https://housing.com/in/buy/mumbai/kurla-east-gid/",
-            "https://housing.com/in/buy/mumbai/santacruz-east-gid/"
-          ],
-          "bodyTextSample": "Your search for property ends here - Buy, Rent, Sell - Housing.com Mumbai For Buyers For Tenants For Sellers Services News & Guide Download App Seller Dashboard Properties for rent in Mumbai 7K+ listings added daily and 70K+ total verified BUY RENT COMMERCIAL PG/CO-LIVING PLOTS Search Popular Localities Powai Kandivali East Andheri West Mira Road East Malad West Are you a Property Owner? Sell / Re"
-        }
+        "http": 502,
+        "body": {}
       },
       "search": {
-        "ok": true,
+        "ok": false,
         "listingCount": 0,
-        "sessionStatus": "valid",
+        "sessionStatus": "error",
+        "message": "Worker search HTTP 502",
         "sampleTitles": []
       },
-      "failure": {
-        "category": "Inventory extraction failure",
-        "failingStep": "executeSearch_or_extract",
-        "evidence": "HTTP 200 but listingCount=0; title=Real Estate in Mumbai | Rent Property in Mumbai | Housing.com",
-        "suggestedRecovery": "Improve portal-specific selectors; generic anchor harvest insufficient for this SERP DOM."
-      },
+      "failure": null,
       "dimensions": {
         "browser": "OK_shared_pool",
-        "network": "OK_or_portal_response",
+        "network": "SKIPPED",
         "authentication": "HEALTHY",
         "session": "PRESENT",
         "search": "FAILED",
@@ -152,7 +153,7 @@
       "portal": "magicbricks",
       "displayName": "MagicBricks",
       "origin": "https://www.magicbricks.com",
-      "loginUrl": "https://www.magicbricks.com/userProfile",
+      "loginUrl": "https://accounts.magicbricks.com/userauth/login",
       "searchUrl": "https://www.magicbricks.com/property-for-rent/residential-real-estate?proptype=Multistorey-Apartment,Builder-Floor-Apartment,Penthouse,Studio-Apartment&cityName=Mumbai&keyword=Oberoi%20Sky%20City",
       "stored": {
         "connectionStatus": "pending",
@@ -166,15 +167,15 @@
         "sessionId": "ad3e4911-9760-4d65-ab80-5f851fde3f74"
       },
       "statusCard": {
-        "displayState": "session_expired",
-        "health": "degraded",
+        "displayState": "reconnecting",
+        "health": "unknown",
         "availableForResearch": false,
-        "humanError": "New Connect started — previous session invalidated until re-validated",
+        "humanError": null,
         "diagnostics": {
           "researchReady": false,
-          "validationResult": "expired",
+          "validationResult": "in_progress",
           "failureReason": "New Connect started — previous session invalidated until re-validated",
-          "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
+          "suggestedAction": "Finish login in the secure browser window.",
           "checks": [
             {
               "id": "worker",
@@ -189,10 +190,22 @@
               "detail": "Stored session ad3e4911… (not a live browser probe)"
             },
             {
+              "id": "lifecycle",
+              "label": "Connector lifecycle",
+              "ok": null,
+              "detail": "Runtime snapshot unavailable (cached UI)"
+            },
+            {
               "id": "context",
               "label": "Encrypted cookies stored",
               "ok": false,
               "detail": "No saved cookies"
+            },
+            {
+              "id": "storage",
+              "label": "Storage restored",
+              "ok": null,
+              "detail": "Unknown until live validate"
             },
             {
               "id": "login",
@@ -201,9 +214,28 @@
               "detail": "sessionStatus=needs_login"
             },
             {
-              "id": "cookies",
-              "label": "Session cookies recorded",
-              "ok": false
+              "id": "login_confidence",
+              "label": "Login confidence",
+              "ok": null,
+              "detail": "Not scored yet"
+            },
+            {
+              "id": "verify_url",
+              "label": "Verify URL",
+              "ok": true,
+              "detail": "https://www.magicbricks.com/"
+            },
+            {
+              "id": "storage_state",
+              "label": "storageState persisted",
+              "ok": null,
+              "detail": "No encrypted storageState"
+            },
+            {
+              "id": "cookie_evidence",
+              "label": "Cookie evidence",
+              "ok": null,
+              "detail": "No cookies"
             },
             {
               "id": "portal",
@@ -215,7 +247,7 @@
               "id": "research_ready",
               "label": "Available for research",
               "ok": false,
-              "detail": "Reconnect required"
+              "detail": "Connecting…"
             }
           ]
         }
@@ -223,15 +255,16 @@
       "validate": {
         "ok": false,
         "status": "needs_login",
-        "message": "Login required.",
-        "sessionId": "ad3e4911-9760-4d65-ab80-5f851fde3f74"
+        "message": "Stored session TTL expired — mark needs_login",
+        "sessionId": "ad3e4911-9760-4d65-ab80-5f851fde3f74",
+        "responseKind": "other"
       },
       "inspect": null,
       "search": null,
       "failure": {
         "category": "Session expired",
         "failingStep": "session_missing",
-        "evidence": "login required. | needs_login",
+        "evidence": "stored session ttl expired — mark needs_login | needs_login",
         "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
       },
       "magicbricksProbe": {
@@ -255,28 +288,28 @@
       "portal": "99acres",
       "displayName": "99acres",
       "origin": "https://www.99acres.com",
-      "loginUrl": "https://www.99acres.com/myaccount",
+      "loginUrl": "https://www.99acres.com/login-lrfv",
       "searchUrl": "https://www.99acres.com/search/property/rent/mumbai?keyword=Oberoi%20Sky%20City&bedroom_num=2",
       "stored": {
         "connectionStatus": "pending",
-        "connectionLastError": "Login required.",
+        "connectionLastError": null,
         "sessionStatus": "needs_login",
         "hasEncryptedCookies": false,
         "hasEncryptedStorage": false,
         "lastVerified": "2026-07-18T11:20:52.870Z",
         "expiresAt": "2026-07-25T11:20:53.056Z",
-        "lastValidationError": "Login required — no encrypted cookies",
+        "lastValidationError": "New Connect started — previous session invalidated until re-validated",
         "sessionId": "e32542c5-7a75-41b9-957e-307a4edbf670"
       },
       "statusCard": {
         "displayState": "session_expired",
         "health": "degraded",
         "availableForResearch": false,
-        "humanError": "Portal login expired. Reconnect to continue research.",
+        "humanError": "New Connect started — previous session invalidated until re-validated",
         "diagnostics": {
           "researchReady": false,
           "validationResult": "expired",
-          "failureReason": "Portal login expired. Reconnect to continue research.",
+          "failureReason": "New Connect started — previous session invalidated until re-validated",
           "suggestedAction": "Click Reconnect, complete portal login, and wait until Research Ready.",
           "checks": [
             {
@@ -292,10 +325,22 @@
               "detail": "Stored session e32542c5… (not a live browser probe)"
             },
             {
+              "id": "lifecycle",
+              "label": "Connector lifecycle",
+              "ok": null,
+              "detail": "Runtime snapshot unavailable (cached UI)"
+            },
+            {
               "id": "context",
               "label": "Encrypted cookies stored",
               "ok": false,
               "detail": "No saved cookies"
+            },
+            {
+              "id": "storage",
+              "label": "Storage restored",
+              "ok": null,
+              "detail": "Unknown until live validate"
             },
             {
               "id": "login",
@@ -304,9 +349,28 @@
               "detail": "sessionStatus=needs_login"
             },
             {
-              "id": "cookies",
-              "label": "Session cookies recorded",
-              "ok": false
+              "id": "login_confidence",
+              "label": "Login confidence",
+              "ok": null,
+              "detail": "Not scored yet"
+            },
+            {
+              "id": "verify_url",
+              "label": "Verify URL",
+              "ok": true,
+              "detail": "https://www.99acres.com/"
+            },
+            {
+              "id": "storage_state",
+              "label": "storageState persisted",
+              "ok": null,
+              "detail": "No encrypted storageState"
+            },
+            {
+              "id": "cookie_evidence",
+              "label": "Cookie evidence",
+              "ok": null,
+              "detail": "No cookies"
             },
             {
               "id": "portal",
@@ -326,15 +390,16 @@
       "validate": {
         "ok": false,
         "status": "needs_login",
-        "message": "Login required.",
-        "sessionId": "e32542c5-7a75-41b9-957e-307a4edbf670"
+        "message": "Stored session TTL expired — mark needs_login",
+        "sessionId": "e32542c5-7a75-41b9-957e-307a4edbf670",
+        "responseKind": "other"
       },
       "inspect": null,
       "search": null,
       "failure": {
         "category": "Session expired",
         "failingStep": "session_missing",
-        "evidence": "login required. | needs_login",
+        "evidence": "stored session ttl expired — mark needs_login | needs_login",
         "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
       },
       "dimensions": {
@@ -351,17 +416,17 @@
       "portal": "nobroker",
       "displayName": "NoBroker",
       "origin": "https://www.nobroker.in",
-      "loginUrl": "https://www.nobroker.in/profile",
+      "loginUrl": "https://www.nobroker.in/",
       "searchUrl": "https://www.nobroker.in/rent/mumbai?searchParam=Oberoi%20Sky%20City&type=2bhk",
       "stored": {
         "connectionStatus": "pending",
-        "connectionLastError": "Login required.",
+        "connectionLastError": "Stored session TTL expired — mark needs_login",
         "sessionStatus": "needs_login",
         "hasEncryptedCookies": false,
         "hasEncryptedStorage": false,
         "lastVerified": "2026-07-18T11:20:52.869Z",
         "expiresAt": "2026-07-25T11:20:53.056Z",
-        "lastValidationError": "Login required — no encrypted cookies",
+        "lastValidationError": "Stored session TTL expired — mark needs_login",
         "sessionId": "9b2dc63e-7730-4a65-81b4-aeb0372e980d"
       },
       "statusCard": {
@@ -388,10 +453,22 @@
               "detail": "Stored session 9b2dc63e… (not a live browser probe)"
             },
             {
+              "id": "lifecycle",
+              "label": "Connector lifecycle",
+              "ok": null,
+              "detail": "Runtime snapshot unavailable (cached UI)"
+            },
+            {
               "id": "context",
               "label": "Encrypted cookies stored",
               "ok": false,
               "detail": "No saved cookies"
+            },
+            {
+              "id": "storage",
+              "label": "Storage restored",
+              "ok": null,
+              "detail": "Unknown until live validate"
             },
             {
               "id": "login",
@@ -400,9 +477,28 @@
               "detail": "sessionStatus=needs_login"
             },
             {
-              "id": "cookies",
-              "label": "Session cookies recorded",
-              "ok": false
+              "id": "login_confidence",
+              "label": "Login confidence",
+              "ok": null,
+              "detail": "Not scored yet"
+            },
+            {
+              "id": "verify_url",
+              "label": "Verify URL",
+              "ok": true,
+              "detail": "https://www.nobroker.in/"
+            },
+            {
+              "id": "storage_state",
+              "label": "storageState persisted",
+              "ok": null,
+              "detail": "No encrypted storageState"
+            },
+            {
+              "id": "cookie_evidence",
+              "label": "Cookie evidence",
+              "ok": null,
+              "detail": "No cookies"
             },
             {
               "id": "portal",
@@ -422,15 +518,16 @@
       "validate": {
         "ok": false,
         "status": "needs_login",
-        "message": "Login required.",
-        "sessionId": "9b2dc63e-7730-4a65-81b4-aeb0372e980d"
+        "message": "Stored session TTL expired — mark needs_login",
+        "sessionId": "9b2dc63e-7730-4a65-81b4-aeb0372e980d",
+        "responseKind": "other"
       },
       "inspect": null,
       "search": null,
       "failure": {
         "category": "Session expired",
         "failingStep": "session_missing",
-        "evidence": "login required. | needs_login",
+        "evidence": "stored session ttl expired — mark needs_login | needs_login",
         "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
       },
       "dimensions": {
@@ -447,17 +544,17 @@
       "portal": "squareyards",
       "displayName": "Square Yards",
       "origin": "https://www.squareyards.com",
-      "loginUrl": "https://www.squareyards.com/account",
+      "loginUrl": "https://www.squareyards.com/user/login",
       "searchUrl": "https://www.squareyards.com/search?q=Oberoi%20Sky%20City&city=Mumbai&propertyType=Apartment&transaction=Rent",
       "stored": {
         "connectionStatus": "pending",
-        "connectionLastError": "Login required.",
+        "connectionLastError": "Stored session TTL expired — mark needs_login",
         "sessionStatus": "needs_login",
         "hasEncryptedCookies": false,
         "hasEncryptedStorage": false,
         "lastVerified": "2026-07-18T11:20:52.867Z",
         "expiresAt": "2026-07-25T11:20:53.053Z",
-        "lastValidationError": "Login required — no encrypted cookies",
+        "lastValidationError": "Stored session TTL expired — mark needs_login",
         "sessionId": "b0b9df90-a399-4e99-92d9-5dbad1f0b9f1"
       },
       "statusCard": {
@@ -484,10 +581,22 @@
               "detail": "Stored session b0b9df90… (not a live browser probe)"
             },
             {
+              "id": "lifecycle",
+              "label": "Connector lifecycle",
+              "ok": null,
+              "detail": "Runtime snapshot unavailable (cached UI)"
+            },
+            {
               "id": "context",
               "label": "Encrypted cookies stored",
               "ok": false,
               "detail": "No saved cookies"
+            },
+            {
+              "id": "storage",
+              "label": "Storage restored",
+              "ok": null,
+              "detail": "Unknown until live validate"
             },
             {
               "id": "login",
@@ -496,9 +605,28 @@
               "detail": "sessionStatus=needs_login"
             },
             {
-              "id": "cookies",
-              "label": "Session cookies recorded",
-              "ok": false
+              "id": "login_confidence",
+              "label": "Login confidence",
+              "ok": null,
+              "detail": "Not scored yet"
+            },
+            {
+              "id": "verify_url",
+              "label": "Verify URL",
+              "ok": true,
+              "detail": "https://www.squareyards.com/"
+            },
+            {
+              "id": "storage_state",
+              "label": "storageState persisted",
+              "ok": null,
+              "detail": "No encrypted storageState"
+            },
+            {
+              "id": "cookie_evidence",
+              "label": "Cookie evidence",
+              "ok": null,
+              "detail": "No cookies"
             },
             {
               "id": "portal",
@@ -518,15 +646,16 @@
       "validate": {
         "ok": false,
         "status": "needs_login",
-        "message": "Login required.",
-        "sessionId": "b0b9df90-a399-4e99-92d9-5dbad1f0b9f1"
+        "message": "Stored session TTL expired — mark needs_login",
+        "sessionId": "b0b9df90-a399-4e99-92d9-5dbad1f0b9f1",
+        "responseKind": "other"
       },
       "inspect": null,
       "search": null,
       "failure": {
         "category": "Session expired",
         "failingStep": "session_missing",
-        "evidence": "login required. | needs_login",
+        "evidence": "stored session ttl expired — mark needs_login | needs_login",
         "suggestedRecovery": "Reconnect portal, complete login, wait until Research Ready, then retry."
       },
       "dimensions": {
@@ -542,204 +671,204 @@
   ],
   "relevantWorkerLogs": [
     {
-      "at": "2026-07-22T06:40:08.154Z",
+      "at": "2026-07-27T18:43:01.432Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "pw_text_signals pw:heading=Things you Can Do with\nMagicbricks Accou"
     },
     {
-      "at": "2026-07-22T06:40:15.780Z",
+      "at": "2026-07-27T18:43:01.487Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_artifacts html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-19.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-19.jpg htmlBytes=91863"
     },
     {
-      "at": "2026-07-22T06:40:23.389Z",
+      "at": "2026-07-27T18:43:01.487Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "login_wait_poll sessionId=0188df9a-0771-4d66-b23a-33d5a5d51144 portal=magicbricks label=poll n=19 profileDir=/data/craftsquare/research-profiles/connect-sessions/0188df9a-0771-4d66-b23a-33d5a5d51144/magicbricks workerPid=37 url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2015 iframes=2 shadowHosts=0 cookies=10 loginSurface=true avatar=false accountName=true editProfile=false logout=false profileLink=false loginForm=true profileSelectors=name:h3|pw:heading=Things you Can Do with\nMagicbricks Accou html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-19.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-19.jpg authScore=85/60 remainingMs=571489 decision=NOT_AUTHENTICATED"
     },
     {
-      "at": "2026-07-22T06:40:31.030Z",
+      "at": "2026-07-27T18:43:01.487Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "auth_score Security.......10"
     },
     {
-      "at": "2026-07-22T06:40:38.666Z",
+      "at": "2026-07-27T18:43:06.812Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inventory portal=magicbricks count=1 urls=https://accounts.magicbricks.com/userauth/login"
     },
     {
-      "at": "2026-07-22T06:40:46.288Z",
+      "at": "2026-07-27T18:43:08.833Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inspect url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2016 frames=3 cookies=10 localStorage=1 sessionStorage=1"
     },
     {
-      "at": "2026-07-22T06:40:53.973Z",
+      "at": "2026-07-27T18:43:08.838Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=2 shadowHosts=0 avatar=false name=true edit=false"
     },
     {
-      "at": "2026-07-22T06:41:01.573Z",
+      "at": "2026-07-27T18:43:08.840Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:41:09.136Z",
+      "at": "2026-07-27T18:43:08.842Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.google.com/o/oauth2/iframe#origin=https%3A%2F%2Faccounts.magicbricks.com&rpcToken=823193955.0692544&clearCache=1&supportBlocked3PCookies=1 readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:41:16.714Z",
+      "at": "2026-07-27T18:43:08.859Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "pw_text_signals pw:heading=Things you Can Do with\nMagicbricks Accou"
     },
     {
-      "at": "2026-07-22T06:41:24.362Z",
+      "at": "2026-07-27T18:43:08.907Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_artifacts html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-20.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-20.jpg htmlBytes=91863"
     },
     {
-      "at": "2026-07-22T06:41:32.004Z",
+      "at": "2026-07-27T18:43:08.908Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "login_wait_poll sessionId=0188df9a-0771-4d66-b23a-33d5a5d51144 portal=magicbricks label=poll n=20 profileDir=/data/craftsquare/research-profiles/connect-sessions/0188df9a-0771-4d66-b23a-33d5a5d51144/magicbricks workerPid=37 url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2016 iframes=2 shadowHosts=0 cookies=10 loginSurface=true avatar=false accountName=true editProfile=false logout=false profileLink=false loginForm=true profileSelectors=name:h3|pw:heading=Things you Can Do with\nMagicbricks Accou html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-20.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-20.jpg authScore=85/60 remainingMs=564068 decision=NOT_AUTHENTICATED"
     },
     {
-      "at": "2026-07-22T06:41:39.603Z",
+      "at": "2026-07-27T18:43:08.908Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "auth_score Security.......10"
     },
     {
-      "at": "2026-07-22T06:41:47.236Z",
+      "at": "2026-07-27T18:43:14.253Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inventory portal=magicbricks count=1 urls=https://accounts.magicbricks.com/userauth/login"
     },
     {
-      "at": "2026-07-22T06:41:54.860Z",
+      "at": "2026-07-27T18:43:16.277Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inspect url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2018 frames=3 cookies=10 localStorage=1 sessionStorage=1"
     },
     {
-      "at": "2026-07-22T06:42:02.501Z",
+      "at": "2026-07-27T18:43:16.280Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=2 shadowHosts=0 avatar=false name=true edit=false"
     },
     {
-      "at": "2026-07-22T06:42:10.185Z",
+      "at": "2026-07-27T18:43:16.282Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:42:17.834Z",
+      "at": "2026-07-27T18:43:16.283Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.google.com/o/oauth2/iframe#origin=https%3A%2F%2Faccounts.magicbricks.com&rpcToken=823193955.0692544&clearCache=1&supportBlocked3PCookies=1 readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:42:25.477Z",
+      "at": "2026-07-27T18:43:16.294Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "pw_text_signals pw:heading=Things you Can Do with\nMagicbricks Accou"
     },
     {
-      "at": "2026-07-22T06:42:33.092Z",
+      "at": "2026-07-27T18:43:16.340Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_artifacts html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-21.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-21.jpg htmlBytes=91863"
     },
     {
-      "at": "2026-07-22T06:42:40.665Z",
+      "at": "2026-07-27T18:43:16.340Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "login_wait_poll sessionId=0188df9a-0771-4d66-b23a-33d5a5d51144 portal=magicbricks label=poll n=21 profileDir=/data/craftsquare/research-profiles/connect-sessions/0188df9a-0771-4d66-b23a-33d5a5d51144/magicbricks workerPid=37 url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2018 iframes=2 shadowHosts=0 cookies=10 loginSurface=true avatar=false accountName=true editProfile=false logout=false profileLink=false loginForm=true profileSelectors=name:h3|pw:heading=Things you Can Do with\nMagicbricks Accou html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-21.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-21.jpg authScore=85/60 remainingMs=556636 decision=NOT_AUTHENTICATED"
     },
     {
-      "at": "2026-07-22T06:42:48.312Z",
+      "at": "2026-07-27T18:43:16.340Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "auth_score Security.......10"
     },
     {
-      "at": "2026-07-22T06:42:55.983Z",
+      "at": "2026-07-27T18:43:21.668Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inventory portal=magicbricks count=1 urls=https://accounts.magicbricks.com/userauth/login"
     },
     {
-      "at": "2026-07-22T06:43:03.665Z",
+      "at": "2026-07-27T18:43:23.689Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inspect url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2015 frames=3 cookies=10 localStorage=1 sessionStorage=1"
     },
     {
-      "at": "2026-07-22T06:43:11.280Z",
+      "at": "2026-07-27T18:43:23.693Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=2 shadowHosts=0 avatar=false name=true edit=false"
     },
     {
-      "at": "2026-07-22T06:43:18.970Z",
+      "at": "2026-07-27T18:43:23.695Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:43:26.658Z",
+      "at": "2026-07-27T18:43:23.696Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.google.com/o/oauth2/iframe#origin=https%3A%2F%2Faccounts.magicbricks.com&rpcToken=823193955.0692544&clearCache=1&supportBlocked3PCookies=1 readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:43:34.305Z",
+      "at": "2026-07-27T18:43:23.704Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "pw_text_signals pw:heading=Things you Can Do with\nMagicbricks Accou"
     },
     {
-      "at": "2026-07-22T06:43:41.900Z",
+      "at": "2026-07-27T18:43:23.759Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_artifacts html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-22.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-22.jpg htmlBytes=91863"
     },
     {
-      "at": "2026-07-22T06:43:49.460Z",
+      "at": "2026-07-27T18:43:23.759Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "login_wait_poll sessionId=0188df9a-0771-4d66-b23a-33d5a5d51144 portal=magicbricks label=poll n=22 profileDir=/data/craftsquare/research-profiles/connect-sessions/0188df9a-0771-4d66-b23a-33d5a5d51144/magicbricks workerPid=37 url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2015 iframes=2 shadowHosts=0 cookies=10 loginSurface=true avatar=false accountName=true editProfile=false logout=false profileLink=false loginForm=true profileSelectors=name:h3|pw:heading=Things you Can Do with\nMagicbricks Accou html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-22.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-22.jpg authScore=85/60 remainingMs=549217 decision=NOT_AUTHENTICATED"
     },
     {
-      "at": "2026-07-22T06:43:57.126Z",
+      "at": "2026-07-27T18:43:23.759Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "auth_score Security.......10"
     },
     {
-      "at": "2026-07-22T06:44:04.779Z",
+      "at": "2026-07-27T18:43:29.095Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inventory portal=magicbricks count=1 urls=https://accounts.magicbricks.com/userauth/login"
     },
     {
-      "at": "2026-07-22T06:44:12.467Z",
+      "at": "2026-07-27T18:43:31.117Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_inspect url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2017 frames=3 cookies=10 localStorage=1 sessionStorage=1"
     },
     {
-      "at": "2026-07-22T06:44:20.075Z",
+      "at": "2026-07-27T18:43:31.123Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=2 shadowHosts=0 avatar=false name=true edit=false"
     },
     {
-      "at": "2026-07-22T06:44:27.693Z",
+      "at": "2026-07-27T18:43:31.125Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.magicbricks.com/userauth/login readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:44:35.286Z",
+      "at": "2026-07-27T18:43:31.126Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "frame_scan url=https://accounts.google.com/o/oauth2/iframe#origin=https%3A%2F%2Faccounts.magicbricks.com&rpcToken=823193955.0692544&clearCache=1&supportBlocked3PCookies=1 readyState=complete iframes=0 shadowHosts=0 avatar=false name=false edit=false"
     },
     {
-      "at": "2026-07-22T06:44:42.869Z",
+      "at": "2026-07-27T18:43:31.135Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "pw_text_signals pw:heading=Things you Can Do with\nMagicbricks Accou"
     },
     {
-      "at": "2026-07-22T06:44:50.427Z",
+      "at": "2026-07-27T18:43:31.176Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "page_artifacts html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-23.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-23.jpg htmlBytes=91863"
     },
     {
-      "at": "2026-07-22T06:44:58.061Z",
+      "at": "2026-07-27T18:43:31.176Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "login_wait_poll sessionId=0188df9a-0771-4d66-b23a-33d5a5d51144 portal=magicbricks label=poll n=23 profileDir=/data/craftsquare/research-profiles/connect-sessions/0188df9a-0771-4d66-b23a-33d5a5d51144/magicbricks workerPid=37 url=https://accounts.magicbricks.com/userauth/login title=\"User Login\" readyState=complete settled=true networkIdleMs=2017 iframes=2 shadowHosts=0 cookies=10 loginSurface=true avatar=false accountName=true editProfile=false logout=false profileLink=false loginForm=true profileSelectors=name:h3|pw:heading=Things you Can Do with\nMagicbricks Accou html=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-23.html screenshot=/data/craftsquare/research-screenshots/connect/0188df9a-0771-4d66-b23a-33d5a5d51144/auth-probe/poll-23.jpg authScore=85/60 remainingMs=541800 decision=NOT_AUTHENTICATED"
     },
     {
-      "at": "2026-07-22T06:45:06.022Z",
+      "at": "2026-07-27T18:43:31.176Z",
       "level": "info",
-      "message": "tick complete · connectJob=false validated=0 cleanedPreviews=0"
+      "message": "auth_score Security.......10"
     }
   ]
 }

@@ -1,0 +1,511 @@
+{
+  "generatedAt": "2026-07-27T12:44:29.465Z",
+  "outDir": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy",
+  "picks": [
+    {
+      "portal": "nobroker",
+      "best": {
+        "portal": "nobroker",
+        "candidateUrl": "https://www.nobroker.in/users/login",
+        "httpStatus": 200,
+        "finalUrl": "https://www.nobroker.in/",
+        "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+        "cookiesCount": 84,
+        "storageStateBytes": 23875,
+        "accessDenied": false,
+        "wafHints": [],
+        "loginSurface": true,
+        "otpSignals": false,
+        "score": 5,
+        "reasons": [
+          "login_copy",
+          "looks_marketing"
+        ],
+        "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+        "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+        "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+        "error": null
+      },
+      "ranked": [
+        {
+          "portal": "nobroker",
+          "candidateUrl": "https://www.nobroker.in/users/login",
+          "httpStatus": 200,
+          "finalUrl": "https://www.nobroker.in/",
+          "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+          "cookiesCount": 84,
+          "storageStateBytes": 23875,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": 5,
+          "reasons": [
+            "login_copy",
+            "looks_marketing"
+          ],
+          "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "nobroker",
+          "candidateUrl": "https://www.nobroker.in/",
+          "httpStatus": 200,
+          "finalUrl": "https://www.nobroker.in/",
+          "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+          "cookiesCount": 62,
+          "storageStateBytes": 13363,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": 5,
+          "reasons": [
+            "login_copy",
+            "looks_marketing"
+          ],
+          "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Bangalore Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Pri",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "nobroker",
+          "candidateUrl": "https://www.nobroker.in/profile",
+          "httpStatus": 200,
+          "finalUrl": "https://www.nobroker.in/profile",
+          "pageTitle": "Property for rent | Apartments for rent | Flats for rent | Rent property | without brokers | No brokerage | nobroker.in",
+          "cookiesCount": 74,
+          "storageStateBytes": 20871,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": 5,
+          "reasons": [
+            "login_copy",
+            "looks_marketing"
+          ],
+          "bodySample": "Menu Login / Sign Up For Property owners Pay Rent World's Largest NoBrokerage Property Site Pay rent and earn upto ₹2100+ cashback BuyRent Commercial Mumbai Mumbai Bangalore Pune Chennai Gurgaon Hyderabad Delhi Noida Greater Noida Ghaziabad Faridabad Search Full House PG/Hostel Flatmates BHK Type 1 RK 1 BHK 2 BHK 3 BHK 4 BHK 4+ BHK Moving Date Imme",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "nobroker",
+          "candidateUrl": "https://www.nobroker.in/nb/user/login",
+          "httpStatus": 404,
+          "finalUrl": "https://www.nobroker.in/",
+          "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+          "cookiesCount": 81,
+          "storageStateBytes": 23567,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": -45,
+          "reasons": [
+            "http_404",
+            "login_copy",
+            "looks_marketing"
+          ],
+          "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+          "error": null
+        }
+      ]
+    },
+    {
+      "portal": "squareyards",
+      "best": {
+        "portal": "squareyards",
+        "candidateUrl": "https://www.squareyards.com/user/login",
+        "httpStatus": 200,
+        "finalUrl": "https://www.squareyards.com/user/login",
+        "pageTitle": "Login",
+        "cookiesCount": 6,
+        "storageStateBytes": 1742,
+        "accessDenied": false,
+        "wafHints": [],
+        "loginSurface": true,
+        "otpSignals": false,
+        "score": 45,
+        "reasons": [
+          "title_login",
+          "login_copy",
+          "auth_path"
+        ],
+        "bodySample": "Take control of the service experience during your property search & ownership journey Provide more information about your property needs Shortlist more properties for site visits & evaluation Rate your experience with us and give feedback View assigned sales expert’s profile & request for change if required Manage your meetings/site visits schedul",
+        "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+        "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+        "error": null
+      },
+      "ranked": [
+        {
+          "portal": "squareyards",
+          "candidateUrl": "https://www.squareyards.com/user/login",
+          "httpStatus": 200,
+          "finalUrl": "https://www.squareyards.com/user/login",
+          "pageTitle": "Login",
+          "cookiesCount": 6,
+          "storageStateBytes": 1742,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": 45,
+          "reasons": [
+            "title_login",
+            "login_copy",
+            "auth_path"
+          ],
+          "bodySample": "Take control of the service experience during your property search & ownership journey Provide more information about your property needs Shortlist more properties for site visits & evaluation Rate your experience with us and give feedback View assigned sales expert’s profile & request for change if required Manage your meetings/site visits schedul",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "squareyards",
+          "candidateUrl": "https://www.squareyards.com/",
+          "httpStatus": 200,
+          "finalUrl": "https://www.squareyards.com/",
+          "pageTitle": "Square Yards - Property in India | Leading Real Estate Proptech Company",
+          "cookiesCount": 12,
+          "storageStateBytes": 3475,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": false,
+          "otpSignals": false,
+          "score": -10,
+          "reasons": [
+            "looks_marketing"
+          ],
+          "bodySample": "City Buy Buy Properties Property Valuation Vaastu Calculator Affordability Calculator Buy vs Rent Calculator Buyer Guide Title Search Litigation Search Property Legal Services Escrow Services Stamp Duty Calculator Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Pr",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "squareyards",
+          "candidateUrl": "https://www.squareyards.com/login",
+          "httpStatus": 404,
+          "finalUrl": "https://www.squareyards.com/login",
+          "pageTitle": "404",
+          "cookiesCount": 3,
+          "storageStateBytes": 1143,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": true,
+          "otpSignals": false,
+          "score": -35,
+          "reasons": [
+            "http_404",
+            "login_copy",
+            "auth_path",
+            "looks_marketing"
+          ],
+          "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+          "error": null
+        },
+        {
+          "portal": "squareyards",
+          "candidateUrl": "https://www.squareyards.com/account",
+          "httpStatus": 404,
+          "finalUrl": "https://www.squareyards.com/account",
+          "pageTitle": "404",
+          "cookiesCount": 3,
+          "storageStateBytes": 1145,
+          "accessDenied": false,
+          "wafHints": [],
+          "loginSurface": false,
+          "otpSignals": false,
+          "score": -60,
+          "reasons": [
+            "http_404",
+            "looks_marketing"
+          ],
+          "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+          "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+          "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+          "error": null
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/users/login",
+      "httpStatus": 200,
+      "finalUrl": "https://www.nobroker.in/",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 84,
+      "storageStateBytes": 23875,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": 5,
+      "reasons": [
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/nb/user/login",
+      "httpStatus": 404,
+      "finalUrl": "https://www.nobroker.in/",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 81,
+      "storageStateBytes": 23567,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": -45,
+      "reasons": [
+        "http_404",
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/",
+      "httpStatus": 200,
+      "finalUrl": "https://www.nobroker.in/",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 62,
+      "storageStateBytes": 13363,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": 5,
+      "reasons": [
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Bangalore Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Pri",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/profile",
+      "httpStatus": 200,
+      "finalUrl": "https://www.nobroker.in/profile",
+      "pageTitle": "Property for rent | Apartments for rent | Flats for rent | Rent property | without brokers | No brokerage | nobroker.in",
+      "cookiesCount": 74,
+      "storageStateBytes": 20871,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": 5,
+      "reasons": [
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Menu Login / Sign Up For Property owners Pay Rent World's Largest NoBrokerage Property Site Pay rent and earn upto ₹2100+ cashback BuyRent Commercial Mumbai Mumbai Bangalore Pune Chennai Gurgaon Hyderabad Delhi Noida Greater Noida Ghaziabad Faridabad Search Full House PG/Hostel Flatmates BHK Type 1 RK 1 BHK 2 BHK 3 BHK 4 BHK 4+ BHK Moving Date Imme",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/signin",
+      "httpStatus": 404,
+      "finalUrl": "https://www.nobroker.in/",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 81,
+      "storageStateBytes": 23554,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": -45,
+      "reasons": [
+        "http_404",
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "nobroker",
+      "candidateUrl": "https://www.nobroker.in/login",
+      "httpStatus": 404,
+      "finalUrl": "https://www.nobroker.in/",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 82,
+      "storageStateBytes": 23770,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": -45,
+      "reasons": [
+        "http_404",
+        "login_copy",
+        "looks_marketing"
+      ],
+      "bodySample": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Mumbai Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price ",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\nobroker-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/user/login",
+      "httpStatus": 200,
+      "finalUrl": "https://www.squareyards.com/user/login",
+      "pageTitle": "Login",
+      "cookiesCount": 6,
+      "storageStateBytes": 1742,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": 45,
+      "reasons": [
+        "title_login",
+        "login_copy",
+        "auth_path"
+      ],
+      "bodySample": "Take control of the service experience during your property search & ownership journey Provide more information about your property needs Shortlist more properties for site visits & evaluation Rate your experience with us and give feedback View assigned sales expert’s profile & request for change if required Manage your meetings/site visits schedul",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/login",
+      "httpStatus": 404,
+      "finalUrl": "https://www.squareyards.com/login",
+      "pageTitle": "404",
+      "cookiesCount": 3,
+      "storageStateBytes": 1143,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "otpSignals": false,
+      "score": -35,
+      "reasons": [
+        "http_404",
+        "login_copy",
+        "auth_path",
+        "looks_marketing"
+      ],
+      "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/account",
+      "httpStatus": 404,
+      "finalUrl": "https://www.squareyards.com/account",
+      "pageTitle": "404",
+      "cookiesCount": 3,
+      "storageStateBytes": 1145,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": false,
+      "otpSignals": false,
+      "score": -60,
+      "reasons": [
+        "http_404",
+        "looks_marketing"
+      ],
+      "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/",
+      "httpStatus": 200,
+      "finalUrl": "https://www.squareyards.com/",
+      "pageTitle": "Square Yards - Property in India | Leading Real Estate Proptech Company",
+      "cookiesCount": 12,
+      "storageStateBytes": 3475,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": false,
+      "otpSignals": false,
+      "score": -10,
+      "reasons": [
+        "looks_marketing"
+      ],
+      "bodySample": "City Buy Buy Properties Property Valuation Vaastu Calculator Affordability Calculator Buy vs Rent Calculator Buyer Guide Title Search Litigation Search Property Legal Services Escrow Services Stamp Duty Calculator Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Pr",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/user/dashboard",
+      "httpStatus": 404,
+      "finalUrl": "https://www.squareyards.com/user/dashboard",
+      "pageTitle": "404",
+      "cookiesCount": 2,
+      "storageStateBytes": 1014,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": false,
+      "otpSignals": false,
+      "score": -60,
+      "reasons": [
+        "http_404",
+        "looks_marketing"
+      ],
+      "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    },
+    {
+      "portal": "squareyards",
+      "candidateUrl": "https://www.squareyards.com/my-account",
+      "httpStatus": 404,
+      "finalUrl": "https://www.squareyards.com/my-account",
+      "pageTitle": "404",
+      "cookiesCount": 3,
+      "storageStateBytes": 1148,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": false,
+      "otpSignals": false,
+      "score": -60,
+      "reasons": [
+        "http_404",
+        "looks_marketing"
+      ],
+      "bodySample": "404 Errr…. Seems like you are lost Navigate back using the search and rediscover the project or location you're searching for Search Buy Rent Properties for Sale Property in Mumbai Property in Delhi Property in Noida Property in Gurgaon Property in Pune Property in Bangalore Property in Hyderabad Property in Chennai Property in Thane Property in Na",
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+      "error": null
+    }
+  ]
+}

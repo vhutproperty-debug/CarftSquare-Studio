@@ -1,0 +1,70 @@
+{
+  "at": "2026-07-27T12:32:57.332Z",
+  "portal": "99acres",
+  "jobId": "validation-99acres",
+  "browserId": null,
+  "navigationUrl": "https://www.99acres.com/login-lrfv",
+  "finalUrl": "https://www.99acres.com/login-lrfv",
+  "httpStatus": 200,
+  "redirectChain": [
+    "200 https://www.99acres.com/login-lrfv"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "Login/Register",
+  "currentUrl": "https://www.99acres.com/login-lrfv",
+  "cookiesCount": 31,
+  "storageStateBytes": 6938,
+  "consoleErrors": [
+    "Connecting to 'https://ad.doubleclick.net/ccm/s/collect?auid=1093599110.1785155574&gtm=45He67m0v6676315za200zd6676315xea&fmt=8' violates the following Content Security Policy directive: \"connect-src 'self' *.99acres.com *.infoedge.com *.google.com *.clarity.ms *.g.doubleclick.net *.google-analytics.com *.taboola.com *.googleapis.com *.googlevideo.com *.youtube.com *.mappls.com *.mapmyindia.com tru",
+    "Fetch API cannot load https://ad.doubleclick.net/ccm/s/collect?auid=1093599110.1785155574&gtm=45He67m0v6676315za200zd6676315xea&fmt=8. Refused to connect because it violates the document's Content Security Policy."
+  ],
+  "requestFailures": [
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=17&frm=0&apvc=1&ae=g&auid=1093599110.1785155574&dt=Login%2FRegister&en=page_view&dl=https%3A%2F%2Fwww.99acres.com%2Flogin-lrfv&scrsrc=www.googletagmanager.com&rnd=121517993.1785155574&navt=n&npa=0&ep.a",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-9QHC0XEKPS&gtm=45je67m0v881458709z86676315za20gzb6676315zd6676315&_p=1785155573460&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGAC&are=1&cid=1139022614.1785155574&frm=0&pscdl=noapi&rcb=13&sr",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=19&frm=0&apvc=0&ae=g&auid=1093599110.1785155574&dt=Login%2FRegister&tid=AW-1040511042&dl=https%3A%2F%2Fwww.99acres.com%2Flogin-lrfv&scrsrc=www.googletagmanager.com&rnd=121517993.1785155574&navt=n&npa=0",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/rmkt/collect/854376853/?random=1785155574541&cv=11&fst=1785155574541&fmt=8&bg=ffffff&guid=ON&async=1&gtm=45be67m0v872390738z86676315za20gzb6676315zd6676315xea&gcd=13l3l3l3l1l1&dma=0&tag_exp=115616986~115938465~1159384",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://mpc-prod-28-1053047382554.us-central1.run.app/events?cee=no",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/rmkt/collect/791289892/?random=1785155574603&cv=11&fst=1785155574603&fmt=8&bg=ffffff&guid=ON&async=1&gtm=45be67m0z86676315za20gzb6676315zd6676315xea&gcd=13l3l3l3l1l1&dma=0&tag_exp=115616985~115938465~115938468~1181318",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=18&frm=0&apvc=0&ae=g&auid=1093599110.1785155574&dt=Login%2FRegister&tid=AW-854376853&dl=https%3A%2F%2Fwww.99acres.com%2Flogin-lrfv&scrsrc=www.googletagmanager.com&rnd=121517993.1785155574&navt=n&npa=0&",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=7&frm=0&apvc=0&ae=g&auid=1093599110.1785155574&dt=Login%2FRegister&tid=AW-791289892&dl=https%3A%2F%2Fwww.99acres.com%2Flogin-lrfv&scrsrc=www.googletagmanager.com&rnd=121517993.1785155574&navt=n&npa=0&e",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/rmkt/collect/1040511042/?random=1785155574468&cv=11&fst=1785155574468&fmt=8&bg=ffffff&guid=ON&async=1&gtm=45be67m0v9248853874z86676315za20gzb6676315zd6676315xea&gcd=13l3l3l3l1l1&dma=0&tag_exp=115616985~115938465~11593",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "jsExceptions": [
+    "Minified React error #418; visit https://react.dev/errors/418?args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+  ],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\99acres-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\99acres-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 7102,
+  "error": null
+}

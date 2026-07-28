@@ -1,0 +1,74 @@
+{
+  "at": "2026-07-27T16:09:53.172Z",
+  "commit": "f3d268208ca5e6c189bf86ff523595d64242bb7d",
+  "workerUrl": "https://unique-endurance-production-57a8.up.railway.app",
+  "rows": [
+    {
+      "portal": "housing",
+      "sessionId": "e624497d-bfc9-4931-a658-5af8d5ac232a",
+      "phase": "waiting_for_login",
+      "loginUrl": "https://housing.com/user-profile",
+      "liveViewUrl": true,
+      "message": "Browser ready — open the secure login window to continue.",
+      "errorMessage": null,
+      "pass": true,
+      "reason": "waiting_for_login with liveView (login surface published after nav)",
+      "sawCrashRecover": false,
+      "falseConnected": false
+    },
+    {
+      "portal": "magicbricks",
+      "sessionId": "41296375-2923-4085-b5ae-0b8bbdb9bd07",
+      "phase": "waiting_for_login",
+      "loginUrl": "https://accounts.magicbricks.com/userauth/login",
+      "liveViewUrl": true,
+      "message": "Waiting for login…",
+      "errorMessage": null,
+      "pass": true,
+      "reason": "waiting_for_login with liveView (login surface published after nav)",
+      "sawCrashRecover": false,
+      "falseConnected": false
+    },
+    {
+      "portal": "99acres",
+      "sessionId": "08af49fa-77af-4306-9699-a1633734c742",
+      "phase": "failed",
+      "loginUrl": "https://www.99acres.com/login-lrfv",
+      "liveViewUrl": false,
+      "message": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "errorMessage": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "pass": true,
+      "reason": "clear WAF/block failure: Portal blocked this login page (security / WAF). Retry later or from a trusted network. Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "sawCrashRecover": false,
+      "falseConnected": false
+    },
+    {
+      "portal": "nobroker",
+      "sessionId": "560e2a0e-9642-4b3e-9bff-9d0a9b4632f5",
+      "phase": "waiting_for_login",
+      "loginUrl": "https://www.nobroker.in/",
+      "liveViewUrl": true,
+      "message": "Browser ready — open the secure login window to continue.",
+      "errorMessage": null,
+      "pass": true,
+      "reason": "waiting_for_login with liveView (login surface published after nav)",
+      "sawCrashRecover": false,
+      "falseConnected": false
+    },
+    {
+      "portal": "squareyards",
+      "sessionId": "1479ef0e-4de7-442f-9603-9df1760fc997",
+      "phase": "waiting_for_login",
+      "loginUrl": "https://www.squareyards.com/user/login",
+      "liveViewUrl": true,
+      "message": "Browser ready — open the secure login window to continue.",
+      "errorMessage": null,
+      "pass": true,
+      "reason": "waiting_for_login with liveView (login surface published after nav)",
+      "sawCrashRecover": false,
+      "falseConnected": false
+    }
+  ],
+  "passCount": 5,
+  "failCount": 0
+}

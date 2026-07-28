@@ -1,0 +1,85 @@
+{
+  "at": "2026-07-27T12:32:42.189Z",
+  "portal": "housing",
+  "jobId": "validation-housing",
+  "browserId": null,
+  "navigationUrl": "https://housing.com/user-profile",
+  "finalUrl": "https://housing.com/user-profile",
+  "httpStatus": 200,
+  "redirectChain": [
+    "200 https://housing.com/user-profile"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": false,
+  "pageTitle": "Real Estate in India | Rent Property in India | Housing.com",
+  "currentUrl": "https://housing.com/user-profile",
+  "cookiesCount": 48,
+  "storageStateBytes": 15000,
+  "consoleErrors": [],
+  "requestFailures": [
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=6&frm=0&ae=g&auid=2092303591.1785155547&dt=Real%20Estate%20in%20India%20%7C%20Rent%20Property%20in%20India%20%7C%20Housing.com&en=page_view&dl=https%3A%2F%2Fhousing.com%2Fuser-profile&scrsrc=www.google",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://ad.doubleclick.net/ccm/s/collect?auid=2092303591.1785155547&gtm=45He67m0v9191865260za200zd9191865260xea",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/rmkt/collect/983777268/?random=1785155547474&cv=11&fst=1785155547474&fmt=8&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be67m0v9100846810z89191865260za20gzb9191865260zd9191865260xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=11",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=7&frm=0&auid=2092303591.1785155547&dt=Real%20Estate%20in%20India%20%7C%20Rent%20Property%20in%20India%20%7C%20Housing.com&en=page_view&dl=https%3A%2F%2Fhousing.com%2Fuser-profile&scrsrc=www.googletagma",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=9&frm=0&auid=2092303591.1785155547&dt=Real%20Estate%20in%20India%20%7C%20Rent%20Property%20in%20India%20%7C%20Housing.com&en=page_view&dl=https%3A%2F%2Fhousing.com%2Fuser-profile&scrsrc=www.googletagma",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-Y22XRX1VJR&gtm=45je67m0v895301212z89191865260za20gzb9191865260zd9191865260&_p=1785155545026&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGAC&_prs=ok&are=1&cid=209669058.1785155548&frm=0&pscdl",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.co.in/pagead/1p-conversion/983777268/?random=543171513&cv=11&fst=1785155547523&fmt=8&bg=ffffff&guid=ON&async=1&en=conversion&gtm=45be67m0v9100846810z89191865260za20gzb9191865260zd9191865260xea&gcd=13l3l3l3l1l1&dma=0&tag_e",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/measurement/1p-conversion/?random=1457349944&cv=11&tid=G-Y22XRX1VJR&fst=1785155547708&fmt=8&en=page_view&gtm=45je67m0v895301212z89191865260za20gzb9191865260zd9191865260xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938466~1159",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-7H39QM6KQH&gtm=45je67m0v882998538za200zb9191865260zd9191865260&_p=1785155545026&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGAC&_prs=ok&are=1&cid=209669058.1785155548&frm=0&pscdl=noapi&rcb=5",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/measurement/conversion?random=1785155548151&cv=11&tid=G-7H39QM6KQH&fst=1785155548151&fmt=8&en=session_start&gtm=45je67m0v882998538za200zb9191865260zd9191865260xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938466~115938469~118",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://capi.housing.com/events/15217e0e13c7f8093e7f823bb42bcdbff2785a050fac108445c2fa2352ea019d",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-Y22XRX1VJR&gtm=45je67m0v895301212za20gzb9191865260zd9191865260&_p=1785155545026&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=209669058.1785155548&frm=0&pscdl=noapi&rcb=0&sr=1365x900&ua",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-7H39QM6KQH&gtm=45je67m0v882998538za200zb9191865260zd9191865260&_p=1785155545026&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=209669058.1785155548&frm=0&pscdl=noapi&rcb=5&sr=1365x900&ua",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.co.in/pagead/1p-conversion/983777268/?random=1038455918&cv=11&fst=1785155556686&fmt=8&bg=ffffff&guid=ON&async=1&en=conversion&gtm=45be67m0v9100846810z89191865260za20gzb9191865260zd9191865260xea&gcd=13l3l3l3l1l1&dma=0&tag_",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\housing-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\housing-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 17490,
+  "error": null
+}

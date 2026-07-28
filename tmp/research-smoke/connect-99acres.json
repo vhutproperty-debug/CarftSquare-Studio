@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "portal": "99acres",
+  "sessionId": "c5e91d19-8f46-4f77-92e6-ffa200df2145",
+  "phase": "waiting_for_login",
+  "message": "Browser ready — open the secure login window to continue.",
+  "errorMessage": null,
+  "liveViewUrl": "https://unique-endurance-production-57a8.up.railway.app/remote/528c751304120c84394a00dfcd1d4a825932c4427f8ad61d/vnc.html?autoconnect=1&resize=scale&path=remote%2F528c751304120c84394a00dfcd1d4a825932c4427f8ad61d%2Fwebsockify&t=eyJ2IjoiNTI4Yzc1MTMwNDEyMGM4NDM5NGEwMGRmY2QxZDRhODI1OTMyYzQ0MjdmOGFkNjFkIiwiYyI6ImM1ZTkxZDE5LThmNDYtNGY3Ny05MmU2LWZmYTIwMGRmMjE0NSIsImV4cCI6MTc4NTIxNTIxODIzMSwibiI6ImVjMzU3YWU1MmQ5ZjM5YWQ1MWViZjQzMzgxMGE5ZDg2In0.103XLEO1Wvy3Gh5xAynAYTtD62JTUleyMCRnKAOVfDU",
+  "expiresAt": "2026-07-28T05:11:50.700Z",
+  "action": "Complete OTP in liveViewUrl before expiresAt — do not cancel"
+}

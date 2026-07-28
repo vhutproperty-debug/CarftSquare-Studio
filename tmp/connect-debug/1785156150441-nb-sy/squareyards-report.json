@@ -1,0 +1,39 @@
+{
+  "at": "2026-07-27T12:44:28.321Z",
+  "portal": "squareyards",
+  "jobId": "probe-squareyards",
+  "browserId": null,
+  "navigationUrl": "https://www.squareyards.com/my-account",
+  "finalUrl": "https://www.squareyards.com/my-account",
+  "httpStatus": 404,
+  "redirectChain": [
+    "404 https://www.squareyards.com/my-account"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "404",
+  "currentUrl": "https://www.squareyards.com/my-account",
+  "cookiesCount": 3,
+  "storageStateBytes": 1148,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "requestFailures": [
+    {
+      "url": "https://www.squareyards.com/my-account",
+      "status": 404
+    },
+    {
+      "url": "https://www.squareyards.com/sy-pulse/events",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785156150441-nb-sy\\squareyards-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 6442,
+  "error": null
+}

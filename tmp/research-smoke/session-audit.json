@@ -1,0 +1,223 @@
+{
+  "at": "2026-07-27T20:03:08.794Z",
+  "rows": [
+    {
+      "portal": "housing",
+      "connectionStatus": "connected",
+      "sessionStatus": "valid",
+      "hasCookies": true,
+      "hasStorage": true,
+      "cookieBytes": 18707,
+      "lastVerified": "2026-07-27T19:09:39.881Z",
+      "expiresAt": "2026-08-03T13:06:02.026Z",
+      "lastValidationError": null,
+      "displayState": "connected",
+      "availableForResearch": true,
+      "researchReady": true,
+      "humanError": null
+    },
+    {
+      "portal": "magicbricks",
+      "connectionStatus": "pending",
+      "sessionStatus": "needs_login",
+      "hasCookies": false,
+      "hasStorage": false,
+      "cookieBytes": 0,
+      "lastVerified": "2026-07-18T11:20:52.868Z",
+      "expiresAt": "2026-07-25T11:20:53.054Z",
+      "lastValidationError": "New Connect started — previous session invalidated until re-validated",
+      "displayState": "session_expired",
+      "availableForResearch": false,
+      "researchReady": false,
+      "humanError": "New Connect started — previous session invalidated until re-validated"
+    },
+    {
+      "portal": "99acres",
+      "connectionStatus": "pending",
+      "sessionStatus": "needs_login",
+      "hasCookies": false,
+      "hasStorage": false,
+      "cookieBytes": 0,
+      "lastVerified": "2026-07-18T11:20:52.870Z",
+      "expiresAt": "2026-07-25T11:20:53.056Z",
+      "lastValidationError": "Stored session TTL expired — mark needs_login",
+      "displayState": "session_expired",
+      "availableForResearch": false,
+      "researchReady": false,
+      "humanError": "Portal login expired. Reconnect to continue research."
+    },
+    {
+      "portal": "nobroker",
+      "connectionStatus": "connected",
+      "sessionStatus": "valid",
+      "hasCookies": true,
+      "hasStorage": true,
+      "cookieBytes": 8756,
+      "lastVerified": "2026-07-27T20:02:35.146Z",
+      "expiresAt": "2026-08-03T20:02:35.388Z",
+      "lastValidationError": "New Connect started — previous session invalidated until re-validated",
+      "displayState": "connected",
+      "availableForResearch": true,
+      "researchReady": true,
+      "humanError": null
+    },
+    {
+      "portal": "squareyards",
+      "connectionStatus": "pending",
+      "sessionStatus": "needs_login",
+      "hasCookies": false,
+      "hasStorage": false,
+      "cookieBytes": 0,
+      "lastVerified": "2026-07-18T11:20:52.867Z",
+      "expiresAt": "2026-07-25T11:20:53.053Z",
+      "lastValidationError": "Stored session TTL expired — mark needs_login",
+      "displayState": "session_expired",
+      "availableForResearch": false,
+      "researchReady": false,
+      "humanError": "Portal login expired. Reconnect to continue research."
+    }
+  ],
+  "activeConnects": [],
+  "recentConnects": [
+    {
+      "portal": "nobroker",
+      "phase": "connected",
+      "message": "Connected.",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T20:02:38.325Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "cancelled",
+      "message": "Cancelled to protect existing Research sessions",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T20:00:52.714Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "failed",
+      "message": "Login timed out before authentication was detected.",
+      "errorMessage": "Login timed out before authentication was detected.",
+      "updatedAt": "2026-07-27T19:44:54.861Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "failed",
+      "message": "Login timed out before authentication was detected.",
+      "errorMessage": "Login timed out before authentication was detected.",
+      "updatedAt": "2026-07-27T19:26:02.342Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "cancelled",
+      "message": "Superseded by a new connect request",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T19:13:32.815Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "cancelled",
+      "message": "Cancelled to protect existing Research sessions",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T19:07:07.918Z"
+    },
+    {
+      "portal": "housing",
+      "phase": "failed",
+      "message": "Connect cancelled.",
+      "errorMessage": "Connect cancelled.",
+      "updatedAt": "2026-07-27T18:53:43.744Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "failed",
+      "message": "Login timed out before authentication was detected.",
+      "errorMessage": "Login timed out before authentication was detected.",
+      "updatedAt": "2026-07-27T18:52:42.062Z"
+    },
+    {
+      "portal": "99acres",
+      "phase": "failed",
+      "message": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "errorMessage": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "updatedAt": "2026-07-27T18:40:03.058Z"
+    },
+    {
+      "portal": "99acres",
+      "phase": "failed",
+      "message": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "errorMessage": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "updatedAt": "2026-07-27T18:39:25.673Z"
+    },
+    {
+      "portal": "squareyards",
+      "phase": "cancelled",
+      "message": "Cancelled by production smoke test",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T16:09:49.007Z"
+    },
+    {
+      "portal": "nobroker",
+      "phase": "cancelled",
+      "message": "Waiting for login…",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T16:09:11.067Z"
+    },
+    {
+      "portal": "99acres",
+      "phase": "failed",
+      "message": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "errorMessage": "Portal blocked this login page (security / WAF). Retry later or from a trusted network.",
+      "updatedAt": "2026-07-27T16:08:25.675Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "cancelled",
+      "message": "Cancelled by production smoke test",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T16:08:06.634Z"
+    },
+    {
+      "portal": "housing",
+      "phase": "cancelled",
+      "message": "Waiting for login…",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T16:07:26.648Z"
+    },
+    {
+      "portal": "squareyards",
+      "phase": "cancelled",
+      "message": "Waiting for login…",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T15:59:49.169Z"
+    },
+    {
+      "portal": "nobroker",
+      "phase": "cancelled",
+      "message": "Cancelled by production smoke test",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T15:59:21.882Z"
+    },
+    {
+      "portal": "99acres",
+      "phase": "failed",
+      "message": "page.goto: net::ERR_HTTP_RESPONSE_CODE_FAILURE at https://www.99acres.com/login-lrfv",
+      "errorMessage": "page.goto: net::ERR_HTTP_RESPONSE_CODE_FAILURE at https://www.99acres.com/login-lrfv",
+      "updatedAt": "2026-07-27T15:58:45.039Z"
+    },
+    {
+      "portal": "magicbricks",
+      "phase": "cancelled",
+      "message": "Cancelled by production smoke test",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T15:58:28.250Z"
+    },
+    {
+      "portal": "housing",
+      "phase": "cancelled",
+      "message": "Waiting for login…",
+      "errorMessage": null,
+      "updatedAt": "2026-07-27T15:57:51.095Z"
+    }
+  ]
+}

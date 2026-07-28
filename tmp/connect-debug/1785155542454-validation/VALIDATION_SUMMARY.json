@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-07-27T12:32:58.008Z",
+  "outDir": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation",
+  "configChecks": [
+    {
+      "portal": "housing",
+      "ok": true,
+      "metaLoginUrl": "https://housing.com/user-profile",
+      "metaVerifyUrl": "https://housing.com/user-profile",
+      "connectorLoginUrl": "https://housing.com/user-profile",
+      "connectorVerifyUrl": "https://housing.com/user-profile",
+      "expected": {
+        "loginUrl": "https://housing.com/user-profile",
+        "verifyUrl": "https://housing.com/user-profile"
+      }
+    },
+    {
+      "portal": "magicbricks",
+      "ok": true,
+      "metaLoginUrl": "https://accounts.magicbricks.com/userauth/login",
+      "metaVerifyUrl": "https://www.magicbricks.com/",
+      "connectorLoginUrl": "https://accounts.magicbricks.com/userauth/login",
+      "connectorVerifyUrl": "https://www.magicbricks.com/",
+      "expected": {
+        "loginUrl": "https://accounts.magicbricks.com/userauth/login",
+        "verifyUrl": "https://www.magicbricks.com/"
+      }
+    },
+    {
+      "portal": "99acres",
+      "ok": true,
+      "metaLoginUrl": "https://www.99acres.com/login-lrfv",
+      "metaVerifyUrl": "https://www.99acres.com/",
+      "connectorLoginUrl": "https://www.99acres.com/login-lrfv",
+      "connectorVerifyUrl": "https://www.99acres.com/",
+      "expected": {
+        "loginUrl": "https://www.99acres.com/login-lrfv",
+        "verifyUrl": "https://www.99acres.com/"
+      }
+    }
+  ],
+  "legacyHits": [],
+  "probes": [
+    {
+      "portal": "housing",
+      "loginUrl": "https://housing.com/user-profile",
+      "httpStatus": 200,
+      "finalUrl": "https://housing.com/user-profile",
+      "pageTitle": "Real Estate in India | Rent Property in India | Housing.com",
+      "cookiesCount": 48,
+      "storageStateBytes": 15000,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\housing-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\housing-after-5s.jpg",
+      "error": null,
+      "pass": true
+    },
+    {
+      "portal": "magicbricks",
+      "loginUrl": "https://accounts.magicbricks.com/userauth/login",
+      "httpStatus": 200,
+      "finalUrl": "https://accounts.magicbricks.com/userauth/login",
+      "pageTitle": "User Login",
+      "cookiesCount": 10,
+      "storageStateBytes": 2214,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\magicbricks-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\magicbricks-after-5s.jpg",
+      "error": null,
+      "pass": true
+    },
+    {
+      "portal": "99acres",
+      "loginUrl": "https://www.99acres.com/login-lrfv",
+      "httpStatus": 200,
+      "finalUrl": "https://www.99acres.com/login-lrfv",
+      "pageTitle": "Login/Register",
+      "cookiesCount": 31,
+      "storageStateBytes": 6938,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\99acres-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\99acres-after-5s.jpg",
+      "error": null,
+      "pass": true
+    }
+  ],
+  "gates": {
+    "configOk": true,
+    "housingLoginSurface": true,
+    "acresLoginSurface": true,
+    "magicbricksLoginSurface": true,
+    "magicbricksAccessDenied": false
+  },
+  "note": [
+    "Full Connect (noVNC + human OTP + Research Ready + restore + search) requires a live Browser Worker + Mongo.",
+    "This script validates login URLs and login-surface reachability with the same instrumentation used in Connect."
+  ]
+}

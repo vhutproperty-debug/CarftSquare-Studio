@@ -1,0 +1,152 @@
+{
+  "before": {
+    "title": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+    "url": "https://www.nobroker.in/",
+    "text": "Pay Tuition Fee For Property owners Sign up Log in Menu World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Bangalore Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price Packers & Movers New Offers Pay Tuition Fee Rental Agreement Click & Earn New Painting & Cleaning NoBroker For NRIs Why Use NoBroker Avoid Brokers We directly connect you to verified owners to save brokerage Free Listing Easy listing process. Also using WhatsApp Shortlist without Visit Extensive Information makes it easy Rental Agreement Assistance in creating Rental agreement & Paper work NoBroker Business Assist Plan For Builders Get in touc",
+    "anchors": [],
+    "inputs": [
+      {
+        "type": "text",
+        "name": "",
+        "id": "react-select-2-input",
+        "placeholder": "",
+        "aria": ""
+      },
+      {
+        "type": "text",
+        "name": "",
+        "id": "listPageSearchLocality",
+        "placeholder": "Search upto 3 localities, societies or landmarks",
+        "aria": ""
+      },
+      {
+        "type": "radio",
+        "name": "propertyType",
+        "id": "RENT",
+        "placeholder": "",
+        "aria": ""
+      },
+      {
+        "type": "radio",
+        "name": "propertyType",
+        "id": "PG",
+        "placeholder": "",
+        "aria": ""
+      },
+      {
+        "type": "radio",
+        "name": "propertyType",
+        "id": "SHARED",
+        "placeholder": "",
+        "aria": ""
+      },
+      {
+        "type": "text",
+        "name": "",
+        "id": "react-select-3-input",
+        "placeholder": "",
+        "aria": ""
+      }
+    ]
+  },
+  "click": {
+    "opened": true,
+    "selector": "text=Log in",
+    "tried": [
+      "text=Log in"
+    ],
+    "signals": {
+      "title": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "url": "https://www.nobroker.in/#signup-login",
+      "text": "Pay Tuition Fee For Property owners Sign up Log in Menu Login / Sign up Zero Brokerage. Thousands of new listings daily. 100 Cr+ Brokerage saved monthly. Enter phone to continue +91 Get updates on WhatsApp Change Email Continue By continuing, you agree to our Terms & Conditions World's Largest NoBrokerage Property Site Packers And Movers| Lowest Prices Buy Rent Commercial Bangalore Search Full House PG/Hostel Flatmates BHK Type Are you a Property Owner? Post Free Property Ad Do you know how much loan you can get? Get maximum with NoBroker Check Eligibility Lowest Price Packers & Movers New Offers Pay Tuition Fee Rental Agreement Click & Earn New Painting & Cleaning NoBroker For NRIs Why Use NoBroker Avoid Brokers We directly connect you to verified owners to save brokerage Free Listing Eas",
+      "anchors": [
+        {
+          "tag": "BUTTON",
+          "text": "Continue using",
+          "href": "",
+          "id": "signUpContNumber",
+          "cls": "btn btn-info btn-block"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Continue",
+          "href": "",
+          "id": "signUpSubmit",
+          "cls": "z-0 btn btn-primary"
+        }
+      ],
+      "inputs": [
+        {
+          "type": "tel",
+          "name": "",
+          "id": "signUp-phoneNumber",
+          "placeholder": "Enter Mobile Number",
+          "aria": ""
+        },
+        {
+          "type": "checkbox",
+          "name": "",
+          "id": "",
+          "placeholder": "",
+          "aria": ""
+        },
+        {
+          "type": "text",
+          "name": "",
+          "id": "login-signup-form__name-input",
+          "placeholder": "Name",
+          "aria": ""
+        },
+        {
+          "type": "email",
+          "name": "",
+          "id": "login-signup-form__email-input",
+          "placeholder": "Enter your email like name@gmail.com",
+          "aria": ""
+        },
+        {
+          "type": "text",
+          "name": "",
+          "id": "react-select-2-input",
+          "placeholder": "",
+          "aria": ""
+        },
+        {
+          "type": "text",
+          "name": "",
+          "id": "listPageSearchLocality",
+          "placeholder": "Search upto 3 localities, societies or landmarks",
+          "aria": ""
+        },
+        {
+          "type": "radio",
+          "name": "propertyType",
+          "id": "RENT",
+          "placeholder": "",
+          "aria": ""
+        },
+        {
+          "type": "radio",
+          "name": "propertyType",
+          "id": "PG",
+          "placeholder": "",
+          "aria": ""
+        },
+        {
+          "type": "radio",
+          "name": "propertyType",
+          "id": "SHARED",
+          "placeholder": "",
+          "aria": ""
+        },
+        {
+          "type": "text",
+          "name": "",
+          "id": "react-select-3-input",
+          "placeholder": "",
+          "aria": ""
+        }
+      ]
+    }
+  }
+}

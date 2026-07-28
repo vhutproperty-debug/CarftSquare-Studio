@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "portal": "nobroker",
+  "sessionId": "db6f8680-2cbb-476f-8c93-a742a16c432c",
+  "phase": "waiting_for_login",
+  "message": "Browser ready — open the secure login window to continue.",
+  "errorMessage": null,
+  "liveViewUrl": "https://unique-endurance-production-57a8.up.railway.app/remote/ed2e502cebcb32a24049fa2ab6a15d7c766ae8c93de8d83a/vnc.html?autoconnect=1&resize=scale&path=remote%2Fed2e502cebcb32a24049fa2ab6a15d7c766ae8c93de8d83a%2Fwebsockify&t=eyJ2IjoiZWQyZTUwMmNlYmNiMzJhMjQwNDlmYTJhYjZhMTVkN2M3NjZhZThjOTNkZThkODNhIiwiYyI6ImRiNmY4NjgwLTJjYmItNDc2Zi04YzkzLWE3NDJhMTZjNDMyYyIsImV4cCI6MTc4NTIxNTIxOTg1MywibiI6IjdiNWZkZTM0Mzc4NDgyM2ZjYjk0YzJkNjMxZmRhYTkxIn0.3YSY5do6V7Z21gUgLM_9uvffSsI7TAwYH84Apc1yIFs",
+  "expiresAt": "2026-07-28T05:11:53.980Z",
+  "action": "Complete OTP in liveViewUrl before expiresAt — do not cancel"
+}

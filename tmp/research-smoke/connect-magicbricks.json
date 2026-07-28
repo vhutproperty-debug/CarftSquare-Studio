@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "portal": "magicbricks",
+  "sessionId": "68a922de-4a74-4b48-bbad-d5644bab2469",
+  "phase": "waiting_for_login",
+  "message": "Browser ready — open the secure login window to continue.",
+  "errorMessage": null,
+  "liveViewUrl": "https://unique-endurance-production-57a8.up.railway.app/remote/853f137ae1f04f07407555d9e9d5de3753c485737577194f/vnc.html?autoconnect=1&resize=scale&path=remote%2F853f137ae1f04f07407555d9e9d5de3753c485737577194f%2Fwebsockify&t=eyJ2IjoiODUzZjEzN2FlMWYwNGYwNzQwNzU1NWQ5ZTlkNWRlMzc1M2M0ODU3Mzc1NzcxOTRmIiwiYyI6IjY4YTkyMmRlLTRhNzQtNGI0OC1iYmFkLWQ1NjQ0YmFiMjQ2OSIsImV4cCI6MTc4NTIxNDg3MDcyMywibiI6IjMwMTVjMjVlYzE5OWM2ODMwZTczYzIzOWU0ZjliZjgzIn0.iTra2cT2eIbum6Sf4oqzd9bKG7fbBWZYweUYcXjWI7k",
+  "expiresAt": "2026-07-28T05:06:02.181Z",
+  "action": "Complete OTP in liveViewUrl before expiresAt — do not cancel"
+}

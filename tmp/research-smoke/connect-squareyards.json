@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "portal": "squareyards",
+  "sessionId": "1519abf7-8a26-4fbd-9701-5683d288cbf2",
+  "phase": "waiting_for_login",
+  "message": "Browser ready — open the secure login window to continue.",
+  "errorMessage": null,
+  "liveViewUrl": "https://unique-endurance-production-57a8.up.railway.app/remote/e6665ad2053d45fe8c720128bb3e436037674a36aaad9b13/vnc.html?autoconnect=1&resize=scale&path=remote%2Fe6665ad2053d45fe8c720128bb3e436037674a36aaad9b13%2Fwebsockify&t=eyJ2IjoiZTY2NjVhZDIwNTNkNDVmZThjNzIwMTI4YmIzZTQzNjAzNzY3NGEzNmFhYWQ5YjEzIiwiYyI6IjE1MTlhYmY3LThhMjYtNGZiZC05NzAxLTU2ODNkMjg4Y2JmMiIsImV4cCI6MTc4NTIxNTI2NTA2NywibiI6Ijg4YTExMTRmMjc0OGRkYjE2NGI5OWY5ZDA4NjczZmQ5In0.noaTUVOYAuWOsnFOq1djECOAJnRSiDnxcQxclW6xfY4",
+  "expiresAt": "2026-07-28T05:12:37.444Z",
+  "action": "Complete OTP in liveViewUrl before expiresAt — do not cancel"
+}

@@ -1,0 +1,310 @@
+{
+  "title": "Login",
+  "url": "https://www.squareyards.com/user/login",
+  "text": "Take control of the service experience during your property search & ownership journey Provide more information about your property needs Shortlist more properties for site visits & evaluation Rate your experience with us and give feedback View assigned sales expert’s profile & request for change if required Manage your meetings/site visits schedule Login to Continue +91 Proceed to Login Don’t Have an Account Yet? Register Here.",
+  "anchors": [
+    {
+      "tag": "BUTTON",
+      "text": "Proceed to Login",
+      "href": "",
+      "id": "send_otp_btn",
+      "cls": "btn btn-primary"
+    },
+    {
+      "tag": "BUTTON",
+      "text": "Confirm OTP",
+      "href": "",
+      "id": "verify_otp_btn",
+      "cls": "btn btn-primary confirmBtn"
+    },
+    {
+      "tag": "BUTTON",
+      "text": "Resend OTP",
+      "href": "",
+      "id": "resend_otp",
+      "cls": "resendOTPBtn"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "hidden",
+      "name": "hidden",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    },
+    {
+      "type": "radio",
+      "name": "countryCode",
+      "id": "",
+      "placeholder": "",
+      "aria": ""
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "at": "2026-07-27T15:56:23.323Z",
+  "portal": "magicbricks",
+  "jobId": "rca-hard-block",
+  "browserId": null,
+  "navigationUrl": "https://accounts.magicbricks.com/userauth/login",
+  "finalUrl": "https://accounts.magicbricks.com/userauth/login",
+  "httpStatus": 403,
+  "redirectChain": [
+    "403 https://accounts.magicbricks.com/userauth/login"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "Access Denied",
+  "currentUrl": "https://accounts.magicbricks.com/userauth/login",
+  "cookiesCount": 0,
+  "storageStateBytes": 27,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 403 ()"
+  ],
+  "requestFailures": [
+    {
+      "url": "https://accounts.magicbricks.com/userauth/login",
+      "status": 403
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-rca-gate\\magicbricks-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-rca-gate\\magicbricks-after-5s.jpg",
+  "accessDenied": true,
+  "wafHints": [
+    "akamai"
+  ],
+  "elapsedMs": 8570,
+  "error": "Connect navigation blocked before login surface (portal=magicbricks status=403 title=\"Access Denied\" url=https://accounts.magicbricks.com/userauth/login waf=akamai)"
+}

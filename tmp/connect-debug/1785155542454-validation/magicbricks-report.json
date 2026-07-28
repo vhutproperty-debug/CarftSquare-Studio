@@ -1,0 +1,62 @@
+{
+  "at": "2026-07-27T12:32:50.020Z",
+  "portal": "magicbricks",
+  "jobId": "validation-magicbricks",
+  "browserId": null,
+  "navigationUrl": "https://accounts.magicbricks.com/userauth/login",
+  "finalUrl": "https://accounts.magicbricks.com/userauth/login",
+  "httpStatus": 200,
+  "redirectChain": [
+    "200 https://accounts.magicbricks.com/userauth/login",
+    "200 https://accounts.google.com/o/oauth2/iframe"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "User Login",
+  "currentUrl": "https://accounts.magicbricks.com/userauth/login",
+  "cookiesCount": 10,
+  "storageStateBytes": 2214,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 400 ()",
+    "Failed to load resource: the server responded with a status of 403 ()"
+  ],
+  "requestFailures": [
+    {
+      "url": "https://accounts.magicbricks.com/mbutility/getConsentCookie",
+      "status": 404
+    },
+    {
+      "url": "https://accounts.google.com/_/IdpIFrameHttp/cspreport/fine-allowlist",
+      "status": 400
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-Y3D9LD1B01&gtm=45je67m0v9180268606z8830596070za20gzb830596070zd830596070&_p=1785155562657&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGAC&are=1&cid=396618331.1785155563&frm=0&pscdl=noapi&rcb",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://ad.doubleclick.net/ccm/s/collect?auid=219115513.1785155564&gtm=45be67m0v869331869z8830596070za20gzb830596070zd830596070xec",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=2&frm=0&auid=219115513.1785155564&dt=User%20Login&en=page_view&dl=https%3A%2F%2Faccounts.magicbricks.com%2Fuserauth%2Flogin&scrsrc=www.googletagmanager.com&rnd=2127245307.1785155564&navt=n&npa=0&gtm=45",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/rmkt/collect/994415509/?random=1785155563993&cv=11&fst=1785155563993&fmt=8&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be67m0v869331869z8830596070za20gzb830596070zd830596070xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://c.go-mpulse.net/api/config.json?key=SNZTV-2QGQC-ZKRGF-PJ67P-HD3HR&d=accounts.magicbricks.com&t=5950519&v=1.571.0&if=&sl=0&si=jftzfhrs74a-NaN&plugins=AK,ConfigOverride,Continuity,PageParams,IFrameDelay,AutoXHR,SPA,Angular,Backbone,Em",
+      "status": 403
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\magicbricks-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785155542454-validation\\magicbricks-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 7517,
+  "error": null
+}

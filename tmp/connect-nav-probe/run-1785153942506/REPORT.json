@@ -1,0 +1,416 @@
+{
+  "generatedAt": "2026-07-27T12:06:59.015Z",
+  "outDir": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506",
+  "headless": false,
+  "configuredLoginUrls": {
+    "housing": "https://housing.com/user-profile",
+    "magicbricks": "https://www.magicbricks.com/?login=true",
+    "99acres": "https://www.99acres.com/"
+  },
+  "firstDivergence": {
+    "note": "Compare configuredLoginUrl probes: first portal that shows accessDenied OR lacks login/OTP surface while Housing has OTP/profile surface."
+  },
+  "results": [
+    {
+      "portal": "housing",
+      "url": "https://housing.com/user-profile",
+      "isConfiguredLoginUrl": true,
+      "httpStatus": 200,
+      "finalUrl": "https://housing.com/user-profile",
+      "title": "Real Estate in India | Rent Property in India | Housing.com",
+      "readyState": "complete",
+      "cookieCount": 48,
+      "cookieNames": [
+        "cee",
+        "Akamai-GRN",
+        "Akamai-GRN",
+        "taboola_session_id",
+        "Akamai-GRN",
+        "service",
+        "category",
+        "Akamai-GRN",
+        "bm_so",
+        "_psid",
+        "_uuid",
+        "traffic",
+        "is_return_user",
+        "is_return_session",
+        "_cs_mk_ga",
+        "tvc_sm_fc_new",
+        "tvc_sm_lc",
+        "bm_lso",
+        "bm_sz",
+        "_gcl_au",
+        "t_gid",
+        "t_pt_gid",
+        "_ga",
+        "_ga_Y22XRX1VJR",
+        "IDE",
+        "ak_bmsc",
+        "_s",
+        "_ga_7H39QM6KQH",
+        "_fbp",
+        "__rtbh.lid",
+        "_uetsid",
+        "_uetvid",
+        "dicbo_id",
+        "MUID",
+        "MR",
+        "g",
+        "c",
+        "ts",
+        "outbrain_pid",
+        "_abck"
+      ],
+      "bodySample": "Your search for property ends here - Buy, Rent, Sell - Housing.com Your Trusted Real Estate Partner +91 Enter Phone Number Continue",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": true,
+      "navError": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\housing__housing.com_user-profile__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\housing__housing.com_user-profile__t5.jpg",
+      "elapsedMs": 16731
+    },
+    {
+      "portal": "magicbricks",
+      "url": "https://www.magicbricks.com/?login=true",
+      "isConfiguredLoginUrl": true,
+      "httpStatus": 200,
+      "finalUrl": "https://www.magicbricks.com/?login=true",
+      "title": "Real Estate | Property in India | Buy/Sale/Rent Properties | MagicBricks",
+      "readyState": "complete",
+      "cookieCount": 24,
+      "cookieNames": [
+        "firstInteractionCookie",
+        "cookieDtfirstIntr",
+        "HDSESSIONID",
+        "CLID",
+        "_clck",
+        "_clsk",
+        "MUID",
+        "MR",
+        "SRM_B",
+        "SM",
+        "MUID",
+        "MR",
+        "ANONCHK",
+        "userNTrackId",
+        "NOEU",
+        "previousTab",
+        "semAttributesCookie",
+        "JSESSIONID",
+        "_gid",
+        "_gat_UA-492553-10",
+        "_gcl_au",
+        "test_cookie",
+        "_ga",
+        "_ga_Y3D9LD1B01"
+      ],
+      "bodySample": "Bangalore MB Prime Login Post Property FREE Buy Rent Sell Home Loans Home Interiors MB AdviceNEW Help Start your #PataBadloLifeBadlo Journey Buy Rent New Projects PG Plot Commercial Post Free Property Ad Bangalore Flat +1 Budget Search We've got properties for everyone 38662 Owner Properties Explore Projects Explore 801 Budget Homes Explore Popular Owner Properties See all Properties 16 3 BHK Flat ₹2.30 Cr 1553 sqft Panathur, Bangalore Under Construction View Details 8 3 BHK Flat ₹2.90 Cr 1767 s",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [
+        "Cannot read properties of undefined (reading 'dataLayer')",
+        "Cannot read properties of undefined (reading 'dataLayer')",
+        "Cannot read properties of undefined (reading 'dataLayer')"
+      ],
+      "failedRequests": [
+        {
+          "url": "https://www.magicbricks.com/universal-analytics-web-scriptGA4.js",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_login_true__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_login_true__t5.jpg",
+      "elapsedMs": 7838
+    },
+    {
+      "portal": "magicbricks",
+      "url": "https://www.magicbricks.com/",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 200,
+      "finalUrl": "https://www.magicbricks.com/",
+      "title": "Real Estate | Property in India | Buy/Sale/Rent Properties | MagicBricks",
+      "readyState": "interactive",
+      "cookieCount": 6,
+      "cookieNames": [
+        "firstInteractionCookie",
+        "cookieDtfirstIntr",
+        "HDSESSIONID",
+        "CLID",
+        "_clck",
+        "_clsk"
+      ],
+      "bodySample": "Bangalore MB Prime Login Post Property FREE Buy Rent Sell Home Loans Home Interiors MB AdviceNEW Help Start your #PataBadloLifeBadlo Journey Buy Rent New Projects PG Plot Commercial Post Free Property Ad Property Type Budget Search We've got properties for everyone Owner Properties Explore Projects Explore Budget Homes Explore Popular Owner Properties See all Properties 16 3 BHK Flat ₹2.30 Cr 1553 sqft Panathur, Bangalore Under Construction View Details 8 3 BHK Flat ₹2.90 Cr 1767 sqft Bellandur,",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [
+        "swipperInit is not defined"
+      ],
+      "failedRequests": [
+        {
+          "url": "https://www.magicbricks.com/universal-analytics-web-scriptGA4.js",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com___t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com___t5.jpg",
+      "elapsedMs": 6588
+    },
+    {
+      "portal": "magicbricks",
+      "url": "https://www.magicbricks.com/loginPage",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 404,
+      "finalUrl": "https://www.magicbricks.com/loginPage",
+      "title": "SERVER - Error report",
+      "readyState": "complete",
+      "cookieCount": 1,
+      "cookieNames": [
+        "JSESSIONID"
+      ],
+      "bodySample": "Oops. some thing went wrong. please use browser's back button to go back to previous page",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "url": "https://www.magicbricks.com/loginPage",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_loginPage__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_loginPage__t5.jpg",
+      "elapsedMs": 6778
+    },
+    {
+      "portal": "magicbricks",
+      "url": "https://www.magicbricks.com/bricks/login.html",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 404,
+      "finalUrl": "https://www.magicbricks.com/bricks/login.html",
+      "title": "SERVER - Error report",
+      "readyState": "complete",
+      "cookieCount": 1,
+      "cookieNames": [
+        "JSESSIONID"
+      ],
+      "bodySample": "Oops. some thing went wrong. please use browser's back button to go back to previous page",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "url": "https://www.magicbricks.com/bricks/login.html",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_bricks_login.html__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_bricks_login.html__t5.jpg",
+      "elapsedMs": 6346
+    },
+    {
+      "portal": "magicbricks",
+      "url": "https://www.magicbricks.com/userProfile.html",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 404,
+      "finalUrl": "https://www.magicbricks.com/userProfile.html",
+      "title": "SERVER - Error report",
+      "readyState": "complete",
+      "cookieCount": 1,
+      "cookieNames": [
+        "JSESSIONID"
+      ],
+      "bodySample": "Oops. some thing went wrong. please use browser's back button to go back to previous page",
+      "accessDenied": false,
+      "hasLoginFormSignals": false,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "url": "https://www.magicbricks.com/userProfile.html",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_userProfile.html__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\magicbricks__www.magicbricks.com_userProfile.html__t5.jpg",
+      "elapsedMs": 7888
+    },
+    {
+      "portal": "99acres",
+      "url": "https://www.99acres.com/",
+      "isConfiguredLoginUrl": true,
+      "httpStatus": 200,
+      "finalUrl": "https://www.99acres.com/",
+      "title": "India Real Estate Property Site - Buy Sell Rent Properties Portal - 99acres.com",
+      "readyState": "complete",
+      "cookieCount": 33,
+      "cookieNames": [
+        "ml_eligible",
+        "i_f_c",
+        "99_ab",
+        "GOOGLE_SEARCH_ID",
+        "_sess_id",
+        "xAB",
+        "session30m",
+        "sessionno",
+        "session_source",
+        "UID",
+        "XID",
+        "_gcl_au",
+        "_gid",
+        "_gat_UA-224016-1",
+        "CLID",
+        "_hjSessionUser_3171461",
+        "_hjSession_3171461",
+        "_clck",
+        "_uetsid",
+        "_uetvid",
+        "MR",
+        "SRM_B",
+        "MUID",
+        "MR",
+        "SM",
+        "MUID",
+        "MR",
+        "ANONCHK",
+        "_fbp",
+        "_ga_9QHC0XEKPS",
+        "_ga",
+        "_clsk",
+        "showCookieBanner"
+      ],
+      "bodySample": "All India For Buyers For Tenants For Owners For Dealers / Builders Insights NEW Post property LOGIN / REGISTER Sell or rent faster at the right price! Post Property Explore our Services For Buyers For Buyers InsightsNEW Price Trends Home Loan Tools & More View All Insights Articles & News Articles For Buyers Real Estate News Buyer Guide Home Interior Guide Policies (GST, RERA, PMAY, Budget) For Tenants For Tenants InsightsNEW Price Trends Home Loan Tools & More View All Insights Articles & News ",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Connecting to 'https://ad.doubleclick.net/ccm/s/collect?auid=231080229.1785154004&gtm=45E92e67m0v6676315za204zd6676315xea' violates the following Content Security Policy directive: \"connect-src 'self' *.99acres.com *.infoedge.com *.google.com *.clarity.ms *.g.doubleclick.net *.google-analytics.com *",
+        "Fetch API cannot load https://ad.doubleclick.net/ccm/s/collect?auid=231080229.1785154004&gtm=45E92e67m0v6676315za204zd6676315xea. Refused to connect because it violates the document's Content Security Policy."
+      ],
+      "pageErrors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "failedRequests": [],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com___t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com___t5.jpg",
+      "elapsedMs": 6247
+    },
+    {
+      "portal": "99acres",
+      "url": "https://www.99acres.com/login-lrfv",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 200,
+      "finalUrl": "https://www.99acres.com/login-lrfv",
+      "title": "Login/Register",
+      "readyState": "complete",
+      "cookieCount": 31,
+      "cookieNames": [
+        "GOOGLE_SEARCH_ID",
+        "99_ab",
+        "xAB",
+        "session30m",
+        "sessionno",
+        "session_source",
+        "UID",
+        "XID",
+        "_gcl_au",
+        "_gid",
+        "_gat_UA-224016-1",
+        "_sess_id",
+        "CLID",
+        "_hjSessionUser_3171461",
+        "_hjSession_3171461",
+        "_clck",
+        "_ga",
+        "_fbp",
+        "_uetsid",
+        "_uetvid",
+        "_ga_9QHC0XEKPS",
+        "MR",
+        "SRM_B",
+        "MUID",
+        "MR",
+        "SM",
+        "MUID",
+        "MR",
+        "ANONCHK",
+        "IDE",
+        "_clsk"
+      ],
+      "bodySample": "EXPLORE 10L+ PROPERTIES IN INDIA Login to continue browsing Phone Number +91 +44 +1 +61 +60 +971 +93 +355 +213 +1684 +376 +244 +1264 +672 +1268 +54 +374 +297 +43 +994 +1242 +973 +880 +1246 +375 +32 +501 +229 +1441 +975 +591 +387 +267 +55 +1284 +673 +359 +226 +95 +257 +855 +237 +1 +238 +1345 +236 +235 +56 +86 +61 +61 +57 +269 +682 +506 +385 +357 +420 +243 +45 +253 +1767 +1809 +593 +20 +503 +240 +291 +372 +251 +500 +298 +679 +358 +33 +689 +241 +220 +995 +49 +233 +350 +30 +299 +1473 +1671 +502 +224",
+      "accessDenied": false,
+      "hasLoginFormSignals": true,
+      "hasPhoneOrOtpSignals": true,
+      "navError": null,
+      "consoleErrors": [
+        "Connecting to 'https://ad.doubleclick.net/ccm/s/collect?auid=1824096027.1785154011&gtm=45He67m0v6676315za200zd6676315xea' violates the following Content Security Policy directive: \"connect-src 'self' *.99acres.com *.infoedge.com *.google.com *.clarity.ms *.g.doubleclick.net *.google-analytics.com *.",
+        "Fetch API cannot load https://ad.doubleclick.net/ccm/s/collect?auid=1824096027.1785154011&gtm=45He67m0v6676315za200zd6676315xea. Refused to connect because it violates the document's Content Security Policy."
+      ],
+      "pageErrors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "failedRequests": [],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com_login-lrfv__t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com_login-lrfv__t5.jpg",
+      "elapsedMs": 6852
+    },
+    {
+      "portal": "99acres",
+      "url": "https://www.99acres.com/do/my99acres/homepage/",
+      "isConfiguredLoginUrl": false,
+      "httpStatus": 404,
+      "finalUrl": "https://www.99acres.com/do/my99acres/homepage/",
+      "title": "404 Not Found",
+      "readyState": "complete",
+      "cookieCount": 0,
+      "cookieNames": [],
+      "bodySample": "404 Not Found nginx",
+      "accessDenied": false,
+      "hasLoginFormSignals": false,
+      "hasPhoneOrOtpSignals": false,
+      "navError": null,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "url": "https://www.99acres.com/do/my99acres/homepage/",
+          "status": 404
+        }
+      ],
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com_do_my99acres_homepage___t0.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-nav-probe\\run-1785153942506\\99acres__www.99acres.com_do_my99acres_homepage___t5.jpg",
+      "elapsedMs": 5490
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "sessionId": "0f35b340-4eb9-4f39-9708-5e7446d2ef2f",
+  "portal": "magicbricks",
+  "phase": "waiting_for_login",
+  "expiresAt": "2026-07-27T20:15:48.707Z",
+  "liveViewHost": "unique-endurance-production-57a8.up.railway.app",
+  "isLocalhost": false,
+  "htmlStatus": 200,
+  "htmlHasNoVnc": true,
+  "setCookie": [
+    "rb_view_af3a483e619d727665201fb610b1bcf94a8fd5c0ab61e5ec=eyJ2IjoiYWYzYTQ4M2U2MTlkNzI3NjY1MjAxZmI2MTBiMWJjZjk0YThmZDVjMGFiNjFlNWVjIiwiYyI6IjBmMzViMzQwLTRlYjktNGYzOS05NzA4LTVlNzQ0NmQyZWYyZiIsImV4cCI6MTc4NTE4MzA1NDI5MywibiI6IjkzZWNlMzY0NTNkOGM0OWM5NGQ3MWNmMjY3ZWU0NzU0In0.kQCbgypF5U97VzES8hP-37TxoCAj8-ieKcx-hiOmtnA; Path=/remote/af3a483e619d727665201fb610b1bcf94a8fd5c0ab61e5ec; HttpOnly; SameSite=Strict; Max-Age=900; Secure"
+  ],
+  "appJsStatus": 401,
+  "websocket": {
+    "ok": true,
+    "upgraded": true,
+    "status": 101
+  },
+  "liveViewUrl": "https://unique-endurance-production-57a8.up.railway.app/remote/af3a483e619d727665201fb610b1bcf94a8fd5c0ab61e5ec/vnc.html?autoconnect=1&resize=scale&path=remote%2Faf3a483e619d727665201fb610b1bcf94a8fd5c0ab61e5ec%2Fwebsockify&t=eyJ2IjoiYWYzYTQ4M2U2MTlkNzI3NjY1MjAxZmI2MTBiMWJjZjk0YThmZDVjMGFiNjFlNWVjIiwiYyI6IjBmMzViMzQwLTRlYjktNGYzOS05NzA4LTVlNzQ0NmQyZWYyZiIsImV4cCI6MTc4NTE4MzA1NDI5MywibiI6IjkzZWNlMzY0NTNkOGM0OWM5NGQ3MWNmMjY3ZWU0NzU0In0.kQCbgypF5U97VzES8hP-37TxoCAj8-ieKcx-hiOmtnA"
+}

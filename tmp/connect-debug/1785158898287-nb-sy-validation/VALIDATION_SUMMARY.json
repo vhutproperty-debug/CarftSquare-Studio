@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-07-27T13:28:46.029Z",
+  "outDir": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation",
+  "configChecks": [
+    {
+      "portal": "nobroker",
+      "ok": true,
+      "metaLoginUrl": "https://www.nobroker.in/",
+      "connectorLoginUrl": "https://www.nobroker.in/",
+      "expected": {
+        "loginUrl": "https://www.nobroker.in/",
+        "verifyUrl": "https://www.nobroker.in/"
+      }
+    },
+    {
+      "portal": "squareyards",
+      "ok": true,
+      "metaLoginUrl": "https://www.squareyards.com/user/login",
+      "connectorLoginUrl": "https://www.squareyards.com/user/login",
+      "expected": {
+        "loginUrl": "https://www.squareyards.com/user/login",
+        "verifyUrl": "https://www.squareyards.com/"
+      }
+    }
+  ],
+  "probes": [
+    {
+      "portal": "nobroker",
+      "loginUrl": "https://www.nobroker.in/",
+      "httpStatus": 200,
+      "finalUrl": "https://www.nobroker.in/#signup-login",
+      "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+      "cookiesCount": 69,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\nobroker-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\nobroker-after-5s.jpg",
+      "screenshotAfterLoginSurface": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\nobroker-after-login-surface.jpg",
+      "error": null,
+      "pass": true
+    },
+    {
+      "portal": "squareyards",
+      "loginUrl": "https://www.squareyards.com/user/login",
+      "httpStatus": 200,
+      "finalUrl": "https://www.squareyards.com/user/login",
+      "pageTitle": "Login",
+      "cookiesCount": 6,
+      "accessDenied": false,
+      "wafHints": [],
+      "loginSurface": true,
+      "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\squareyards-after-nav.jpg",
+      "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\squareyards-after-5s.jpg",
+      "screenshotAfterLoginSurface": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785158898287-nb-sy-validation\\squareyards-after-login-surface.jpg",
+      "error": null,
+      "pass": true
+    }
+  ],
+  "gates": {
+    "configOk": true,
+    "nobrokerPass": true,
+    "squareyardsPass": true
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "at": "2026-07-27T14:53:01.976Z",
+  "portal": "nobroker",
+  "jobId": "validation-nobroker",
+  "browserId": null,
+  "navigationUrl": "https://www.nobroker.in/",
+  "finalUrl": "https://www.nobroker.in/",
+  "httpStatus": 200,
+  "redirectChain": [
+    "200 https://www.nobroker.in/",
+    "200 https://www.youtube.com/embed/0ChlgxhXVws",
+    "302 https://11736495.fls.doubleclick.net/activityi;src=11736495;type=invmedia;cat=nobro01m;rcb=15;ord=2655707437679;npa=0;auiddc=1833130191.1785163970;uaa=x86;uab=64;uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0;uamb=0;uam=;uap=Windows;uapv=19.0.0;uaw=0;pscdl=noapi;frm=0;_tu=KFA;gtm=45fe67m0v9179629532z8850112238za20gzb850112238zd850112238xea;gcd=13l3l3l3l1l1;dma=0;dc_fmt=2;tag_exp=115616986~115938466~115938469~118131809~118897920~118897930~119527020~119724321~119896803;epver=2;dc_random=1785163970_47BDHptg2bTgAepEPBPTXMyhMmWXdJtigw;_dc_test=1;~oref=https%3A%2F%2Fwww.nobroker.in%2F?",
+    "302 https://11736495.fls.doubleclick.net/activityi;src=11736495;type=invmedia;cat=nobro01o;rcb=15;ord=7643815158688;npa=0;auiddc=1833130191.1785163970;uaa=x86;uab=64;uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0;uamb=0;uam=;uap=Windows;uapv=19.0.0;uaw=0;pscdl=noapi;frm=0;_tu=KFA;gtm=45fe67m0v9179629532z8850112238za20gzb850112238zd850112238xea;gcd=13l3l3l3l1l1;dma=0;dc_fmt=2;tag_exp=115616986~115938466~115938469~118131809~118897920~118897930~119527020~119724321~119896803;epver=2;dc_random=1785163971_wfnAynsajNcljckBli5gLMumYznL8pB1kw;_dc_test=1;~oref=https%3A%2F%2Fwww.nobroker.in%2F?",
+    "200 https://11736495.fls.doubleclick.net/activityi;dc_pre=CNjF7YCO85UDFZ2XrAIdyyYvGw;src=11736495;type=invmedia;cat=nobro01m;rcb=15;ord=2655707437679;npa=0;auiddc=1833130191.1785163970;uaa=x86;uab=64;uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0;uamb=0;uam=;uap=Windows;uapv=19.0.0;uaw=0;pscdl=noapi;frm=0;_tu=KFA;gtm=45fe67m0v9179629532z8850112238za20gzb850112238zd850112238xea;gcd=13l3l3l3l1l1;dma=0;dc_fmt=2;tag_exp=115616986~115938466~115938469~118131809~118897920~118897930~119527020~119724321~119896803;epver=2;dc_random=1785163970_47BDHptg2bTgAepEPBPTXMyhMmWXdJtigw;_dc_test=1;~oref=https%3A%2F%2Fwww.nobroker.in%2F?",
+    "200 https://11736495.fls.doubleclick.net/activityi;dc_pre=CPT77YCO85UDFb-grAIdL-UuUg;src=11736495;type=invmedia;cat=nobro01o;rcb=15;ord=7643815158688;npa=0;auiddc=1833130191.1785163970;uaa=x86;uab=64;uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0;uamb=0;uam=;uap=Windows;uapv=19.0.0;uaw=0;pscdl=noapi;frm=0;_tu=KFA;gtm=45fe67m0v9179629532z8850112238za20gzb850112238zd850112238xea;gcd=13l3l3l3l1l1;dma=0;dc_fmt=2;tag_exp=115616986~115938466~115938469~118131809~118897920~118897930~119527020~119724321~119896803;epver=2;dc_random=1785163971_wfnAynsajNcljckBli5gLMumYznL8pB1kw;_dc_test=1;~oref=https%3A%2F%2Fwww.nobroker.in%2F?",
+    "200 https://gumi.criteo.com/syncframe?topUrl=www.nobroker.in&origin=onetag"
+  ],
+  "domContentLoaded": true,
+  "load": true,
+  "networkIdle": true,
+  "pageTitle": "Flats, Houses, Apartments for Rent, Buy, Sale Without Brokerage in India",
+  "currentUrl": "https://www.nobroker.in/",
+  "cookiesCount": 23,
+  "storageStateBytes": 5193,
+  "consoleErrors": [],
+  "requestFailures": [
+    {
+      "url": "https://ad.doubleclick.net/ccm/s/collect?auid=1833130191.1785163970&gtm=45He67m0v850112238za200zd850112238xea",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=4&frm=0&ae=g&auid=1833130191.1785163970&dt=Flats%2C%20Houses%2C%20Apartments%20for%20Rent%2C%20Buy%2C%20Sale%20Without%20Brokerage%20in%20India&en=page_view&dl=https%3A%2F%2Fwww.nobroker.in%2F&scrsrc=w",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=15&frm=0&auid=1833130191.1785163970&dt=Flats%2C%20Houses%2C%20Apartments%20for%20Rent%2C%20Buy%2C%20Sale%20Without%20Brokerage%20in%20India&en=page_view&dl=https%3A%2F%2Fwww.nobroker.in%2F&scrsrc=www.g",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/measurement/conversion?random=1785163971790&cv=11&tid=G-SQ9H8YK20V&fst=1785163971790&fmt=8&en=session_start&gtm=45je67m0v870213292z8850112238za20gzb850112238zd850112238xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938466~1159",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-SQ9H8YK20V&gtm=45je67m0v870213292z8850112238za20gzb850112238zd850112238&_p=1785163966175&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&ecid=1341737445&_eu=AAAAAGAC&_prs=ok&are=1&cid=2060717142.17851639",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-BS11V183V6&gtm=45je67m0v9176953793z8850112238za20gzb850112238zd850112238&_p=1785163966175&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGAC&are=1&cid=2060717142.1785163971&frm=0&pscdl=noapi&rc",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-STLR7BLZQN&gtm=45je67m0v9176953793z8850112238za20gzb850112238zd850112238&_p=1785163966175&gcd=13l3l3l3l1l1&npa=0&dma=0&are=1&cid=2060717142.1785163971&frm=0&ngs=1&pscdl=noapi&rcb=7&sr=136",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://www.google.com/ccm/collect?rcb=16&frm=0&auid=1833130191.1785163970&dt=Flats%2C%20Houses%2C%20Apartments%20for%20Rent%2C%20Buy%2C%20Sale%20Without%20Brokerage%20in%20India&en=page_view&dl=https%3A%2F%2Fwww.nobroker.in%2F&scrsrc=www.g",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "jsExceptions": [],
+  "screenshotAfterNav": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785163943023-nb-sy-validation\\nobroker-after-nav.jpg",
+  "screenshotAfter5s": "C:\\Website Production file\\CarftSquare-Studio\\tmp\\connect-debug\\1785163943023-nb-sy-validation\\nobroker-after-5s.jpg",
+  "accessDenied": false,
+  "wafHints": [],
+  "elapsedMs": 29953,
+  "error": null
+}
