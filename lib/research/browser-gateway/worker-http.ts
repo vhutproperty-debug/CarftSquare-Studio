@@ -313,6 +313,34 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Coordinate-based interaction — works even when inputs live in
+        // shadow DOM / canvas overlays that CSS selectors cannot reach.
+        // Coordinates map 1:1 to the viewport screenshot from page_screenshot.
+        if (action === 'click_xy') {
+          const b = body as { x?: number; y?: number };
+          const x = Number(b.x);
+          const y = Number(b.y);
+          if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            json(res, 400, { ok: false, error: 'x and y required' });
+            return;
+          }
+          await page.mouse.click(x, y);
+          json(res, 200, { ok: true, action, x, y, url: page.url() });
+          return;
+        }
+
+        // Type text via keyboard into whatever element currently has focus.
+        if (action === 'type_text') {
+          const text = String((body as { text?: string }).text || '');
+          if (!text) {
+            json(res, 400, { ok: false, error: 'text required' });
+            return;
+          }
+          await page.keyboard.type(text, { delay: 90 });
+          json(res, 200, { ok: true, action, typed: text.length, url: page.url() });
+          return;
+        }
+
         // Type a human-solved CAPTCHA code into the visible captcha input.
         if (action === 'fill_captcha') {
           const code = String((body as { captcha?: string }).captcha || '').trim();

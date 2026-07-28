@@ -54,6 +54,13 @@ async function main() {
   if (otp) body.otp = otp;
   const captcha = arg('captcha');
   if (captcha) body.captcha = captcha;
+  const x = arg('x');
+  const y = arg('y');
+  const text = arg('text');
+  const bodyAny = body as Record<string, unknown>;
+  if (x) bodyAny.x = Number(x);
+  if (y) bodyAny.y = Number(y);
+  if (text) bodyAny.text = text;
 
   const res = await fetch(`${base}/jobs/connect-act`, {
     method: 'POST',
