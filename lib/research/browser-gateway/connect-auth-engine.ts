@@ -283,6 +283,25 @@ export async function applyPhoneOnPage(
     }
   }
 
+  // Some portals (MagicBricks/Akamai) gate the phone submit behind a CAPTCHA on the
+  // same form. Auto-clicking Next before the CAPTCHA is solved submits an invalid
+  // request and trips the WAF (Access Denied). If a visible CAPTCHA input is present,
+  // fill the phone but DO NOT submit — the operator/fill_captcha submits once solved.
+  const captchaInputSelectors = [
+    'input[name*="captcha" i]',
+    'input[id*="captcha" i]',
+    'input[placeholder*="captcha" i]',
+  ];
+  let captchaPending = false;
+  for (const sel of captchaInputSelectors) {
+    const loc = page.locator(sel).first();
+    if ((await loc.count().catch(() => 0)) === 0) continue;
+    if (await loc.isVisible().catch(() => false)) {
+      captchaPending = true;
+      break;
+    }
+  }
+
   const clickSelectors = [
     'button:has-text("Next")',
     'button:has-text("Continue")',
@@ -293,15 +312,17 @@ export async function applyPhoneOnPage(
     '[type="submit"]',
   ];
   let clicked: string | null = null;
-  for (const sel of clickSelectors) {
-    const loc = page.locator(sel).first();
-    if ((await loc.count().catch(() => 0)) === 0) continue;
-    try {
-      await loc.click({ timeout: 2_000 });
-      clicked = sel;
-      break;
-    } catch {
-      /* next */
+  if (!captchaPending) {
+    for (const sel of clickSelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) === 0) continue;
+      try {
+        await loc.click({ timeout: 2_000 });
+        clicked = sel;
+        break;
+      } catch {
+        /* next */
+      }
     }
   }
 
@@ -310,7 +331,13 @@ export async function applyPhoneOnPage(
     filled,
     clicked,
     detail: filled
-      ? `Phone entered via ${used}${clicked ? `; clicked ${clicked}` : ''}`
+      ? `Phone entered via ${used}${
+          captchaPending
+            ? '; CAPTCHA present — not submitting (solve CAPTCHA first)'
+            : clicked
+              ? `; clicked ${clicked}`
+              : ''
+        }`
       : 'Could not find a phone input on the page',
   };
 }
