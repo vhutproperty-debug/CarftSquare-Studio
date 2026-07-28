@@ -31,12 +31,25 @@ export class NobrokerConnector extends BasePortalConnector {
       return;
     }
 
+    // SPA hydration: header controls mount late (page title stays empty for a while).
+    await page
+      .waitForFunction(() => document.querySelectorAll('a,button').length > 10, undefined, {
+        timeout: 20_000,
+      })
+      .catch(() => undefined);
+
     const selectors = [
       'a:has-text("Log in")',
       'button:has-text("Log in")',
-      'text=Log in',
       'a:has-text("Login")',
+      'button:has-text("Login")',
+      'a:has-text("Sign In")',
+      'button:has-text("Sign In")',
+      'text=/sign\\s*in/i',
+      'text=/log\\s*in/i',
       'text=Sign up',
+      '[class*="signin" i]',
+      '[class*="login" i][role="button"]',
     ];
 
     let clicked: string | null = null;

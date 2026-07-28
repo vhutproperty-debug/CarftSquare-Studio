@@ -52,6 +52,8 @@ async function main() {
   const body: Record<string, string> = { connectSessionId: session, action };
   if (phone) body.phone = phone;
   if (otp) body.otp = otp;
+  const captcha = arg('captcha');
+  if (captcha) body.captcha = captcha;
 
   const res = await fetch(`${base}/jobs/connect-act`, {
     method: 'POST',
@@ -65,6 +67,29 @@ async function main() {
   } catch {
     /* raw */
   }
+
+  // Screenshot: write JPEG to tmp and print the path instead of dumping base64.
+  if (
+    action === 'page_screenshot' &&
+    json &&
+    typeof json === 'object' &&
+    'imageBase64' in (json as Record<string, unknown>)
+  ) {
+    const j = json as { imageBase64: string; url?: string; title?: string };
+    const outDir = path.join(process.cwd(), 'tmp', 'connect-act');
+    fs.mkdirSync(outDir, { recursive: true });
+    const file = path.join(outDir, `${session}-${Date.now()}.jpg`);
+    fs.writeFileSync(file, Buffer.from(j.imageBase64, 'base64'));
+    console.log(
+      JSON.stringify(
+        { http: res.status, url: j.url, title: j.title, screenshot: file },
+        null,
+        2,
+      ),
+    );
+    process.exit(res.ok ? 0 : 1);
+  }
+
   console.log(JSON.stringify({ http: res.status, body: json }, null, 2));
   process.exit(res.ok ? 0 : 1);
 }

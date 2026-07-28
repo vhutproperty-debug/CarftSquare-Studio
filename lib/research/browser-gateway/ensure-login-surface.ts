@@ -35,7 +35,12 @@ export async function runEnsureConnectLoginSurface(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    pushWorkerLog('warn', `connect_login_surface_failed portal=${portal} error=${message}`);
-    throw error;
+    // Evidence (NoBroker E2E): throwing here killed the whole Connect session and
+    // closed the browser while LiveView was healthy. The operator can open the
+    // modal manually, and connect-act fill_phone retries the surface hook.
+    pushWorkerLog(
+      'warn',
+      `connect_login_surface_failed portal=${portal} error=${message} — keeping session alive`,
+    );
   }
 }

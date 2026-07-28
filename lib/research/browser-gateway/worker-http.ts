@@ -208,7 +208,21 @@ export async function startWorkerHttpServer(input: {
             '@/lib/research/browser-gateway/connect-auth-engine'
           );
           const phone = String(body.phone || '');
-          const result = await applyPhoneOnPage(page, phone);
+          let result = await applyPhoneOnPage(page, phone);
+          if (!result.ok) {
+            // Modal-based portals (NoBroker): open the login surface, retry once.
+            const { getConnectSessionById } = await import(
+              '@/lib/research/browser-gateway/connect-session-store'
+            );
+            const { runEnsureConnectLoginSurface } = await import(
+              '@/lib/research/browser-gateway/ensure-login-surface'
+            );
+            const sess = await getConnectSessionById(connectSessionId);
+            if (sess) {
+              await runEnsureConnectLoginSurface(sess.portal, page);
+              result = await applyPhoneOnPage(page, phone);
+            }
+          }
           await new Promise((r) => setTimeout(r, 1_500));
           json(res, 200, {
             ok: result.ok,
@@ -245,6 +259,85 @@ export async function startWorkerHttpServer(input: {
           json(res, 200, {
             ok: true,
             action,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        // Live page screenshot (base64) — lets the operator see CAPTCHA/state in chat.
+        if (action === 'page_screenshot') {
+          const buf = await page
+            .screenshot({ type: 'jpeg', quality: 70 })
+            .catch(() => null);
+          if (!buf) {
+            json(res, 500, { ok: false, error: 'screenshot failed' });
+            return;
+          }
+          json(res, 200, {
+            ok: true,
+            action,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+            imageBase64: buf.toString('base64'),
+          });
+          return;
+        }
+
+        // Type a human-solved CAPTCHA code into the visible captcha input.
+        if (action === 'fill_captcha') {
+          const code = String((body as { captcha?: string }).captcha || '').trim();
+          if (!code) {
+            json(res, 400, { ok: false, error: 'captcha code required' });
+            return;
+          }
+          const selectors = [
+            'input[name*="captcha" i]',
+            'input[id*="captcha" i]',
+            'input[placeholder*="captcha" i]',
+            'input[placeholder*="code" i]:not([type="hidden"])',
+          ];
+          let used: string | null = null;
+          for (const sel of selectors) {
+            const loc = page.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) === 0) continue;
+            if (!(await loc.isVisible().catch(() => false))) continue;
+            try {
+              await loc.fill(code, { timeout: 5_000 });
+              used = sel;
+              break;
+            } catch {
+              /* try next */
+            }
+          }
+          let clicked: string | null = null;
+          if (used) {
+            for (const sel of [
+              'button:has-text("Login")',
+              'button:has-text("Sign In")',
+              'button:has-text("Next")',
+              'button:has-text("Continue")',
+              'button[type="submit"]',
+            ]) {
+              const loc = page.locator(sel).first();
+              if ((await loc.count().catch(() => 0)) === 0) continue;
+              if (!(await loc.isVisible().catch(() => false))) continue;
+              try {
+                await loc.click({ timeout: 5_000 });
+                clicked = sel;
+                break;
+              } catch {
+                /* try next */
+              }
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1_500));
+          json(res, 200, {
+            ok: Boolean(used),
+            action,
+            filled: Boolean(used),
+            input: used,
+            clicked,
             url: page.url(),
             title: await page.title().catch(() => ''),
           });
