@@ -251,6 +251,34 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Recover from WAF/redirect dead-ends without burning the session:
+        // re-navigate the live page to the portal's own login URL or origin only.
+        if (action === 'goto_login' || action === 'goto_origin') {
+          const { getConnectSessionById } = await import(
+            '@/lib/research/browser-gateway/connect-session-store'
+          );
+          const { getPortalMeta } = await import('@/lib/research/browser/config');
+          const sess = await getConnectSessionById(connectSessionId);
+          const meta = sess ? getPortalMeta(sess.portal) : null;
+          const target =
+            action === 'goto_login' ? meta?.loginUrl : meta?.origin;
+          if (!target) {
+            json(res, 404, { ok: false, error: 'Portal login URL unavailable' });
+            return;
+          }
+          const { resilientPageGoto } = await import('@/lib/research/browser/resilient-goto');
+          const nav = await resilientPageGoto(page, target, { maxAttempts: 2 });
+          json(res, 200, {
+            ok: !nav.error,
+            action,
+            target,
+            navError: nav.error,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
         json(res, 400, { ok: false, error: `Unknown action: ${action}` });
         return;
       }
