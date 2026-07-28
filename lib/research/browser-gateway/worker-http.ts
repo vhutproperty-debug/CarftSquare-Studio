@@ -295,6 +295,9 @@ export async function startWorkerHttpServer(input: {
             'input[name*="captcha" i]',
             'input[id*="captcha" i]',
             'input[placeholder*="captcha" i]',
+            'input[formcontrolname*="captcha" i]',
+            'input[ng-reflect-name*="captcha" i]',
+            'input[aria-label*="captcha" i]',
             'input[placeholder*="code" i]:not([type="hidden"])',
           ];
           let used: string | null = null;
@@ -308,6 +311,31 @@ export async function startWorkerHttpServer(input: {
               break;
             } catch {
               /* try next */
+            }
+          }
+          // Heuristic fallback: the CAPTCHA field is the short, empty, visible text
+          // input that is NOT the phone/email field (MagicBricks uses Angular with
+          // no captcha-named attribute). Pick the first empty visible text input
+          // whose value is empty and width is small.
+          if (!used) {
+            const inputs = page.locator(
+              'input[type="text"]:visible, input:not([type]):visible, input[type="tel"]:visible',
+            );
+            const n = await inputs.count().catch(() => 0);
+            for (let i = 0; i < n; i += 1) {
+              const loc = inputs.nth(i);
+              const val = await loc.inputValue().catch(() => 'x');
+              const nameAttr = (await loc.getAttribute('name').catch(() => '')) || '';
+              const idAttr = (await loc.getAttribute('id').catch(() => '')) || '';
+              if (/mobile|phone|email/i.test(`${nameAttr} ${idAttr}`)) continue;
+              if (val && val.trim().length > 0) continue;
+              try {
+                await loc.fill(code, { timeout: 5_000 });
+                used = `heuristic:input#${i}`;
+                break;
+              } catch {
+                /* next */
+              }
             }
           }
           let clicked: string | null = null;
