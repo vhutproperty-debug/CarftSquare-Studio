@@ -39,7 +39,7 @@ import {
 // Env must load before Mongo/crypto calls (URI is read at runtime).
 loadEnvLocal();
 
-const WORKER_VERSION = '1.1.0';
+const WORKER_VERSION = '1.2.0';
 
 function arg(name: string, fallback?: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -121,13 +121,28 @@ async function validateConfig(provider: string) {
 async function tick() {
   bumpWorkerTick();
   try {
-    const processed = await processNextConnectJob();
+    // Evidence: awaiting processNextConnectJob blocked the entire login wait (minutes),
+    // so only one Connect could run. Spawn up to RESEARCH_CONNECT_MAX_PARALLEL jobs
+    // without awaiting login completion (claim is atomic via Mongo findOneAndUpdate).
+    const maxParallel = Math.max(1, Number(process.env.RESEARCH_CONNECT_MAX_PARALLEL || 2));
+    const { getInflightConnectCount } = await import(
+      '../lib/research/browser-gateway/worker-state'
+    );
+    const slots = Math.max(0, maxParallel - getInflightConnectCount());
+    for (let i = 0; i < slots; i += 1) {
+      void processNextConnectJob().catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setWorkerError(message);
+        pushWorkerLog('error', `connect_job_failed: ${message}`);
+      });
+    }
+
     const validated = await validateDueSessions(DEFAULT_RESEARCH_WORKSPACE.id);
     const cleaned = await cleanupExpiredProfiles();
     setWorkerError(null);
     pushWorkerLog(
       'info',
-      `tick complete · connectJob=${processed} validated=${validated} cleanedPreviews=${cleaned}`,
+      `tick complete · connectInflight=${getInflightConnectCount()} spawnedSlots=${slots} validated=${validated} cleanedPreviews=${cleaned}`,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -287,6 +302,26 @@ async function main() {
     pushWorkerLog('warn', `Shutting down (${signal})…`);
     stopScavenger?.();
     stopConnectorHealthMonitor();
+    try {
+      const { remoteBrowserSessionManager } = await import(
+        '../lib/research/browser-gateway/remote-display/browser-session-manager'
+      );
+      const { listRemoteSessions } = await import(
+        '../lib/research/browser-gateway/remote-display/registry'
+      );
+      const { researchBrowserPool } = await import('../lib/research/browser/browser-pool');
+      for (const remote of listRemoteSessions()) {
+        await remoteBrowserSessionManager
+          .cleanup(remote.connectSessionId, `shutdown_${signal}`)
+          .catch(() => undefined);
+      }
+      await researchBrowserPool.closeAll().catch(() => undefined);
+    } catch (err) {
+      pushWorkerLog(
+        'warn',
+        `shutdown_cleanup_error ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     try {
       await httpServer?.close();
     } catch {

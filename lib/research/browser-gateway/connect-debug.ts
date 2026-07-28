@@ -6,6 +6,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { BrowserContext, Page, Response } from 'playwright';
+import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
+import { resilientPageGoto } from '@/lib/research/browser/resilient-goto';
 import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 
 export type ConnectDebugReport = {
@@ -107,46 +109,72 @@ export async function instrumentConnectNavigation(input: {
   let networkIdle: boolean | null = null;
 
   try {
-    const response = await input.page.goto(input.navigationUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60_000,
+    let nav = await resilientPageGoto(input.page, input.navigationUrl, {
+      timeoutMs: RESEARCH_BROWSER_CONFIG.navigationTimeoutMs,
     });
-    httpStatus = response?.status() ?? null;
-    domContentLoaded = true;
+    // Evidence: 99acres login-lrfv → net::ERR_HTTP_RESPONSE_CODE_FAILURE (WAF).
+    // Retry portal origin once so LiveView can land on a navigable surface.
+    if (nav.error && /ERR_HTTP_RESPONSE_CODE_FAILURE|ERR_ABORTED|403|406|429/i.test(nav.error)) {
+      const { getPortalMeta } = await import('@/lib/research/browser/config');
+      const origin = getPortalMeta(input.portal)?.origin;
+      if (origin && origin !== input.navigationUrl) {
+        pushWorkerLog(
+          'warn',
+          `connect_nav_origin_fallback portal=${input.portal} from=${input.navigationUrl} to=${origin} prior=${nav.error.slice(0, 160)}`,
+        );
+        nav = await resilientPageGoto(input.page, origin, {
+          timeoutMs: RESEARCH_BROWSER_CONFIG.navigationTimeoutMs,
+          maxAttempts: 2,
+        });
+      }
+    }
+    if (nav.error) {
+      error = nav.error;
+    } else {
+      if (nav.softAccepted) {
+        pushWorkerLog(
+          'warn',
+          `connect_nav_soft_accepted portal=${input.portal} waitUntil=${nav.waitUntil} attempts=${nav.attempts} url=${input.page.url()}`,
+        );
+      }
+      httpStatus = nav.response?.status() ?? null;
+      domContentLoaded = nav.waitUntil === 'domcontentloaded' || nav.waitUntil === 'load';
+      load = nav.waitUntil === 'load';
 
-    await input.page
-      .waitForLoadState('load', { timeout: 15_000 })
-      .then(() => {
-        load = true;
-      })
-      .catch(() => {
-        load = false;
-      });
+      await input.page
+        .waitForLoadState('load', { timeout: 15_000 })
+        .then(() => {
+          load = true;
+        })
+        .catch(() => {
+          /* keep prior */
+        });
 
-    await input.page
-      .waitForLoadState('networkidle', { timeout: 8_000 })
-      .then(() => {
-        networkIdle = true;
-      })
-      .catch(() => {
-        networkIdle = false;
-      });
+      await input.page
+        .waitForLoadState('networkidle', { timeout: 8_000 })
+        .then(() => {
+          networkIdle = true;
+        })
+        .catch(() => {
+          networkIdle = false;
+        });
 
-    screenshotAfterNav = path.join(outDir, `${input.portal}-after-nav.jpg`);
-    await input.page
-      .screenshot({ path: screenshotAfterNav, type: 'jpeg', quality: 55 })
-      .catch(() => {
-        screenshotAfterNav = null;
-      });
+      screenshotAfterNav = path.join(outDir, `${input.portal}-after-nav.jpg`);
+      await input.page
+        .screenshot({ path: screenshotAfterNav, type: 'jpeg', quality: 55 })
+        .catch(() => {
+          screenshotAfterNav = null;
+        });
 
-    await new Promise((r) => setTimeout(r, 5_000));
+      await new Promise((r) => setTimeout(r, 5_000));
 
-    screenshotAfter5s = path.join(outDir, `${input.portal}-after-5s.jpg`);
-    await input.page
-      .screenshot({ path: screenshotAfter5s, type: 'jpeg', quality: 55 })
-      .catch(() => {
-        screenshotAfter5s = null;
-      });
+      screenshotAfter5s = path.join(outDir, `${input.portal}-after-5s.jpg`);
+      await input.page
+        .screenshot({ path: screenshotAfter5s, type: 'jpeg', quality: 55 })
+        .catch(() => {
+          screenshotAfter5s = null;
+        });
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   } finally {

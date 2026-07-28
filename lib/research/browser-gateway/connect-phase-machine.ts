@@ -28,13 +28,13 @@ const ALLOWED: Record<ConnectFlowPhase, ConnectFlowPhase[]> = {
   opening_browser: ['waiting_for_login', 'cancelled', 'expired', 'failed'],
   // After login detected: enter same-context verify (never jump to capturing first).
   waiting_for_login: ['verifying', 'cancelled', 'expired', 'failed'],
-  // Same-context verify passed → capture storageState; failed → failed.
-  verifying: ['capturing', 'failed', 'cancelled', 'expired'],
-  capturing: ['encrypting', 'failed', 'cancelled', 'expired'],
-  // Persist complete → connected (same-context verify already proved auth).
-  encrypting: ['connected', 'failed', 'cancelled', 'expired'],
-  // Validate-only path (stored session re-check, no headed login).
-  validating: ['connected', 'failed', 'cancelled', 'expired'],
+  // Same-context verify passed → capture; failed can return to waiting (auth engine retry).
+  verifying: ['capturing', 'waiting_for_login', 'failed', 'cancelled', 'expired'],
+  capturing: ['encrypting', 'waiting_for_login', 'failed', 'cancelled', 'expired'],
+  // Persist → connected, or validating (auth engine post-persist gate), or back to waiting.
+  encrypting: ['connected', 'validating', 'waiting_for_login', 'failed', 'cancelled', 'expired'],
+  // Validate-only path + post-Connect connector validator gate.
+  validating: ['connected', 'waiting_for_login', 'failed', 'cancelled', 'expired'],
   connected: [],
   failed: [],
   expired: [],

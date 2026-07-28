@@ -62,7 +62,8 @@ async function launchLocalFallback(input: {
 }): Promise<BrowserLaunchHandle> {
   // Caller prepares a fresh profileDir; ensure parents exist.
   await fs.mkdir(input.profileDir, { recursive: true });
-  const headless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+  // Connect authentication is never headless (operator LiveView / screenshot preview).
+  const headless = false;
   const { assertPlaywrightRuntimeAllowed } = await import(
     '@/lib/research/browser/playwright-runtime-guard'
   );

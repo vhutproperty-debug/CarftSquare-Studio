@@ -1,7 +1,7 @@
 import type { BrowserProviderKind } from '@/lib/research/browser-gateway/types';
 import { RESEARCH_PROTOCOL_VERSION } from '@/lib/research/ops/metrics';
 
-export const WORKER_HTTP_VERSION = '1.1.0';
+export const WORKER_HTTP_VERSION = '1.2.0';
 
 export type WorkerLogLine = {
   at: string;
@@ -18,6 +18,8 @@ export type WorkerRuntimeState = {
   lastError: string | null;
   activeConnectSessionId: string | null;
   activePortal: string | null;
+  /** Parallel in-flight Connect session ids (capacity tracking). */
+  activeConnectSessionIds: string[];
   ticks: number;
   jobsProcessed: number;
   healthy: boolean;
@@ -42,6 +44,7 @@ export function initWorkerState(input: {
     lastError: null,
     activeConnectSessionId: null,
     activePortal: null,
+    activeConnectSessionIds: [],
     ticks: 0,
     jobsProcessed: 0,
     healthy: true,
@@ -65,13 +68,27 @@ export function setWorkerActiveJob(sessionId: string | null, portal: string | nu
   if (!state) return;
   state.activeConnectSessionId = sessionId;
   state.activePortal = portal;
+  if (sessionId && !state.activeConnectSessionIds.includes(sessionId)) {
+    state.activeConnectSessionIds.push(sessionId);
+  }
 }
 
-export function markWorkerJobDone(): void {
+export function markWorkerJobDone(sessionId?: string | null): void {
   if (!state) return;
   state.jobsProcessed += 1;
-  state.activeConnectSessionId = null;
-  state.activePortal = null;
+  if (sessionId) {
+    state.activeConnectSessionIds = state.activeConnectSessionIds.filter((id) => id !== sessionId);
+  } else if (state.activeConnectSessionId) {
+    state.activeConnectSessionIds = state.activeConnectSessionIds.filter(
+      (id) => id !== state!.activeConnectSessionId,
+    );
+  }
+  state.activeConnectSessionId = state.activeConnectSessionIds[0] || null;
+  if (!state.activeConnectSessionId) state.activePortal = null;
+}
+
+export function getInflightConnectCount(): number {
+  return state?.activeConnectSessionIds.length || 0;
 }
 
 export function bumpWorkerTick(): void {
@@ -135,7 +152,9 @@ export function buildWorkerStatusPayload(extra?: {
     online: true,
     provider: state.provider,
     queueSize: extra?.queueSize ?? 0,
-    activeSessions: extra?.activeSessions ?? (state.activeConnectSessionId ? 1 : 0),
+    activeSessions:
+      extra?.activeSessions ??
+      Math.max(state.activeConnectSessionIds.length, state.activeConnectSessionId ? 1 : 0),
     uptime: Math.floor((Date.now() - state.startedAt) / 1000),
     version: WORKER_HTTP_VERSION,
     protocolVersion: RESEARCH_PROTOCOL_VERSION,

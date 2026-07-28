@@ -204,66 +204,18 @@ export async function startWorkerHttpServer(input: {
         );
 
         if (action === 'fill_phone') {
-          const phone = String(body.phone || '').replace(/\D/g, '');
-          if (phone.length < 10) {
-            json(res, 400, { ok: false, error: 'phone must be at least 10 digits' });
-            return;
-          }
-          const phoneSelectors = [
-            'input[type="tel"]',
-            'input[name*="mobile" i]',
-            'input[name*="phone" i]',
-            'input[placeholder*="mobile" i]',
-            'input[placeholder*="phone" i]',
-            'input[placeholder*="Mobile" i]',
-            '#emailOrMobile',
-            '#mobileNum',
-            'input[type="text"]',
-          ];
-          let filled = false;
-          let used = '';
-          for (const sel of phoneSelectors) {
-            const loc = page.locator(sel).first();
-            if ((await loc.count().catch(() => 0)) === 0) continue;
-            try {
-              await loc.click({ timeout: 2_000 });
-              await loc.fill('');
-              await loc.type(phone, { delay: 40 });
-              filled = true;
-              used = sel;
-              break;
-            } catch {
-              /* try next */
-            }
-          }
-          const clickSelectors = [
-            'button:has-text("Next")',
-            'button:has-text("Continue")',
-            'button:has-text("Get OTP")',
-            'button:has-text("Send OTP")',
-            'button:has-text("Login")',
-            'a:has-text("Get OTP")',
-            '[type="submit"]',
-          ];
-          let clicked = '';
-          for (const sel of clickSelectors) {
-            const loc = page.locator(sel).first();
-            if ((await loc.count().catch(() => 0)) === 0) continue;
-            try {
-              await loc.click({ timeout: 2_000 });
-              clicked = sel;
-              break;
-            } catch {
-              /* try next */
-            }
-          }
+          const { applyPhoneOnPage } = await import(
+            '@/lib/research/browser-gateway/connect-auth-engine'
+          );
+          const phone = String(body.phone || '');
+          const result = await applyPhoneOnPage(page, phone);
           await new Promise((r) => setTimeout(r, 1_500));
           json(res, 200, {
-            ok: filled,
+            ok: result.ok,
             action,
-            filled,
-            selector: used || null,
-            clicked: clicked || null,
+            filled: result.filled,
+            clicked: result.clicked,
+            detail: result.detail,
             url: page.url(),
             title: await page.title().catch(() => ''),
           });
@@ -271,63 +223,18 @@ export async function startWorkerHttpServer(input: {
         }
 
         if (action === 'fill_otp') {
-          const otp = String(body.otp || '').replace(/\D/g, '');
-          if (otp.length < 4) {
-            json(res, 400, { ok: false, error: 'otp must be at least 4 digits' });
-            return;
-          }
-          const otpSelectors = [
-            'input[name*="otp" i]',
-            'input[placeholder*="otp" i]',
-            'input[placeholder*="OTP" i]',
-            'input[autocomplete="one-time-code"]',
-            'input[type="tel"]',
-            'input[type="number"]',
-            'input[maxlength="6"]',
-            'input[maxlength="4"]',
-          ];
-          let filled = false;
-          let used = '';
-          for (const sel of otpSelectors) {
-            const loc = page.locator(sel).first();
-            if ((await loc.count().catch(() => 0)) === 0) continue;
-            try {
-              await loc.click({ timeout: 2_000 });
-              await loc.fill('');
-              await loc.type(otp, { delay: 50 });
-              filled = true;
-              used = sel;
-              break;
-            } catch {
-              /* try next */
-            }
-          }
-          const submitSelectors = [
-            'button:has-text("Verify")',
-            'button:has-text("Submit")',
-            'button:has-text("Continue")',
-            'button:has-text("Login")',
-            '[type="submit"]',
-          ];
-          let clicked = '';
-          for (const sel of submitSelectors) {
-            const loc = page.locator(sel).first();
-            if ((await loc.count().catch(() => 0)) === 0) continue;
-            try {
-              await loc.click({ timeout: 2_000 });
-              clicked = sel;
-              break;
-            } catch {
-              /* try next */
-            }
-          }
+          const { applyOtpOnPage } = await import(
+            '@/lib/research/browser-gateway/connect-auth-engine'
+          );
+          const otp = String(body.otp || '');
+          const result = await applyOtpOnPage(page, otp);
           await new Promise((r) => setTimeout(r, 1_500));
           json(res, 200, {
-            ok: filled,
+            ok: result.ok,
             action,
-            filled,
-            selector: used || null,
-            clicked: clicked || null,
+            filled: result.filled,
+            clicked: result.clicked,
+            detail: result.detail,
             url: page.url(),
             title: await page.title().catch(() => ''),
           });

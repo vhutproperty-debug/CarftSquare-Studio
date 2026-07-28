@@ -27,8 +27,9 @@ async function dbReady() {
 }
 
 export function publicConnectSession(session: ConnectSession): PublicConnectSession {
+  const { pendingOtp: _otp, pendingOtpAt: _otpAt, ...rest } = session;
   return {
-    ...session,
+    ...rest,
     previewUrl: session.previewPath
       ? `/api/research/connectors/session/preview?id=${encodeURIComponent(session.id)}`
       : null,
@@ -143,6 +144,9 @@ export async function updateConnectSession(
       | 'browserSessionId'
       | 'startedAt'
       | 'finishedAt'
+      | 'pendingOtp'
+      | 'pendingOtpAt'
+      | 'authChallenge'
     >
   >,
 ): Promise<ConnectSession | null> {

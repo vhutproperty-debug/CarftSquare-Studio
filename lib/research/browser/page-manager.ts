@@ -1,6 +1,7 @@
 import type { BrowserContext, Page } from 'playwright';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
+import { resilientPageGoto } from '@/lib/research/browser/resilient-goto';
 import { ScreenshotManager } from '@/lib/research/browser/screenshot-manager';
 
 export class PageManager {
@@ -15,9 +16,18 @@ export class PageManager {
 
   async goto(page: Page, url: string): Promise<import('playwright').Response | null> {
     const t0 = researchPerfNow();
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
-    researchPerfLog('navigation', t0, { url: url.slice(0, 120), status: response?.status() ?? null });
-    return response;
+    const result = await resilientPageGoto(page, url);
+    researchPerfLog('navigation', t0, {
+      url: url.slice(0, 120),
+      status: result.response?.status() ?? null,
+      waitUntil: result.waitUntil,
+      attempts: result.attempts,
+      error: result.error,
+    });
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    return result.response;
   }
 
   async safeClose(page: Page | null | undefined): Promise<void> {

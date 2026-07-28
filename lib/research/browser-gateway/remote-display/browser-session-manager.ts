@@ -223,7 +223,14 @@ export class RemoteBrowserSessionManager {
     if (!entry) throw new Error('Remote session not found — call createSession first');
 
     await fs.mkdir(input.profileDir, { recursive: true });
-    const headless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+    // Connect authentication is always headed (Xvfb + LiveView/noVNC). Never headless login.
+    if (process.env.RESEARCH_CONNECT_HEADLESS === 'true') {
+      pushWorkerLog(
+        'warn',
+        `RESEARCH_CONNECT_HEADLESS ignored for Connect — headed Chromium required connectSessionId=${input.connectSessionId}`,
+      );
+    }
+    const headless = false;
     const display = entry.remote.display;
 
     pushWorkerLog(
@@ -413,8 +420,15 @@ export class RemoteBrowserSessionManager {
   /** Return the live Playwright page for an in-flight Connect session (OTP assist). */
   getConnectPage(connectSessionId: string): import('playwright').Page | null {
     const entry = this.active.get(connectSessionId);
-    if (!entry?.page || entry.page.isClosed()) return null;
-    return entry.page;
+    if (!entry) return null;
+    if (entry.page && !entry.page.isClosed()) return entry.page;
+    // Fall back to any open page on the Connect context (tab swaps / recoveries).
+    const open = entry.context?.pages().filter((p) => !p.isClosed()) || [];
+    if (open.length) {
+      entry.page = open[0];
+      return open[0];
+    }
+    return null;
   }
 
   async captureSession(handle: BrowserLaunchHandle) {

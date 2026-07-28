@@ -40,6 +40,14 @@ export type ConnectSession = {
   message?: string;
   errorMessage?: string;
   browserSessionId?: string;
+  /**
+   * One-shot OTP submitted from chat/UI for the Connect auth engine.
+   * Cleared after the worker consumes it. Never returned on public session APIs.
+   */
+  pendingOtp?: string | null;
+  pendingOtpAt?: string | null;
+  /** Operator-facing challenge hint (captcha | otp | waf | …). */
+  authChallenge?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -48,7 +56,7 @@ export type ConnectSession = {
   expiresAt: string;
 };
 
-export type PublicConnectSession = Omit<ConnectSession, never> & {
+export type PublicConnectSession = Omit<ConnectSession, 'pendingOtp' | 'pendingOtpAt'> & {
   previewUrl?: string | null;
 };
 

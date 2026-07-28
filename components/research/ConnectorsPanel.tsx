@@ -168,6 +168,8 @@ export default function ConnectorsPanel() {
   const [previewKey, setPreviewKey] = useState(0);
   const [queuedSince, setQueuedSince] = useState<number | null>(null);
   const [liveValidated, setLiveValidated] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
 
   const refreshWorker = useCallback(async () => {
     try {
@@ -246,6 +248,38 @@ export default function ConnectorsPanel() {
       /* ignore */
     }
   }, [liveSession?.id, liveSession?.portal]);
+
+  const submitOtp = useCallback(async () => {
+    if (!liveSession?.id) return;
+    const otp = otpInput.replace(/\D/g, '');
+    if (otp.length < 4) {
+      setError('Enter a valid OTP (4–8 digits).');
+      return;
+    }
+    setOtpBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/research/connectors/session/otp', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          sessionId: liveSession.id,
+          otp,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to submit OTP');
+      setOtpInput('');
+      setMessage(json.message || 'OTP submitted to the secure browser.');
+      if (json.connectSession) setLiveSession(json.connectSession);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to submit OTP');
+    } finally {
+      setOtpBusy(false);
+    }
+  }, [liveSession?.id, otpInput, workspaceId]);
 
   const refresh = useCallback(async (opts?: { live?: boolean; clearError?: boolean }) => {
     const live = Boolean(opts?.live);
@@ -611,8 +645,17 @@ export default function ConnectorsPanel() {
                   <div className="space-y-1 px-1 text-left">
                     <p className="text-base font-medium text-white">Secure login window</p>
                     <p className="text-xs text-slate-400">
-                      Complete OTP in the embedded view below. If it is blank, use Open in new tab.
+                      {liveSession.authChallenge === 'captcha'
+                        ? 'CAPTCHA detected — complete it in LiveView. The browser stays open until you finish or the session expires.'
+                        : liveSession.authChallenge === 'otp'
+                          ? 'OTP required — paste the code below (or in Cursor chat). It will be entered automatically.'
+                          : liveSession.authChallenge === 'waf'
+                            ? 'Security block detected — keep LiveView open or reconnect from a trusted network.'
+                            : 'Complete login in the embedded view. If blank, open in a new tab. Paste OTP below when prompted.'}
                     </p>
+                    {liveSession.message ? (
+                      <p className="text-xs text-amber-200/90">{liveSession.message}</p>
+                    ) : null}
                   </div>
                   <div className="overflow-hidden rounded-md border border-slate-700 bg-black">
                     <iframe
@@ -623,6 +666,33 @@ export default function ConnectorsPanel() {
                       referrerPolicy="no-referrer"
                     />
                   </div>
+                  {liveSession.portal !== 'housing' ? (
+                    <form
+                      className="flex flex-wrap items-center gap-2 px-1"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void submitOtp();
+                      }}
+                    >
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="Paste OTP"
+                        value={otpInput}
+                        onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                        className="h-10 w-36 rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500"
+                        disabled={otpBusy}
+                      />
+                      <button
+                        type="submit"
+                        disabled={otpBusy || otpInput.replace(/\D/g, '').length < 4}
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                      >
+                        {otpBusy ? 'Sending…' : 'Submit OTP'}
+                      </button>
+                    </form>
+                  ) : null}
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <a
                       href={liveSession.liveViewUrl}

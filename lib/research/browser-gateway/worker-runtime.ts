@@ -15,6 +15,7 @@ import {
 import { transitionConnectSession } from '@/lib/research/browser-gateway/connect-phase-machine';
 import {
   claimNextConnectSession,
+  createConnectSession,
   expireStaleConnectSessions,
   getConnectSessionById,
   updateConnectSession,
@@ -25,22 +26,33 @@ import {
   type LoginDetectState,
 } from '@/lib/research/browser-gateway/login-detect';
 import { notifySessionNeedsLogin } from '@/lib/research/browser-gateway/gateway';
-import type { BrowserLaunchHandle, ConnectSession } from '@/lib/research/browser-gateway/types';
+import {
+  applyOtpOnPage,
+  classifyConnectAuthPage,
+  usesConnectAuthEngine,
+} from '@/lib/research/browser-gateway/connect-auth-engine';
+import { remoteBrowserSessionManager } from '@/lib/research/browser-gateway/remote-display/browser-session-manager';
 import {
   markWorkerJobDone,
   pushWorkerLog,
   setWorkerActiveJob,
   setWorkerError,
+  getInflightConnectCount,
 } from '@/lib/research/browser-gateway/worker-state';
 import { RESEARCH_COLLECTIONS } from '@/lib/research/collections';
 import { recordWorkerHeartbeat } from '@/lib/research/monitoring/worker-health';
 import { browserSessionManager } from '@/lib/research/sessions/browser-session-manager';
 import {
   findBrowserSession,
+  touchBrowserSession,
   upsertBrowserSession,
 } from '@/lib/research/sessions/session-store';
 import { ensureResearchIndexes, getResearchDatabase } from '@/lib/research/store';
 import { upsertPortalConnection } from '@/lib/research/store/portal-connections';
+import type {
+  BrowserLaunchHandle,
+  ConnectSession,
+} from '@/lib/research/browser-gateway/types';
 
 const WORKER_ID = `browser-${hostname()}-${process.pid}`;
 const LOGIN_TIMEOUT_MS = Number(process.env.RESEARCH_CONNECT_TIMEOUT_MS || 12 * 60 * 1000);
@@ -60,13 +72,13 @@ export async function processNextConnectJob(): Promise<boolean> {
   });
 
   const session = await claimNextConnectSession(WORKER_ID);
+  // When no job claimed, do not clear sibling in-flight Connects.
   if (!session) {
     await recordWorkerHeartbeat({
       workerId: WORKER_ID,
       workerType: 'browser_crawl',
-      status: 'idle',
+      status: getInflightConnectCount() > 0 ? 'busy' : 'idle',
     });
-    setWorkerActiveJob(null, null);
     return false;
   }
 
@@ -92,7 +104,7 @@ export async function processNextConnectJob(): Promise<boolean> {
 
   if (validateOnly) {
     await runValidateOnly(session.workspaceId, session.portal, session.id);
-    markWorkerJobDone();
+    markWorkerJobDone(session.id);
     return true;
   }
 
@@ -124,6 +136,7 @@ export async function processNextConnectJob(): Promise<boolean> {
           'info',
           `connect_done sessionId=${session.id} reason=cancelled_or_expired`,
         );
+        markWorkerJobDone(session.id);
         return true;
       }
 
@@ -159,7 +172,8 @@ export async function processNextConnectJob(): Promise<boolean> {
         message: CONNECT_USER_MESSAGES.profileReady,
       });
 
-      const connectHeadless = process.env.RESEARCH_CONNECT_HEADLESS === 'true';
+      // Connect auth is always headed (LiveView). Env flag is ignored by the remote display manager.
+      const connectHeadless = false;
       pushWorkerLog(
         'info',
         `browser_launch_start sessionId=${session.id} portal=${session.portal} provider=${session.provider} headless=${connectHeadless} profileDir=${profileDir}`,
@@ -199,9 +213,9 @@ export async function processNextConnectJob(): Promise<boolean> {
         .relative(RESEARCH_BROWSER_CONFIG.screenshotRoot, previewFile)
         .replace(/\\/g, '/');
 
-      // Navigate BEFORE publishing liveViewUrl so noVNC never shows about:blank.
-      // Housing / MagicBricks / 99acres all need the login surface visible when the
-      // operator opens the remote window (evidence: blank desktop while goto pending).
+      // Navigate BEFORE publishing liveViewUrl so noVNC never shows about:blank when nav succeeds.
+      // Evidence: NoBroker/99acres nav timeout|ERR_HTTP previously aborted Connect in opening_browser
+      // before LiveView was published — keep the headed browser and publish LiveView anyway.
       const metaForNav = getPortalMeta(session.portal);
       pushWorkerLog(
         'info',
@@ -215,7 +229,21 @@ export async function processNextConnectJob(): Promise<boolean> {
           `urlMatch=${metaForNav?.loginUrl === session.loginUrl ? 'yes' : 'NO'}`,
         ].join(' '),
       );
-      await handle.gotoLogin(session.loginUrl);
+      let loginNavWarning: string | null = null;
+      try {
+        await handle.gotoLogin(session.loginUrl);
+      } catch (navErr) {
+        const raw = navErr instanceof Error ? navErr.message : String(navErr);
+        loginNavWarning = friendlyConnectError(navErr);
+        pushWorkerLog(
+          'warn',
+          `login_nav_failed_keep_liveview sessionId=${session.id} portal=${session.portal} raw=${raw.slice(0, 300)} friendly=${loginNavWarning}`,
+        );
+        if (!handle.liveViewUrl) {
+          throw navErr;
+        }
+        // Soft continue: LiveView is up — operator can retry login / CAPTCHA in the remote window.
+      }
 
       // Evidence immediately before operator-visible liveView publish.
       const finalUrlBeforePublish = await handle.currentUrl().catch(() => 'unknown');
@@ -233,15 +261,18 @@ export async function processNextConnectJob(): Promise<boolean> {
           `preview=${previewRel}`,
           `liveView=${handle.liveViewUrl ? 'yes' : 'no'}`,
           `browserVersion=${handle.browserVersion || 'n/a'}`,
+          `navWarning=${loginNavWarning ? 'yes' : 'no'}`,
         ].join(' '),
       );
 
       await transitionConnectSession({
         sessionId: session.id,
         to: 'waiting_for_login',
-        message: handle.liveViewUrl
-          ? CONNECT_USER_MESSAGES.browserReady
-          : CONNECT_USER_MESSAGES.waitingLogin,
+        message: loginNavWarning
+          ? `Login page slow or blocked — complete login in LiveView. (${loginNavWarning})`
+          : handle.liveViewUrl
+            ? CONNECT_USER_MESSAGES.browserReady
+            : CONNECT_USER_MESSAGES.waitingLogin,
         browserVersion: handle.browserVersion,
         liveViewUrl: handle.liveViewUrl,
         previewPath: previewRel,
@@ -254,170 +285,268 @@ export async function processNextConnectJob(): Promise<boolean> {
         } profileDir=${profileDir} browserVersion=${handle.browserVersion || 'n/a'} finalUrl=${finalUrlBeforePublish}`,
       );
 
-      const authenticated = await waitForManualLogin({
+      const engine = usesConnectAuthEngine(session.portal);
+      let authenticated = await waitForManualLogin({
         session,
         handle,
         previewFile,
         profileDir,
       });
 
-      if (!authenticated) {
-        const afterWait = await getConnectSessionById(session.id);
-        if (
-          afterWait?.phase === 'cancelled' ||
-          afterWait?.phase === 'expired' ||
-          afterWait?.phase === 'failed'
-        ) {
+      // Auth-engine portals: verify/capture/validate can fail without closing the browser —
+      // return to waiting_for_login so the operator can retry in the same LiveView session.
+      let authAttempts = 0;
+      const maxAuthAttempts = Number(process.env.RESEARCH_CONNECT_MAX_AUTH_ATTEMPTS || 5);
+      while (authenticated) {
+        authAttempts += 1;
+        if (authAttempts > maxAuthAttempts) {
+          const msg = `Login verification exhausted after ${maxAuthAttempts} attempts — browser kept open. Retry Connect or complete login in LiveView.`;
           pushWorkerLog(
-            'info',
-            `connect_done sessionId=${session.id} reason=${afterWait.phase}_during_login_wait`,
+            'error',
+            `connect_auth_attempts_exhausted sessionId=${session.id} portal=${session.portal} attempts=${authAttempts}`,
           );
-          markWorkerJobDone();
-          return true;
+          await transitionConnectSession({
+            sessionId: session.id,
+            to: 'waiting_for_login',
+            message: msg,
+            errorMessage: msg,
+            caller: 'processNextConnectJob.auth_attempts_exhausted',
+          }).catch(() => undefined);
+          authenticated = await waitForManualLogin({
+            session,
+            handle,
+            previewFile,
+            profileDir,
+          });
+          // After another full wait success, allow one more verify cycle budget.
+          authAttempts = 0;
+          continue;
         }
-        handle = null;
         pushWorkerLog(
-          'error',
-          `connect_failed sessionId=${session.id} reason=login_not_detected profileDir=${profileDir}`,
+          'info',
+          `connect_pipeline Authentication Detected sessionId=${session.id} portal=${session.portal} attempt=${authAttempts}`,
         );
-        markWorkerJobDone();
-        return true;
-      }
 
-      pushWorkerLog(
-        'info',
-        `connect_pipeline Authentication Detected sessionId=${session.id} portal=${session.portal}`,
-      );
-
-      // Same-context verify on verifyUrl BEFORE capture/persist.
-      const verifyUrl =
-        session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
-      pushWorkerLog(
-        'info',
-        `connect_pipeline SameContextVerify start sessionId=${session.id} portal=${session.portal} verifyUrl=${verifyUrl}`,
-      );
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'verifying',
-        message: CONNECT_USER_MESSAGES.validating,
-        caller: 'processNextConnectJob.same_context_verify',
-      });
-
-      const gotoVerify = handle.gotoVerify || handle.gotoLogin;
-      await gotoVerify.call(handle, verifyUrl);
-      await new Promise((r) => setTimeout(r, 4_000));
-      const verifySignals = await handle.pageSignals({
-        settle: true,
-        settleTimeoutMs: 20_000,
-        log: (line) => pushWorkerLog('info', line),
-      });
-      const verifyScore = scoreAuthentication({
-        ...verifySignals,
-        settled: true,
-        readyState: 'complete',
-      });
-      for (const line of verifyScore.summary.split('\n')) {
-        pushWorkerLog('info', `same_context_verify ${line}`);
-      }
-
-      if (!verifyScore.authenticated) {
+        const verifyUrl =
+          session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
         pushWorkerLog(
-          'error',
-          `connect_failed sessionId=${session.id} reason=same_context_verify_failed confidence=${verifyScore.score}/${verifyScore.threshold}`,
+          'info',
+          `connect_pipeline SameContextVerify start sessionId=${session.id} portal=${session.portal} verifyUrl=${verifyUrl}`,
         );
         await transitionConnectSession({
           sessionId: session.id,
-          to: 'failed',
-          errorMessage: friendlyConnectError(verifyScore.summary),
-          message: friendlyConnectError(verifyScore.summary),
+          to: 'verifying',
+          message: CONNECT_USER_MESSAGES.validating,
+          caller: 'processNextConnectJob.same_context_verify',
+        });
+
+        const gotoVerify = handle.gotoVerify || handle.gotoLogin;
+        await gotoVerify.call(handle, verifyUrl);
+        await new Promise((r) => setTimeout(r, 4_000));
+        const verifySignals = await handle.pageSignals({
+          settle: true,
+          settleTimeoutMs: 20_000,
+          log: (line) => pushWorkerLog('info', line),
+        });
+        const verifyScore = scoreAuthentication({
+          ...verifySignals,
+          settled: true,
+          readyState: 'complete',
+        });
+        for (const line of verifyScore.summary.split('\n')) {
+          pushWorkerLog('info', `same_context_verify ${line}`);
+        }
+
+        if (!verifyScore.authenticated) {
+          const failMsg = friendlyConnectError(verifyScore.summary);
+          pushWorkerLog(
+            'error',
+            `connect_verify_failed sessionId=${session.id} reason=same_context_verify_failed confidence=${verifyScore.score}/${verifyScore.threshold} engine=${engine ? 'on' : 'off'}`,
+          );
+          if (engine) {
+            await transitionConnectSession({
+              sessionId: session.id,
+              to: 'waiting_for_login',
+              message: `Login verification failed — browser kept open. ${failMsg} Fix login in LiveView or paste a new OTP, then we will retry.`,
+              errorMessage: failMsg,
+              caller: 'processNextConnectJob.same_context_verify_retry',
+            });
+            await handle.gotoLogin(session.loginUrl).catch(() => undefined);
+            authenticated = await waitForManualLogin({
+              session,
+              handle,
+              previewFile,
+              profileDir,
+            });
+            continue;
+          }
+          await transitionConnectSession({
+            sessionId: session.id,
+            to: 'failed',
+            errorMessage: failMsg,
+            message: failMsg,
+            finishedAt: new Date().toISOString(),
+            caller: 'processNextConnectJob.same_context_verify_failed',
+          });
+          pushWorkerLog(
+            'info',
+            `browser_close_trigger sessionId=${session.id} reason=same_context_verify_failed`,
+          );
+          await handle.close().catch(() => undefined);
+          handle = null;
+          markWorkerJobDone(session.id);
+          return true;
+        }
+
+        pushWorkerLog(
+          'info',
+          `connect_pipeline SameContextVerify PASS sessionId=${session.id} confidence=${verifyScore.score}/${verifyScore.threshold}`,
+        );
+
+        await transitionConnectSession({
+          sessionId: session.id,
+          to: 'capturing',
+          message: CONNECT_USER_MESSAGES.capturing,
+          caller: 'processNextConnectJob.capturing',
+        });
+        const secrets = await handle.captureSecrets();
+        const cookieCount = secrets.cookieCount ?? 0;
+        pushWorkerLog(
+          'info',
+          `connect_pipeline storageState Captured sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} encryptedCookiesBytes=${secrets.encryptedCookies?.length ?? 0} encryptedStorageBytes=${secrets.encryptedStorage?.length ?? 0}`,
+        );
+
+        await transitionConnectSession({
+          sessionId: session.id,
+          to: 'encrypting',
+          message: CONNECT_USER_MESSAGES.encrypting,
+          cookieCount,
+          caller: 'processNextConnectJob.encrypting',
+        });
+
+        // Persist first; engine portals stay needs_login until connector validator passes.
+        const browserSession = await upsertBrowserSession({
+          workspaceId: session.workspaceId,
+          portal: session.portal,
+          browserProfile: `encrypted:${session.portal}`,
+          encryptedCookies: secrets.encryptedCookies,
+          encryptedStorage: secrets.encryptedStorage,
+          sessionStatus: engine ? 'needs_login' : 'valid',
+          lastVerified: engine ? undefined : new Date().toISOString(),
+        });
+        if (engine) {
+          await touchBrowserSession(browserSession.id, {
+            sessionStatus: 'needs_login',
+            status: 'needs_login',
+            lastValidationError: 'Awaiting connector validator',
+          });
+        }
+        pushWorkerLog(
+          'info',
+          `connect_pipeline PersistOK sessionId=${session.id} browserSessionId=${browserSession.id} sessionStatus=${engine ? 'needs_login' : 'valid'}`,
+        );
+
+        if (engine) {
+          await transitionConnectSession({
+            sessionId: session.id,
+            to: 'validating',
+            message: 'Validating saved session with connector validator…',
+            cookieCount,
+            browserSessionId: browserSession.id,
+            caller: 'processNextConnectJob.connector_validate',
+          });
+          const validation = await browserSessionManager.validateSession(browserSession.id, {
+            force: true,
+          });
+          pushWorkerLog(
+            validation.ok ? 'info' : 'error',
+            `connect_pipeline connector_validate sessionId=${session.id} ok=${validation.ok} status=${validation.status} msg=${validation.message || ''}`,
+          );
+          if (!validation.ok) {
+            const failMsg =
+              friendlyConnectError(validation.message || 'Connector validation failed') ||
+              'Connector validation failed — session not marked Connected.';
+            await touchBrowserSession(browserSession.id, {
+              sessionStatus: 'needs_login',
+              status: 'needs_login',
+              lastValidationError: failMsg,
+            });
+            await transitionConnectSession({
+              sessionId: session.id,
+              to: 'waiting_for_login',
+              message: `${failMsg} Browser kept open — complete login again or paste OTP to retry.`,
+              errorMessage: failMsg,
+              caller: 'processNextConnectJob.connector_validate_retry',
+            });
+            await handle.gotoLogin(session.loginUrl).catch(() => undefined);
+            authenticated = await waitForManualLogin({
+              session,
+              handle,
+              previewFile,
+              profileDir,
+            });
+            continue;
+          }
+        }
+
+        await upsertPortalConnection({
+          workspaceId: session.workspaceId,
+          portalKey: session.portal,
+          portalName: session.portalName,
+          status: 'connected',
+          lastError: null,
+        });
+
+        await transitionConnectSession({
+          sessionId: session.id,
+          to: 'connected',
+          message: CONNECT_USER_MESSAGES.connected,
           finishedAt: new Date().toISOString(),
-          caller: 'processNextConnectJob.same_context_verify_failed',
+          browserSessionId: browserSession.id,
+          cookieCount,
+          validationOk: true,
+          caller: engine
+            ? 'processNextConnectJob.engine_validated_connected'
+            : 'processNextConnectJob.same_context_connected',
         });
         pushWorkerLog(
           'info',
-          `browser_close_trigger sessionId=${session.id} reason=same_context_verify_failed`,
+          `connect_pipeline Connected (Research Ready) sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} browserSessionId=${browserSession.id}`,
         );
-        await handle.close().catch(() => undefined);
+
+        pushWorkerLog(
+          'info',
+          `browser_close_trigger sessionId=${session.id} reason=persist_complete_normal_shutdown`,
+        );
+        await handle.close();
         handle = null;
-        markWorkerJobDone();
+        await removeConnectProfileDir(profileDir);
+        profileDir = '';
+
+        setWorkerError(null);
+        markWorkerJobDone(session.id);
         return true;
       }
 
-      pushWorkerLog(
-        'info',
-        `connect_pipeline SameContextVerify PASS sessionId=${session.id} confidence=${verifyScore.score}/${verifyScore.threshold}`,
-      );
-
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'capturing',
-        message: CONNECT_USER_MESSAGES.capturing,
-        caller: 'processNextConnectJob.capturing',
-      });
-      const secrets = await handle.captureSecrets();
-      const cookieCount = secrets.cookieCount ?? 0;
-      pushWorkerLog(
-        'info',
-        `connect_pipeline storageState Captured sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} encryptedCookiesBytes=${secrets.encryptedCookies?.length ?? 0} encryptedStorageBytes=${secrets.encryptedStorage?.length ?? 0}`,
-      );
-
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'encrypting',
-        message: CONNECT_USER_MESSAGES.encrypting,
-        cookieCount,
-        caller: 'processNextConnectJob.encrypting',
-      });
-
-      const browserSession = await upsertBrowserSession({
-        workspaceId: session.workspaceId,
-        portal: session.portal,
-        browserProfile: `encrypted:${session.portal}`,
-        encryptedCookies: secrets.encryptedCookies,
-        encryptedStorage: secrets.encryptedStorage,
-        sessionStatus: 'valid',
-        lastVerified: new Date().toISOString(),
-        lastValidationError: '',
-      });
-      pushWorkerLog(
-        'info',
-        `connect_pipeline PersistOK sessionId=${session.id} browserSessionId=${browserSession.id} sessionStatus=valid`,
-      );
-
-      await upsertPortalConnection({
-        workspaceId: session.workspaceId,
-        portalKey: session.portal,
-        portalName: session.portalName,
-        status: 'connected',
-        lastError: null,
-      });
-
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'connected',
-        message: CONNECT_USER_MESSAGES.connected,
-        finishedAt: new Date().toISOString(),
-        browserSessionId: browserSession.id,
-        cookieCount,
-        validationOk: true,
-        caller: 'processNextConnectJob.same_context_connected',
-      });
-      pushWorkerLog(
-        'info',
-        `connect_pipeline Connected (Research Ready) sessionId=${session.id} portal=${session.portal} cookieCount=${cookieCount} browserSessionId=${browserSession.id}`,
-      );
-
-      pushWorkerLog(
-        'info',
-        `browser_close_trigger sessionId=${session.id} reason=persist_complete_normal_shutdown`,
-      );
-      await handle.close();
+      const afterWait = await getConnectSessionById(session.id);
+      if (
+        afterWait?.phase === 'cancelled' ||
+        afterWait?.phase === 'expired' ||
+        afterWait?.phase === 'failed'
+      ) {
+        pushWorkerLog(
+          'info',
+          `connect_done sessionId=${session.id} reason=${afterWait.phase}_during_login_wait`,
+        );
+        markWorkerJobDone(session.id);
+        return true;
+      }
       handle = null;
-      await removeConnectProfileDir(profileDir);
-      profileDir = '';
-
-      setWorkerError(null);
-      markWorkerJobDone();
+      pushWorkerLog(
+        'error',
+        `connect_failed sessionId=${session.id} reason=login_not_detected profileDir=${profileDir}`,
+      );
+      markWorkerJobDone(session.id);
       return true;
     }
 
@@ -433,7 +562,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       finishedAt: new Date().toISOString(),
       caller: 'processNextConnectJob.loop_exhausted',
     }).catch(() => undefined);
-    markWorkerJobDone();
+    markWorkerJobDone(session.id);
     return true;
   } catch (error) {
     const friendly = friendlyConnectError(error);
@@ -465,7 +594,7 @@ export async function processNextConnectJob(): Promise<boolean> {
       );
       await handle.close().catch(() => undefined);
     }
-    markWorkerJobDone();
+    markWorkerJobDone(session.id);
     return true;
   } finally {
     if (profileDir) {
@@ -494,7 +623,15 @@ async function waitForManualLogin(input: {
   profileDir: string;
 }): Promise<boolean> {
   const { session, handle, previewFile, profileDir } = input;
-  const deadline = Date.now() + LOGIN_TIMEOUT_MS;
+  const engine = usesConnectAuthEngine(session.portal);
+  // Housing: fixed LOGIN_TIMEOUT. Engine portals: wait until Connect session expiresAt
+  // so CAPTCHA/OTP can be completed without an early login_timeout close.
+  const sessionExpiryMs = session.expiresAt
+    ? new Date(session.expiresAt).getTime()
+    : Date.now() + LOGIN_TIMEOUT_MS;
+  const deadline = engine
+    ? Math.max(sessionExpiryMs, Date.now() + 60_000)
+    : Date.now() + LOGIN_TIMEOUT_MS;
   let poll = 0;
   let detectState: LoginDetectState = { sawLoginSurface: false };
   const artifactDir = path.join(path.dirname(previewFile), 'auth-probe');
@@ -546,30 +683,17 @@ async function waitForManualLogin(input: {
         `screenshot=${signals.screenshotPath ?? 'n/a'}`,
         `authScore=${result.score}/${result.threshold}`,
         `remainingMs=${remainingMs}`,
+        `engine=${engine ? 'on' : 'off'}`,
         `decision=${result.skipped ? 'SKIPPED' : result.authenticated ? 'AUTHENTICATED' : 'NOT_AUTHENTICATED'}`,
       ].join(' '),
     );
     if (signals.evaluateError) {
       pushWorkerLog('error', `page_evaluate_error ${signals.evaluateError}`);
     }
-    // When visible auth chrome is expected but selectors miss, dump attempts.
-    if (
-      !result.skipped &&
-      !result.authenticated &&
-      (!signals.hasAvatar || !signals.hasAccountName || !signals.hasEditProfile)
-    ) {
-      pushWorkerLog(
-        'warn',
-        [
-          'auth_selector_mismatch — screenshot/HTML saved but DOM signals incomplete.',
-          `attemptedSelectors=${(signals.attemptedSelectors || []).join(',') || 'none'}`,
-        ].join(' '),
-      );
-    }
     for (const line of result.summary.split('\n')) {
       pushWorkerLog('info', `auth_score ${line}`);
     }
-    return result;
+    return { result, signals: merged };
   };
 
   while (Date.now() < deadline) {
@@ -581,7 +705,56 @@ async function waitForManualLogin(input: {
       );
       pushWorkerLog('info', `browser_close portal=${session.portal} reason=cancelled_or_expired`);
       await handle.close();
+      if (engine && current?.phase === 'expired') {
+        await updateConnectSession(session.id, {
+          message:
+            'Connect session expired while waiting for CAPTCHA/OTP. Restarting login automatically…',
+        }).catch(() => undefined);
+        await autoRestartConnectAfterExpiry(session).catch((err) => {
+          pushWorkerLog(
+            'warn',
+            `connect_auth_engine auto_restart_failed portal=${session.portal} err=${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+      }
       return false;
+    }
+
+    // Consume chat/UI OTP for engine portals (ack only after successful fill).
+    if (engine && current.pendingOtp) {
+      const otp = String(current.pendingOtp);
+      const page = remoteBrowserSessionManager.getConnectPage(session.id);
+      if (!page) {
+        pushWorkerLog(
+          'warn',
+          `connect_auth_engine otp_no_page sessionId=${session.id} — keeping pendingOtp for retry`,
+        );
+        await updateConnectSession(session.id, {
+          message:
+            'OTP received but LiveView page is not ready — will retry automatically, or type OTP in LiveView.',
+        });
+      } else {
+        const applied = await applyOtpOnPage(page, otp);
+        pushWorkerLog(
+          applied.ok ? 'info' : 'warn',
+          `connect_auth_engine otp_apply sessionId=${session.id} ok=${applied.ok} detail=${applied.detail}`,
+        );
+        if (applied.ok) {
+          await updateConnectSession(session.id, {
+            pendingOtp: null,
+            pendingOtpAt: null,
+            message: 'OTP submitted — verifying…',
+          });
+        } else {
+          // Keep pendingOtp so a later poll can retry once the OTP input exists.
+          await updateConnectSession(session.id, {
+            message: `OTP received but could not find input (${applied.detail}). Will retry, or type it in LiveView.`,
+          });
+        }
+        await sleep(2_500);
+      }
     }
 
     if (handle.writePreview) {
@@ -592,9 +765,43 @@ async function waitForManualLogin(input: {
       });
     }
 
-    const result = await evaluateOnce('poll');
-    if (result.authenticated) {
-      // AuthEvidenceEngine already scored cookies/storage/DOM — no URL heuristics.
+    const { result, signals } = await evaluateOnce('poll');
+
+    if (engine) {
+      const classified = classifyConnectAuthPage({
+        portal: session.portal,
+        title: signals.title,
+        bodySnippet: signals.bodySnippet,
+        hasLoginForm: signals.hasLoginForm,
+        sawLoginSurface: detectState.sawLoginSurface,
+        auth: {
+          authenticated: result.authenticated,
+          score: result.score,
+          threshold: result.threshold,
+          summary: result.summary,
+        },
+      });
+      await updateConnectSession(session.id, {
+        message: classified.message,
+        authChallenge: classified.challenge,
+      });
+      pushWorkerLog(
+        'info',
+        `connect_auth_engine challenge=${classified.challenge} needsOtp=${classified.needsOtpFromUser} auth=${classified.authenticated} score=${classified.score}/${classified.threshold}`,
+      );
+
+      if (classified.authenticated) {
+        pushWorkerLog(
+          'info',
+          `login_wait_success sessionId=${session.id} portal=${session.portal} via=connect_auth_engine authScore=${classified.score}/${classified.threshold}`,
+        );
+        await updateConnectSession(session.id, {
+          message: CONNECT_USER_MESSAGES.authenticated,
+          authChallenge: 'none',
+        });
+        return true;
+      }
+    } else if (result.authenticated) {
       pushWorkerLog(
         'info',
         `login_wait_success sessionId=${session.id} portal=${session.portal} authScore=${result.score}/${result.threshold} sawLoginSurface=${detectState.sawLoginSurface}`,
@@ -605,9 +812,7 @@ async function waitForManualLogin(input: {
       return true;
     }
 
-    // Evidence: MagicBricks often stays on accounts.* login DOM after OTP until a
-    // homepage navigation; loginForm present → Decision FAIL → login_timeout even
-    // when cookies are strong. Periodically probe verifyUrl in the same context.
+    // Periodic verifyUrl probe (helps MagicBricks after OTP).
     if (
       detectState.sawLoginSurface &&
       poll > 0 &&
@@ -631,17 +836,16 @@ async function waitForManualLogin(input: {
           );
         });
         const probed = await evaluateOnce('verify_probe');
-        if (probed.authenticated) {
+        if (probed.result.authenticated) {
           pushWorkerLog(
             'info',
-            `login_wait_success sessionId=${session.id} portal=${session.portal} via=verify_probe authScore=${probed.score}/${probed.threshold}`,
+            `login_wait_success sessionId=${session.id} portal=${session.portal} via=verify_probe`,
           );
           await updateConnectSession(session.id, {
             message: CONNECT_USER_MESSAGES.authenticated,
           });
           return true;
         }
-        // Return to login surface so the operator can continue OTP if still needed.
         await handle.gotoLogin(session.loginUrl).catch(() => undefined);
       }
     }
@@ -650,34 +854,37 @@ async function waitForManualLogin(input: {
     await sleep(2000);
   }
 
-  // Grace poll: if auth is visible after deadline but before cleanup, capture anyway.
   try {
     const late = await evaluateOnce('post_timeout_grace');
-    if (late.authenticated) {
+    if (late.result.authenticated) {
       pushWorkerLog(
         'warn',
-        `login_wait_success_after_deadline portal=${session.portal} score=${late.score}/${late.threshold}`,
+        `login_wait_success_after_deadline portal=${session.portal} score=${late.result.score}/${late.result.threshold}`,
       );
       return true;
     }
-    pushWorkerLog('error', `login_wait_timeout portal=${session.portal}\n${late.summary}`);
+    pushWorkerLog('error', `login_wait_timeout portal=${session.portal}\n${late.result.summary}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     pushWorkerLog('error', `login_wait_timeout_probe_failed portal=${session.portal} error=${message}`);
   }
 
+  const expiredMsg = engine
+    ? 'Connect session expired while waiting for CAPTCHA/OTP. Restarting login automatically…'
+    : CONNECT_USER_MESSAGES.loginTimeout;
+
   await transitionConnectSession({
     sessionId: session.id,
     to: 'failed',
-    errorMessage: CONNECT_USER_MESSAGES.loginTimeout,
-    message: CONNECT_USER_MESSAGES.loginTimeout,
+    errorMessage: expiredMsg,
+    message: expiredMsg,
     finishedAt: new Date().toISOString(),
     caller: 'waitForManualLogin.timeout',
   }).catch(async () => {
     await updateConnectSession(session.id, {
       phase: 'failed',
-      errorMessage: CONNECT_USER_MESSAGES.loginTimeout,
-      message: CONNECT_USER_MESSAGES.loginTimeout,
+      errorMessage: expiredMsg,
+      message: expiredMsg,
       finishedAt: new Date().toISOString(),
     });
   });
@@ -685,10 +892,52 @@ async function waitForManualLogin(input: {
     'error',
     `connect_failed sessionId=${session.id} portal=${session.portal} reason=login_timeout profileDir=${profileDir}`,
   );
-  setWorkerError(CONNECT_USER_MESSAGES.loginTimeout);
+  setWorkerError(expiredMsg);
   pushWorkerLog('info', `browser_close sessionId=${session.id} reason=login_timeout`);
   await handle.close();
+
+  if (engine) {
+    await autoRestartConnectAfterExpiry(session).catch((err) => {
+      pushWorkerLog(
+        'warn',
+        `connect_auth_engine auto_restart_failed portal=${session.portal} err=${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+  }
   return false;
+}
+
+async function autoRestartConnectAfterExpiry(session: {
+  workspaceId: string;
+  portal: string;
+  portalName: string;
+  loginUrl: string;
+  verifyUrl?: string;
+  createdBy: string;
+  provider: ConnectSession['provider'];
+  id: string;
+}): Promise<void> {
+  const meta = getPortalMeta(session.portal);
+  if (!meta) return;
+  const next = await createConnectSession({
+    workspaceId: session.workspaceId,
+    portal: session.portal,
+    portalName: session.portalName || meta.displayName,
+    loginUrl: meta.loginUrl || session.loginUrl,
+    verifyUrl: meta.verifyUrl || session.verifyUrl,
+    createdBy: session.createdBy || 'worker-auto-restart',
+    provider: session.provider,
+  });
+  await updateConnectSession(next.id, {
+    phase: 'queued',
+    message: 'Previous session expired — restarting secure login automatically…',
+  });
+  pushWorkerLog(
+    'info',
+    `connect_auth_engine auto_restart from=${session.id} to=${next.id} portal=${session.portal}`,
+  );
 }
 
 function isRecoverableValidationFailure(

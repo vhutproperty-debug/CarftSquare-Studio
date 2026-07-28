@@ -2,6 +2,7 @@ import type { BrowserContext, Page } from 'playwright';
 import { BrowserFactory } from '@/lib/research/browser/browser-factory';
 import { RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
 import { researchPerfLog, researchPerfNow } from '@/lib/research/browser/perf';
+import { pushWorkerLog } from '@/lib/research/browser-gateway/worker-state';
 
 type PoolKey = string;
 
@@ -9,6 +10,8 @@ type PoolEntry = {
   context: BrowserContext;
   lastUsed: number;
   inUse: boolean;
+  /** When the current lease started (ms since epoch), or null if free. */
+  leaseStartedAt: number | null;
   /** Fingerprint of last applied encrypted secrets (skip re-inject when unchanged). */
   secretsFingerprint: string | null;
   /** Warm page reused across validate/search while context stays alive. */
@@ -19,9 +22,20 @@ function keyOf(workspaceId: string, portal: string): PoolKey {
   return `${workspaceId}::${portal}`;
 }
 
+/** Max time a pool lease may be held before force-release (stale lock recovery). */
+function maxLeaseMs(): number {
+  return Number(
+    process.env.RESEARCH_BROWSER_POOL_LEASE_MS ||
+      Math.max(RESEARCH_BROWSER_CONFIG.navigationTimeoutMs * 2, 120_000),
+  );
+}
+
 /**
  * Small in-process pool of persistent browser contexts.
  * Suitable for long-running Node workers (not serverless-friendly).
+ *
+ * Evidence (Housing E2E): concurrent validate left `inUse=true` past waiter timeout →
+ * "Browser context busy for housing". Lease expiry + closed-context eviction fix that.
  */
 export class BrowserPool {
   private readonly factory = new BrowserFactory();
@@ -33,16 +47,48 @@ export class BrowserPool {
     warm: boolean;
   }> {
     const key = keyOf(workspaceId, portal);
-    const existing = this.entries.get(key);
+    let existing = this.entries.get(key);
+
+    if (existing) {
+      // Drop dead contexts so we never wait on a closed Chromium.
+      if (this.isContextDead(existing.context)) {
+        pushWorkerLog(
+          'warn',
+          `browser_pool_dead_context portal=${portal} — recreating`,
+        );
+        await this.close(workspaceId, portal);
+        existing = undefined;
+      }
+    }
+
     if (existing) {
       const started = Date.now();
-      while (existing.inUse && Date.now() - started < 60_000) {
+      const leaseCap = maxLeaseMs();
+      while (existing.inUse && Date.now() - started < leaseCap) {
+        this.forceReleaseIfStale(workspaceId, portal, existing, leaseCap);
+        if (!existing.inUse) break;
         await new Promise((r) => setTimeout(r, 50));
       }
       if (existing.inUse) {
-        throw new Error(`Browser context busy for ${portal}`);
+        // Last resort: steal stale lease rather than fail Housing Research forever.
+        if (
+          existing.leaseStartedAt &&
+          Date.now() - existing.leaseStartedAt >= leaseCap
+        ) {
+          pushWorkerLog(
+            'warn',
+            `browser_pool_force_release portal=${portal} heldMs=${
+              Date.now() - existing.leaseStartedAt
+            } leaseCapMs=${leaseCap}`,
+          );
+          existing.inUse = false;
+          existing.leaseStartedAt = null;
+        } else {
+          throw new Error(`Browser context busy for ${portal}`);
+        }
       }
       existing.inUse = true;
+      existing.leaseStartedAt = Date.now();
       existing.lastUsed = Date.now();
       researchPerfLog('browser_context_acquire', researchPerfNow(), {
         portal,
@@ -65,6 +111,7 @@ export class BrowserPool {
       context,
       lastUsed: Date.now(),
       inUse: true,
+      leaseStartedAt: Date.now(),
       secretsFingerprint: null,
       warmPage: null,
     });
@@ -126,6 +173,7 @@ export class BrowserPool {
     const entry = this.entries.get(keyOf(workspaceId, portal));
     if (entry) {
       entry.inUse = false;
+      entry.leaseStartedAt = null;
       entry.lastUsed = Date.now();
     }
   }
@@ -165,6 +213,36 @@ export class BrowserPool {
       if (entry.inUse) n += 1;
     }
     return n;
+  }
+
+  private isContextDead(context: BrowserContext): boolean {
+    try {
+      // pages() throws when the browser/context is gone.
+      context.pages();
+      const browser = context.browser();
+      if (browser && !browser.isConnected()) return true;
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  private forceReleaseIfStale(
+    workspaceId: string,
+    portal: string,
+    entry: PoolEntry,
+    leaseCap: number,
+  ): void {
+    if (!entry.inUse || !entry.leaseStartedAt) return;
+    if (Date.now() - entry.leaseStartedAt < leaseCap) return;
+    pushWorkerLog(
+      'warn',
+      `browser_pool_stale_lease portal=${portal} workspaceId=${workspaceId} heldMs=${
+        Date.now() - entry.leaseStartedAt
+      }`,
+    );
+    entry.inUse = false;
+    entry.leaseStartedAt = null;
   }
 
   private async evictIdle(): Promise<void> {
