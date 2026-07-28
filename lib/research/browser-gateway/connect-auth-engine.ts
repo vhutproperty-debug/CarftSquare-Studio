@@ -49,7 +49,7 @@ export function usesConnectAuthEngine(portal: string): boolean {
 
 function hasCaptchaOrChallenge(title: string, body: string): boolean {
   const hay = `${title} ${body}`.toLowerCase();
-  return /captcha|recaptcha|hcaptcha|cf-turnstile|i'?m not a robot|verify you are human|attention required|challenge-platform|verifycaptcha|just a moment/i.test(
+  return /captcha|simplecaptcha|recaptcha|hcaptcha|cf-turnstile|i'?m not a robot|verify you are human|attention required|challenge-platform|verifycaptcha|just a moment|contentsimplecaptcha/i.test(
     hay,
   );
 }

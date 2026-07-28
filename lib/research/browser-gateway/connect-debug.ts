@@ -111,6 +111,8 @@ export async function instrumentConnectNavigation(input: {
   try {
     let nav = await resilientPageGoto(input.page, input.navigationUrl, {
       timeoutMs: RESEARCH_BROWSER_CONFIG.navigationTimeoutMs,
+      // Connect must not burn 3 full ladders (Evidence: NoBroker >180s stuck opening_browser).
+      maxAttempts: 2,
     });
     // Evidence: 99acres login-lrfv → net::ERR_HTTP_RESPONSE_CODE_FAILURE (WAF).
     // Retry portal origin once so LiveView can land on a navigable surface.
@@ -123,8 +125,8 @@ export async function instrumentConnectNavigation(input: {
           `connect_nav_origin_fallback portal=${input.portal} from=${input.navigationUrl} to=${origin} prior=${nav.error.slice(0, 160)}`,
         );
         nav = await resilientPageGoto(input.page, origin, {
-          timeoutMs: RESEARCH_BROWSER_CONFIG.navigationTimeoutMs,
-          maxAttempts: 2,
+          timeoutMs: Math.min(45_000, RESEARCH_BROWSER_CONFIG.navigationTimeoutMs),
+          maxAttempts: 1,
         });
       }
     }

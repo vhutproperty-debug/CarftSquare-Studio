@@ -213,14 +213,35 @@ export async function processNextConnectJob(): Promise<boolean> {
         .relative(RESEARCH_BROWSER_CONFIG.screenshotRoot, previewFile)
         .replace(/\\/g, '/');
 
-      // Navigate BEFORE publishing liveViewUrl so noVNC never shows about:blank when nav succeeds.
-      // Evidence: NoBroker/99acres nav timeout|ERR_HTTP previously aborted Connect in opening_browser
-      // before LiveView was published — keep the headed browser and publish LiveView anyway.
+      // Evidence (NoBroker E2E post-1.2.0): resilient nav can run >180s before LiveView publish,
+      // leaving Connect stuck in opening_browser. Publish LiveView immediately after launch,
+      // then navigate — operator sees the headed browser while login URL loads.
+      if (handle.writePreview) {
+        await handle.writePreview(previewFile).catch(() => undefined);
+      }
+      await transitionConnectSession({
+        sessionId: session.id,
+        to: 'waiting_for_login',
+        message: handle.liveViewUrl
+          ? CONNECT_USER_MESSAGES.browserReady
+          : CONNECT_USER_MESSAGES.waitingLogin,
+        browserVersion: handle.browserVersion,
+        liveViewUrl: handle.liveViewUrl,
+        previewPath: previewRel,
+        caller: 'processNextConnectJob.waiting_for_login_pre_nav',
+      });
+      pushWorkerLog(
+        'info',
+        `publish_liveview_pre_nav sessionId=${session.id} portal=${session.portal} liveView=${
+          handle.liveViewUrl ? 'yes' : 'no'
+        }`,
+      );
+
       const metaForNav = getPortalMeta(session.portal);
       pushWorkerLog(
         'info',
         [
-          `login_nav_before_liveview`,
+          `login_nav_after_liveview`,
           `sessionId=${session.id}`,
           `portal=${session.portal}`,
           `connector=${session.portal}`,
@@ -239,21 +260,24 @@ export async function processNextConnectJob(): Promise<boolean> {
           'warn',
           `login_nav_failed_keep_liveview sessionId=${session.id} portal=${session.portal} raw=${raw.slice(0, 300)} friendly=${loginNavWarning}`,
         );
-        if (!handle.liveViewUrl) {
-          throw navErr;
-        }
-        // Soft continue: LiveView is up — operator can retry login / CAPTCHA in the remote window.
+        // Soft continue: LiveView already published — operator can retry in the remote window.
       }
 
-      // Evidence immediately before operator-visible liveView publish.
       const finalUrlBeforePublish = await handle.currentUrl().catch(() => 'unknown');
       if (handle.writePreview) {
         await handle.writePreview(previewFile).catch(() => undefined);
       }
+      if (loginNavWarning) {
+        await updateConnectSession(session.id, {
+          message: `Login page slow or blocked — complete login in LiveView. (${loginNavWarning})`,
+          previewPath: previewRel,
+          previewUpdatedAt: new Date().toISOString(),
+        }).catch(() => undefined);
+      }
       pushWorkerLog(
         'info',
         [
-          `publish_liveview_preflight`,
+          `login_nav_complete`,
           `sessionId=${session.id}`,
           `portal=${session.portal}`,
           `requestedUrl=${session.loginUrl}`,
@@ -265,19 +289,6 @@ export async function processNextConnectJob(): Promise<boolean> {
         ].join(' '),
       );
 
-      await transitionConnectSession({
-        sessionId: session.id,
-        to: 'waiting_for_login',
-        message: loginNavWarning
-          ? `Login page slow or blocked — complete login in LiveView. (${loginNavWarning})`
-          : handle.liveViewUrl
-            ? CONNECT_USER_MESSAGES.browserReady
-            : CONNECT_USER_MESSAGES.waitingLogin,
-        browserVersion: handle.browserVersion,
-        liveViewUrl: handle.liveViewUrl,
-        previewPath: previewRel,
-        caller: 'processNextConnectJob.waiting_for_login',
-      });
       pushWorkerLog(
         'info',
         `login_wait_start sessionId=${session.id} portal=${session.portal} url=${session.loginUrl} liveView=${
