@@ -265,6 +265,74 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Diagnostic: fill phone, submit, and capture the network traffic so we can
+        // see exactly whether the portal's "send OTP" request fires and what it
+        // returns (captcha-required / rate-limit / password-only / success).
+        if (action === 'phone_trace') {
+          const phone = String(body.phone || '');
+          const captured: Array<Record<string, unknown>> = [];
+          const interesting =
+            /otp|sms|login|signin|sign-in|auth|verify|mobile|sendcode|send-code|generatecode|user|account/i;
+          const onResponse = (resp: import('playwright').Response) => {
+            try {
+              const u = resp.url();
+              const status = resp.status();
+              if (!interesting.test(u) && status < 400) return;
+              const ct = resp.headers()['content-type'] || '';
+              const rec: Record<string, unknown> = {
+                method: resp.request().method(),
+                url: u.slice(0, 180),
+                status,
+                contentType: ct.slice(0, 60),
+              };
+              if (/json|text/i.test(ct)) {
+                resp
+                  .text()
+                  .then((t) => {
+                    rec.bodyHead = t.slice(0, 300);
+                  })
+                  .catch(() => undefined);
+              }
+              captured.push(rec);
+            } catch {
+              /* ignore */
+            }
+          };
+          const onFailed = (reqf: import('playwright').Request) => {
+            try {
+              const u = reqf.url();
+              if (!interesting.test(u)) return;
+              captured.push({
+                method: reqf.method(),
+                url: u.slice(0, 180),
+                failure: reqf.failure()?.errorText || 'failed',
+              });
+            } catch {
+              /* ignore */
+            }
+          };
+          page.on('response', onResponse);
+          page.on('requestfailed', onFailed);
+          const { applyPhoneOnPage } = await import(
+            '@/lib/research/browser-gateway/connect-auth-engine'
+          );
+          const urlBefore = page.url();
+          const result = await applyPhoneOnPage(page, phone);
+          await new Promise((r) => setTimeout(r, 9_000));
+          page.off('response', onResponse);
+          page.off('requestfailed', onFailed);
+          json(res, 200, {
+            ok: result.ok,
+            action,
+            phoneResult: result,
+            urlBefore,
+            urlAfter: page.url(),
+            title: await page.title().catch(() => ''),
+            network: captured.slice(0, 60),
+          });
+          return;
+        }
+
         // Diagnostic: dump every input element (incl. inside frames) with attributes.
         if (action === 'dump_inputs') {
           const collect = async (frame: import('playwright').Frame) => {

@@ -189,7 +189,9 @@ export class RemoteBrowserSessionManager {
       `x11vnc-${remote.viewId}`,
     );
     remote.x11vncPid = x11vnc.pid ?? null;
-    await waitForPortOpen('127.0.0.1', remote.vncPort, 20_000);
+    // Headroom for slow x11vnc bind under container load (was 20s; starved under
+    // concurrent headed sessions). Parallelism is capped separately via env.
+    await waitForPortOpen('127.0.0.1', remote.vncPort, 40_000);
 
     const webRoot = await resolveNovncWebRoot();
     const wsArgs = webRoot
@@ -208,7 +210,7 @@ export class RemoteBrowserSessionManager {
       );
     }
     remote.websockifyPid = wsProc.pid ?? null;
-    await waitForPortOpen('127.0.0.1', remote.websockifyPort, 20_000);
+    await waitForPortOpen('127.0.0.1', remote.websockifyPort, 40_000);
 
     auditRemote('vnc_ready', {
       viewId: remote.viewId,
