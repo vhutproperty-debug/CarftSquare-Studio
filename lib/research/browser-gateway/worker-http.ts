@@ -465,6 +465,68 @@ export async function startWorkerHttpServer(input: {
               }
             }
           }
+          // MagicBricks: captcha input often has no name/id and may fail Playwright
+          // visibility. Locate via DOM proximity to the captcha <img>, set value with
+          // native events, then click Next.
+          if (!used) {
+            const nearImg = await page
+              .evaluate((captchaCode) => {
+                const imgs = Array.from(
+                  document.querySelectorAll(
+                    'img[src*="captcha" i], img[src*="Captcha"], img[alt*="captcha" i]',
+                  ),
+                ) as HTMLImageElement[];
+                const img =
+                  imgs.find((el) => {
+                    const r = el.getBoundingClientRect();
+                    return r.width > 20 && r.height > 10;
+                  }) || null;
+                const candidates = Array.from(
+                  document.querySelectorAll('input'),
+                ) as HTMLInputElement[];
+                const score = (el: HTMLInputElement) => {
+                  const type = (el.getAttribute('type') || 'text').toLowerCase();
+                  if (type === 'hidden' || type === 'radio' || type === 'checkbox' || type === 'password')
+                    return -1;
+                  const id = `${el.id} ${el.name} ${el.className}`.toLowerCase();
+                  if (/mobile|phone|email|password|remember|usertype|otp|verify0/.test(id))
+                    return -1;
+                  if ((el.value || '').trim().length > 0) return -1;
+                  const r = el.getBoundingClientRect();
+                  if (r.width < 20 || r.height < 10) return -1;
+                  if (!img) return r.width < 220 ? 50 : 10;
+                  const ir = img.getBoundingClientRect();
+                  const dx = Math.abs(r.left - ir.right);
+                  const dy = Math.abs(r.top - ir.top);
+                  return 1000 - (dx + dy);
+                };
+                let best: HTMLInputElement | null = null;
+                let bestScore = 0;
+                for (const el of candidates) {
+                  const s = score(el);
+                  if (s > bestScore) {
+                    bestScore = s;
+                    best = el;
+                  }
+                }
+                if (!best) return null;
+                best.focus();
+                best.value = captchaCode;
+                best.dispatchEvent(new Event('input', { bubbles: true }));
+                best.dispatchEvent(new Event('change', { bubbles: true }));
+                best.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+                return {
+                  id: best.id || null,
+                  name: best.name || null,
+                  cls: best.className || null,
+                  score: bestScore,
+                };
+              }, code)
+              .catch(() => null);
+            if (nearImg) {
+              used = `near-captcha-img:${nearImg.id || nearImg.name || nearImg.cls || 'anon'}`;
+            }
+          }
           let clicked: string | null = null;
           if (used) {
             for (const sel of [
