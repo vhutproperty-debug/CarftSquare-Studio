@@ -88,15 +88,29 @@ export async function processNextConnectJob(): Promise<boolean> {
     'info',
     `connect_claimed sessionId=${session.id} portal=${session.portal} workerId=${WORKER_ID} pid=${process.pid}`,
   );
-  // claimNextConnectSession already set phase=connecting; log + message only.
-  pushWorkerLog(
-    'info',
-    `connect_pipeline Queued → Connecting sessionId=${session.id} caller=processNextConnectJob.claim`,
-  );
-  await updateConnectSession(session.id, {
-    message: CONNECT_USER_MESSAGES.preparing,
-    workerId: WORKER_ID,
-  });
+  // Claim should already be phase=connecting. Re-assert via the phase machine so a
+  // stale read / driver return shape can never leave us stuck on queued when we
+  // jump to opening_browser (illegal: queued → opening_browser).
+  if (session.phase !== 'connecting') {
+    pushWorkerLog(
+      'warn',
+      `connect_claim_phase_repair sessionId=${session.id} claimedPhase=${session.phase} → connecting`,
+    );
+    await updateConnectSession(session.id, {
+      phase: 'connecting',
+      message: CONNECT_USER_MESSAGES.preparing,
+      workerId: WORKER_ID,
+    });
+  } else {
+    pushWorkerLog(
+      'info',
+      `connect_pipeline Queued → Connecting sessionId=${session.id} caller=processNextConnectJob.claim`,
+    );
+    await updateConnectSession(session.id, {
+      message: CONNECT_USER_MESSAGES.preparing,
+      workerId: WORKER_ID,
+    });
+  }
 
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
