@@ -30,9 +30,11 @@ export async function POST(request: Request, { params }: Ctx) {
   }
 
   try {
+    // User-initiated validate: always run a live Chromium check (bypass freshness cache).
     const result = await requestWorkerValidateSession({
       workspaceId,
       portal: params.portal,
+      force: true,
     });
     const message =
       humanizeConnectorError(result.message || result.error) || result.message || undefined;

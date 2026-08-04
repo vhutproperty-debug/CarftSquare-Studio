@@ -107,9 +107,11 @@ export async function startWorkerHttpServer(input: {
         const body = (await readJsonBody(req)) as {
           workspaceId?: string;
           portal?: string;
+          force?: boolean;
         };
         const workspaceId = String(body.workspaceId || '').trim();
         const portal = String(body.portal || '').trim();
+        const force = Boolean(body.force);
         if (!workspaceId || !portal) {
           json(res, 400, { error: 'workspaceId and portal are required' });
           return;
@@ -118,9 +120,9 @@ export async function startWorkerHttpServer(input: {
         const connector = requirePortalConnector(portal);
         pushWorkerLog(
           'info',
-          `http_jobs_validate start workspaceId=${workspaceId} portal=${portal}`,
+          `http_jobs_validate start workspaceId=${workspaceId} portal=${portal} force=${force}`,
         );
-        const result = await connector.validateSession(workspaceId);
+        const result = await connector.validateSession(workspaceId, { force });
         pushWorkerLog(
           result.ok ? 'info' : 'warn',
           `http_jobs_validate done workspaceId=${workspaceId} portal=${portal} ok=${result.ok} status=${result.status}`,

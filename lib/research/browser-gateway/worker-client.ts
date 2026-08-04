@@ -210,6 +210,7 @@ export async function pingBrowserWorkerHeartbeat(): Promise<boolean> {
 export async function requestWorkerValidateSession(input: {
   workspaceId: string;
   portal: string;
+  force?: boolean;
 }): Promise<{
   ok: boolean;
   status: string;
@@ -247,6 +248,7 @@ export async function requestWorkerValidateSession(input: {
         body: JSON.stringify({
           workspaceId: input.workspaceId,
           portal: input.portal,
+          force: Boolean(input.force),
         }),
       },
       110_000,

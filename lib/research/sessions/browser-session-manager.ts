@@ -243,8 +243,15 @@ export class BrowserSessionManager implements SessionManager {
             writePortalAuthTrace,
           } = await import('@/lib/research/auth-detection/auth-evidence');
 
-          await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-          await new Promise((r) => setTimeout(r, 4_000));
+          // Short settle: cookies/storage are restored from the profile before nav, so
+          // evidence is available at domcontentloaded. Analytics-heavy portals rarely
+          // reach true networkidle — a long wait here only added ~15s per validate.
+          const idleMs = Number(process.env.RESEARCH_VALIDATE_NETWORKIDLE_MS || 5_000);
+          const settleMs = Number(process.env.RESEARCH_VALIDATE_SETTLE_MS || 1_500);
+          await page.waitForLoadState('networkidle', { timeout: idleMs }).catch(() => undefined);
+          if (settleMs > 0) {
+            await new Promise((r) => setTimeout(r, settleMs));
+          }
 
           const evidence = await evaluatePageAuth(page, {
             portal,
@@ -254,41 +261,46 @@ export class BrowserSessionManager implements SessionManager {
             readyState: 'complete',
           });
 
-          // Persist diagnostic trace (best-effort).
-          try {
-            const { collectPageAuthEvidence } = await import(
-              '@/lib/research/auth-detection/auth-evidence'
-            );
-            const trace = await collectPageAuthEvidence(page, {
-              portal,
-              phase: 'validateSession_verifyUrl',
-              httpStatus,
-              loginUrl: meta.loginUrl,
-              waitedExtraSettleMs: 0,
-            });
-            // Overlay engine result onto trace confidence for operators.
-            trace.confidence = {
-              cookies: evidence.breakdown.cookies,
-              profile: evidence.breakdown.dom,
-              logout: 0,
-              storage: evidence.breakdown.storage,
-              api: 0,
-              navigation: 0,
-              security: evidence.breakdown.security,
-              other: 0,
-              rawTotal: evidence.breakdown.rawTotal,
-              total: evidence.confidence,
-              maxPossible: evidence.breakdown.maxPossible,
-              threshold: evidence.threshold,
-              pass: evidence.authenticated,
-              pointsLost: evidence.breakdown.pointsLost,
-            };
-            trace.rootCauseHypothesis = evidence.authenticated
-              ? null
-              : evidence.summary;
-            await writePortalAuthTrace(trace);
-          } catch {
-            /* trace optional */
+          // Persist diagnostic trace (best-effort). Screenshots/HTML dumps are I/O
+          // heavy, so collect only on failure or when explicitly enabled.
+          const traceWanted =
+            !evidence.authenticated || process.env.RESEARCH_AUTH_TRACE === '1';
+          if (traceWanted) {
+            try {
+              const { collectPageAuthEvidence } = await import(
+                '@/lib/research/auth-detection/auth-evidence'
+              );
+              const trace = await collectPageAuthEvidence(page, {
+                portal,
+                phase: 'validateSession_verifyUrl',
+                httpStatus,
+                loginUrl: meta.loginUrl,
+                waitedExtraSettleMs: 0,
+              });
+              // Overlay engine result onto trace confidence for operators.
+              trace.confidence = {
+                cookies: evidence.breakdown.cookies,
+                profile: evidence.breakdown.dom,
+                logout: 0,
+                storage: evidence.breakdown.storage,
+                api: 0,
+                navigation: 0,
+                security: evidence.breakdown.security,
+                other: 0,
+                rawTotal: evidence.breakdown.rawTotal,
+                total: evidence.confidence,
+                maxPossible: evidence.breakdown.maxPossible,
+                threshold: evidence.threshold,
+                pass: evidence.authenticated,
+                pointsLost: evidence.breakdown.pointsLost,
+              };
+              trace.rootCauseHypothesis = evidence.authenticated
+                ? null
+                : evidence.summary;
+              await writePortalAuthTrace(trace);
+            } catch {
+              /* trace optional */
+            }
           }
 
           const { connectorRuntime } = await import('@/connectors/common/connector-runtime');

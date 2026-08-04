@@ -126,7 +126,10 @@ export abstract class BasePortalConnector implements PortalConnector {
     return connection;
   }
 
-  async validateSession(workspaceId: string): Promise<{
+  async validateSession(
+    workspaceId: string,
+    options?: { force?: boolean },
+  ): Promise<{
     ok: boolean;
     status: string;
     message?: string;
@@ -135,7 +138,8 @@ export abstract class BasePortalConnector implements PortalConnector {
     responseKind?: string;
     loginConfidence?: number;
   }> {
-    connectorLog(this.key, 'validateSession', { workspaceId });
+    const force = Boolean(options?.force);
+    connectorLog(this.key, 'validateSession', { workspaceId, force });
 
     if (isServerlessPlaywrightHost()) {
       const { requestWorkerValidateSession } = await import(
@@ -144,6 +148,7 @@ export abstract class BasePortalConnector implements PortalConnector {
       const result = await requestWorkerValidateSession({
         workspaceId,
         portal: this.key,
+        force,
       });
       connectorLog(this.key, 'validateSession_worker', {
         ok: result.ok,
@@ -162,7 +167,10 @@ export abstract class BasePortalConnector implements PortalConnector {
       }
       connectorRuntime.transition(workspaceId, this.key, 'restore_session');
       connectorRuntime.transition(workspaceId, this.key, 'verify_login');
-      const result = await browserSessionManager.validateSession(session.id, { force: true });
+      // Honor the validateFreshMs cache unless the caller explicitly forces a live
+      // check — Research paths validate freshly-verified sessions constantly and a
+      // forced full Chromium round-trip here was the top pipeline bottleneck.
+      const result = await browserSessionManager.validateSession(session.id, { force });
       const portalStatus = result.ok
         ? 'connected'
         : result.status === 'needs_login' || result.status === 'expired'

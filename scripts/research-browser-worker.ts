@@ -39,7 +39,7 @@ import {
 // Env must load before Mongo/crypto calls (URI is read at runtime).
 loadEnvLocal();
 
-const WORKER_VERSION = '1.2.2';
+const WORKER_VERSION = '1.3.0';
 
 function arg(name: string, fallback?: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -118,8 +118,11 @@ async function validateConfig(provider: string) {
   pushWorkerLog('info', 'MongoDB connectivity OK');
 }
 
+let tickCount = 0;
+
 async function tick() {
   bumpWorkerTick();
+  tickCount += 1;
   try {
     // Evidence: awaiting processNextConnectJob blocked the entire login wait (minutes),
     // so only one Connect could run. Spawn up to RESEARCH_CONNECT_MAX_PARALLEL jobs
@@ -138,7 +141,17 @@ async function tick() {
     }
 
     const validated = await validateDueSessions(DEFAULT_RESEARCH_WORKSPACE.id);
-    const cleaned = await cleanupExpiredProfiles();
+    // Profile/artifact scavenging walks the filesystem — running it on every 3s tick
+    // contended with Chromium disk I/O. Run it periodically; the hourly scavenger
+    // remains the deep-clean backstop.
+    const cleanupEveryTicks = Math.max(
+      1,
+      Number(process.env.RESEARCH_WORKER_CLEANUP_EVERY_TICKS || 100),
+    );
+    let cleaned = 0;
+    if (tickCount % cleanupEveryTicks === 0) {
+      cleaned = await cleanupExpiredProfiles();
+    }
     setWorkerError(null);
     pushWorkerLog(
       'info',

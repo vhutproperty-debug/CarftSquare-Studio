@@ -24,7 +24,11 @@ export interface PortalConnector {
   ensureConnectLoginSurface?(page: Page): Promise<void>;
   isLoggedIn?(page: Page): Promise<LoginConfidenceResult>;
   connect(workspaceId: string): Promise<ResearchPortalConnection>;
-  validateSession(workspaceId: string): Promise<{
+  /**
+   * Validate the stored session. By default honors the freshness cache
+   * (validateFreshMs) — pass { force: true } only for user-initiated checks.
+   */
+  validateSession(workspaceId: string, options?: { force?: boolean }): Promise<{
     ok: boolean;
     status: string;
     message?: string;

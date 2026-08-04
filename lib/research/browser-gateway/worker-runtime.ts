@@ -30,6 +30,7 @@ import {
   applyOtpOnPage,
   classifyConnectAuthPage,
   usesConnectAuthEngine,
+  type ConnectAuthChallenge,
 } from '@/lib/research/browser-gateway/connect-auth-engine';
 import { remoteBrowserSessionManager } from '@/lib/research/browser-gateway/remote-display/browser-session-manager';
 import {
@@ -627,6 +628,15 @@ export async function processNextConnectJob(): Promise<boolean> {
   }
 }
 
+function safeUrlHost(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).host.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 async function waitForManualLogin(input: {
   session: ConnectSession;
   handle: BrowserLaunchHandle;
@@ -646,6 +656,18 @@ async function waitForManualLogin(input: {
   let poll = 0;
   let detectState: LoginDetectState = { sawLoginSurface: false };
   const artifactDir = path.join(path.dirname(previewFile), 'auth-probe');
+
+  // Cross-host portals (e.g. MagicBricks: login on accounts.magicbricks.com, authenticated
+  // chrome only on www.magicbricks.com) never lose the login form on the auth host, so
+  // in-place scoring cannot confirm success — only a probe of the verify host can.
+  const resolvedVerifyUrl =
+    session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
+  const loginHost = safeUrlHost(session.loginUrl);
+  const verifyHost = safeUrlHost(resolvedVerifyUrl);
+  const crossHostAuth = Boolean(loginHost && verifyHost && loginHost !== verifyHost);
+  let otpAppliedPoll: number | null = null;
+  let lastVerifyProbePoll = Number.NEGATIVE_INFINITY;
+  let lastChallenge: ConnectAuthChallenge | null = null;
 
   await updateConnectSession(session.id, {
     message: CONNECT_USER_MESSAGES.waitingLogin,
@@ -753,6 +775,7 @@ async function waitForManualLogin(input: {
           `connect_auth_engine otp_apply sessionId=${session.id} ok=${applied.ok} detail=${applied.detail}`,
         );
         if (applied.ok) {
+          otpAppliedPoll = poll;
           await updateConnectSession(session.id, {
             pendingOtp: null,
             pendingOtpAt: null,
@@ -792,6 +815,7 @@ async function waitForManualLogin(input: {
           summary: result.summary,
         },
       });
+      lastChallenge = classified.challenge;
       await updateConnectSession(session.id, {
         message: classified.message,
         authChallenge: classified.challenge,
@@ -823,22 +847,47 @@ async function waitForManualLogin(input: {
       return true;
     }
 
-    // Periodic verifyUrl probe (helps MagicBricks after OTP).
-    if (
-      detectState.sawLoginSurface &&
-      poll > 0 &&
-      poll % 15 === 0 &&
-      (result.score || 0) >= 40
-    ) {
-      const verifyUrl =
-        session.verifyUrl || getPortalMeta(session.portal)?.verifyUrl || session.loginUrl;
-      if (verifyUrl && verifyUrl !== session.loginUrl) {
+    // Verify-host probe — the only reliable auth confirmation for cross-host portals.
+    // Triggers (all require a seen login surface and a distinct verify URL):
+    //  1. We auto-submitted a chat OTP recently — auth likely landed; confirm on verify host.
+    //  2. The page already redirected to the verify host (manual login completed).
+    //  3. Cross-host cadence: every 5 polls once cookies suggest progress (score >= 40).
+    //  4. Legacy same-host fallback: every 15 polls at score >= 40.
+    // Never probe while the operator is solving a CAPTCHA/OTP in LiveView (navigation
+    // would wipe their progress) — unless we submitted the OTP ourselves.
+    if (detectState.sawLoginSurface && poll > 0 && resolvedVerifyUrl !== session.loginUrl) {
+      const currentHost = safeUrlHost(signals.url);
+      const otpJustApplied =
+        otpAppliedPoll !== null && poll - otpAppliedPoll >= 1 && poll - otpAppliedPoll <= 8;
+      const redirectedToVerifyHost =
+        crossHostAuth && currentHost !== null && currentHost === verifyHost;
+      const solvingChallengeInLiveView =
+        !otpJustApplied && (lastChallenge === 'captcha' || lastChallenge === 'otp');
+      const score = result.score || 0;
+      const probeDue =
+        poll - lastVerifyProbePoll >= 3 &&
+        !solvingChallengeInLiveView &&
+        (otpJustApplied ||
+          redirectedToVerifyHost ||
+          (crossHostAuth && poll % 5 === 0 && score >= 40) ||
+          (poll % 15 === 0 && score >= 40));
+
+      if (probeDue) {
+        lastVerifyProbePoll = poll;
         const gotoVerify = handle.gotoVerify || handle.gotoLogin;
         pushWorkerLog(
           'info',
-          `login_wait_verify_probe sessionId=${session.id} portal=${session.portal} verifyUrl=${verifyUrl} poll=${poll}`,
+          `login_wait_verify_probe sessionId=${session.id} portal=${session.portal} verifyUrl=${resolvedVerifyUrl} poll=${poll} trigger=${
+            otpJustApplied
+              ? 'otp_applied'
+              : redirectedToVerifyHost
+                ? 'redirected_to_verify_host'
+                : crossHostAuth
+                  ? 'cross_host_cadence'
+                  : 'periodic'
+          }`,
         );
-        await gotoVerify.call(handle, verifyUrl).catch((err: unknown) => {
+        await gotoVerify.call(handle, resolvedVerifyUrl).catch((err: unknown) => {
           pushWorkerLog(
             'warn',
             `login_wait_verify_probe_nav_failed sessionId=${session.id} err=${
