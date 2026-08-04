@@ -178,7 +178,12 @@ export async function claimNextConnectSession(workerId: string): Promise<Connect
     },
     { sort: { createdAt: 1 }, returnDocument: 'after' },
   );
-  return res || null;
+  // Driver v4/v5 returns ModifyResult `{ value }`; v6+ returns the doc directly.
+  const doc =
+    res && typeof res === 'object' && 'value' in (res as object)
+      ? ((res as { value: ConnectSession | null }).value ?? null)
+      : (res as ConnectSession | null);
+  return doc;
 }
 
 export async function expireStaleConnectSessions(): Promise<number> {
