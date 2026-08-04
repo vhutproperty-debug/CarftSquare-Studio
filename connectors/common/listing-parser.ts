@@ -4,7 +4,7 @@ import type { ResearchListing } from '@/lib/research/types';
 
 export type ListedByKind = 'owner' | 'broker' | 'builder' | 'unknown';
 
-function parseMoney(raw?: string | null): number | undefined {
+export function parseMoney(raw?: string | null): number | undefined {
   if (!raw) return undefined;
   const m = raw.replace(/,/g, '').match(/([\d.]+)\s*(k|lakh|lac|l|cr)?/i);
   if (!m) return undefined;
@@ -17,7 +17,7 @@ function parseMoney(raw?: string | null): number | undefined {
   return Math.round(n);
 }
 
-function parseBhk(raw?: string | null): number | undefined {
+export function parseBhk(raw?: string | null): number | undefined {
   if (!raw) return undefined;
   const m = raw.match(/(\d(?:\.\d)?)\s*bhk/i);
   return m ? Number(m[1]) : undefined;

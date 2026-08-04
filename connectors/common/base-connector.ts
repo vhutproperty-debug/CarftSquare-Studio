@@ -93,16 +93,39 @@ export abstract class BasePortalConnector implements PortalConnector {
       mode: 'verify',
       verifyUrl: this.getVerifyUrl(),
     });
+    const extras = await this.portalAuthExtraSignals(page).catch(() => []);
+    const extraPoints = extras.reduce((sum, s) => sum + (s.pass ? s.weight : 0), 0);
+    const extraMax = extras.reduce((sum, s) => sum + s.weight, 0);
+    // Blend portal extras into confidence without overriding hard fails
+    // (Access Denied / login form) from the shared engine.
+    const blended =
+      extraMax > 0
+        ? Math.min(
+            100,
+            Math.round(result.confidence * 0.85 + (extraPoints / extraMax) * 15),
+          )
+        : result.confidence;
+    const extraHardFail = extras.some(
+      (s) => s.name.endsWith('_not_access_denied') && !s.pass,
+    );
     return {
-      authenticated: result.authenticated,
-      confidence: result.confidence,
+      authenticated: result.authenticated && !extraHardFail,
+      confidence: blended,
       threshold: result.threshold,
-      signals: result.signals.map((s) => ({
-        name: s.id,
-        pass: s.pass,
-        weight: s.maxPoints,
-        detail: s.detail,
-      })),
+      signals: [
+        ...result.signals.map((s) => ({
+          name: s.id,
+          pass: s.pass,
+          weight: s.maxPoints,
+          detail: s.detail,
+        })),
+        ...extras.map((s) => ({
+          name: s.name,
+          pass: s.pass,
+          weight: s.weight,
+          detail: s.pass ? 'pass' : 'fail',
+        })),
+      ],
       summary: result.summary,
     };
   }
@@ -137,6 +160,7 @@ export abstract class BasePortalConnector implements PortalConnector {
     httpStatus?: number | null;
     responseKind?: string;
     loginConfidence?: number;
+    skippedFresh?: boolean;
   }> {
     const force = Boolean(options?.force);
     connectorLog(this.key, 'validateSession', { workspaceId, force });
@@ -171,6 +195,16 @@ export abstract class BasePortalConnector implements PortalConnector {
       // check — Research paths validate freshly-verified sessions constantly and a
       // forced full Chromium round-trip here was the top pipeline bottleneck.
       const result = await browserSessionManager.validateSession(session.id, { force });
+      // Skip portal-connection upsert when freshness cache short-circuited — the
+      // status is already correct and the write was pure overhead on every Research hit.
+      if (result.skippedFresh) {
+        connectorLog(this.key, 'validateSession_result', {
+          ok: result.ok,
+          status: result.status,
+          skippedFresh: true,
+        });
+        return { ...result, sessionId: session.id };
+      }
       const portalStatus = result.ok
         ? 'connected'
         : result.status === 'needs_login' || result.status === 'expired'

@@ -403,3 +403,53 @@ export async function executeConnectorSearch(input: {
     degradationReason: response.degradationReason,
   };
 }
+
+/**
+ * Parallel search across multiple providers — same engine as Research / AI.
+ * Providers without a valid session are returned as failed entries (not thrown).
+ */
+export async function executeConnectorSearchMany(input: {
+  workspaceId: string;
+  providers: string[];
+  criteria: ResearchPlanCriteria;
+}): Promise<{
+  results: ConnectorSearchResult[];
+  listings: ResearchListing[];
+}> {
+  const providers = (input.providers || [])
+    .map((p) =>
+      String(p || '')
+        .trim()
+        .toLowerCase(),
+    )
+    .filter(Boolean);
+  if (!providers.length) {
+    throw new ConnectorApiError('providers[] is required.', 400);
+  }
+  for (const p of providers) requireKnownProvider(p);
+
+  const settled = await Promise.all(
+    providers.map(async (provider) => {
+      try {
+        return await executeConnectorSearch({
+          workspaceId: input.workspaceId,
+          provider,
+          criteria: input.criteria,
+        });
+      } catch (error) {
+        return {
+          ok: false,
+          provider,
+          listings: [] as ResearchListing[],
+          sessionStatus: 'error' as const,
+          message: error instanceof Error ? error.message : String(error),
+        } satisfies ConnectorSearchResult;
+      }
+    }),
+  );
+
+  return {
+    results: settled,
+    listings: settled.flatMap((r) => r.listings),
+  };
+}

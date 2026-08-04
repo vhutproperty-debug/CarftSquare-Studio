@@ -47,26 +47,50 @@ export function usesConnectAuthEngine(portal: string): boolean {
   return Boolean(key) && key !== 'housing';
 }
 
+/**
+ * Active CAPTCHA challenge — must reflect *visible* challenge UI, not residual
+ * script/CDN strings (MagicBricks keeps `contentsimpleCaptcha` / `verifycaptcha`
+ * in HTML after the CAPTCHA is solved; matching those forever blocked the
+ * cross-host verify probe and prevented Research Ready).
+ */
 function hasCaptchaOrChallenge(title: string, body: string): boolean {
   const hay = `${title} ${body}`.toLowerCase();
-  return /captcha|simplecaptcha|recaptcha|hcaptcha|cf-turnstile|i'?m not a robot|verify you are human|attention required|challenge-platform|verifycaptcha|just a moment|contentsimplecaptcha/i.test(
-    hay,
+  // Hard challenge walls (Cloudflare / Akamai interstitial) — title-level only.
+  if (
+    /attention required|just a moment|i'?m not a robot|verify you are human|cf-turnstile|challenge-platform/i.test(
+      title,
+    )
+  ) {
+    return true;
+  }
+  // Visible captcha form copy / labeled inputs — not bare CDN path fragments.
+  return (
+    /enter\s*(the\s*)?captcha|please\s*enter\s*captcha|type\s*the\s*(code|captcha)|captcha\s*code|simple\s*captcha/i.test(
+      hay,
+    ) ||
+    /name=["'][^"']*captcha|id=["'][^"']*captcha|placeholder=["'][^"']*captcha/i.test(hay)
   );
 }
 
 function hasHardWaf(title: string, body: string): boolean {
   const hay = `${title} ${body}`.toLowerCase();
-  return (
-    /access denied|reference\s*#|akamai|edgesuite|security alert|bot.?manager|request blocked/i.test(
-      hay,
-    ) && !/captcha|recaptcha|hcaptcha|turnstile/i.test(hay)
-  );
+  // Prefer title / denial copy — "akamai" alone appears in harmless script refs.
+  const denied =
+    /access denied/i.test(title) ||
+    /<h1[^>]*>\s*access denied/i.test(body) ||
+    /you don't have permission to access/i.test(hay) ||
+    /request blocked|bot.?manager/i.test(hay);
+  return denied && !/enter\s*(the\s*)?captcha|please\s*enter\s*captcha/i.test(hay);
 }
 
 function hasOtpSurface(title: string, body: string, probe?: PageAuthProbe): boolean {
   const hay = `${title} ${body}`.toLowerCase();
   return (
-    /enter\s*otp|otp|one[-\s]?time|verification\s*code|verify\s*otp|resend\s*otp/i.test(hay) ||
+    /enter\s*otp|otp|one[-\s]?time|verification\s*code|verify\s*otp|resend\s*otp|confirm\s*otp/i.test(
+      hay,
+    ) ||
+    // MagicBricks split OTP boxes (#verify01…) — present even when copy is sparse.
+    /id=["']verify0\d|class=["'][^"']*verify-input-otp/i.test(hay) ||
     Boolean(probe?.hasLoginForm && /otp|code/i.test(hay))
   );
 }
@@ -173,6 +197,8 @@ export function classifyConnectAuthPage(input: {
 
 /**
  * Enter OTP into the active Connect page (generic selectors).
+ * Supports single-field OTP and MagicBricks-style split boxes
+ * (`#verify01`…`#verify04`, `.verify-input-otp`, maxlength=1).
  */
 export async function applyOtpOnPage(
   page: Page,
@@ -181,6 +207,67 @@ export async function applyOtpOnPage(
   const code = String(otp || '').replace(/\D/g, '');
   if (code.length < 4) {
     return { ok: false, filled: false, clicked: null, detail: 'OTP must be at least 4 digits' };
+  }
+
+  // MagicBricks (and similar): one digit per box — must fill before single-field selectors
+  // that might match an unrelated tel/number input.
+  const splitSelectors = [
+    'input.verify-input-otp',
+    'input[id^="verify0"]',
+    'input[id^="otp"][maxlength="1"]',
+    'input[name^="otp"][maxlength="1"]',
+    'input[autocomplete="one-time-code"][maxlength="1"]',
+    'input[maxlength="1"][type="tel"]',
+    'input[maxlength="1"][type="text"]',
+    'input[maxlength="1"][type="number"]',
+  ];
+  for (const sel of splitSelectors) {
+    const boxes = page.locator(sel);
+    const count = await boxes.count().catch(() => 0);
+    if (count < 4) continue;
+    let filledCount = 0;
+    try {
+      for (let i = 0; i < Math.min(count, code.length); i += 1) {
+        const box = boxes.nth(i);
+        if (!(await box.isVisible().catch(() => false))) continue;
+        await box.click({ timeout: 2_000 });
+        await box.fill('');
+        await box.type(code[i]!, { delay: 45 });
+        filledCount += 1;
+      }
+      if (filledCount >= 4) {
+        const submitSelectors = [
+          'button:has-text("Verify")',
+          'button:has-text("Submit")',
+          'button:has-text("Continue")',
+          'button:has-text("Confirm")',
+          'button:has-text("Login")',
+          '[type="submit"]',
+        ];
+        let clicked: string | null = null;
+        for (const s of submitSelectors) {
+          const loc = page.locator(s).first();
+          if ((await loc.count().catch(() => 0)) === 0) continue;
+          try {
+            await loc.click({ timeout: 2_000 });
+            clicked = s;
+            break;
+          } catch {
+            /* next */
+          }
+        }
+        return {
+          ok: true,
+          filled: true,
+          clicked,
+          detail: `OTP entered via split inputs (${sel} ×${filledCount})${
+            clicked ? `; submitted via ${clicked}` : ''
+          }`,
+        };
+      }
+    } catch {
+      /* try next split selector */
+    }
   }
 
   const otpSelectors = [
@@ -285,12 +372,19 @@ export async function applyPhoneOnPage(
 
   // Some portals (MagicBricks/Akamai) gate the phone submit behind a CAPTCHA on the
   // same form. Auto-clicking Next before the CAPTCHA is solved submits an invalid
-  // request and trips the WAF (Access Denied). If a visible CAPTCHA input is present,
-  // fill the phone but DO NOT submit — the operator/fill_captcha submits once solved.
+  // request and trips the WAF (Access Denied). If a visible CAPTCHA input *or*
+  // CAPTCHA image is present, fill the phone but DO NOT submit.
   const captchaInputSelectors = [
     'input[name*="captcha" i]',
     'input[id*="captcha" i]',
     'input[placeholder*="captcha" i]',
+    'input[formcontrolname*="captcha" i]',
+  ];
+  const captchaImageSelectors = [
+    'img[src*="captcha" i]',
+    'img[src*="simpleCaptcha" i]',
+    'img[src*="contentsimpleCaptcha" i]',
+    'img[alt*="captcha" i]',
   ];
   let captchaPending = false;
   for (const sel of captchaInputSelectors) {
@@ -299,6 +393,16 @@ export async function applyPhoneOnPage(
     if (await loc.isVisible().catch(() => false)) {
       captchaPending = true;
       break;
+    }
+  }
+  if (!captchaPending) {
+    for (const sel of captchaImageSelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) === 0) continue;
+      if (await loc.isVisible().catch(() => false)) {
+        captchaPending = true;
+        break;
+      }
     }
   }
 

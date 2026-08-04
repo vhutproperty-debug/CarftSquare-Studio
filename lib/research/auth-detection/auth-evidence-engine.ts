@@ -93,12 +93,20 @@ function hasLoginFormInHtml(body: string, explicit?: boolean): boolean {
 
 function hasSecurityWall(title: string, body: string): boolean {
   const t = `${title} ${body}`.toLowerCase();
+  // Title-level walls are unambiguous (Akamai Access Denied, CF interstitial).
+  if (
+    /access denied|security alert|attention required|just a moment/i.test(title) ||
+    t.includes('cf-browser-verification')
+  ) {
+    return true;
+  }
+  // Body: require the Akamai/CF denial copy — do NOT match residual script
+  // names like "verifycaptcha" / "contentsimpleCaptcha" that MagicBricks leaves
+  // in the DOM after a successful CAPTCHA solve (false hard-fail).
   return (
-    t.includes('security alert') ||
-    t.includes('access denied') ||
-    t.includes('cf-browser-verification') ||
-    t.includes('attention required') ||
-    t.includes('verifycaptcha')
+    /<h1[^>]*>\s*access denied/i.test(body) ||
+    /you don't have permission to access/i.test(body) ||
+    /reference&#32;|reference\s*#\s*[0-9a-f.]+/i.test(body)
   );
 }
 

@@ -114,6 +114,8 @@ export class BrowserSessionManager implements SessionManager {
     httpStatus?: number | null;
     responseKind?: ValidationProbe['kind'];
     loginConfidence?: number;
+    /** True when the freshness cache short-circuited a live Chromium check. */
+    skippedFresh?: boolean;
   }> {
     const t0 = researchPerfNow();
     const session = await getBrowserSessionById(sessionId);
@@ -166,7 +168,7 @@ export class BrowserSessionManager implements SessionManager {
           ageMs: age,
         });
         connectorLog(portal, 'validation_skipped_fresh', { ageMs: age });
-        return { ok: true, status: 'valid', responseKind: '200' };
+        return { ok: true, status: 'valid', responseKind: '200', skippedFresh: true };
       }
     }
 
@@ -246,8 +248,9 @@ export class BrowserSessionManager implements SessionManager {
           // Short settle: cookies/storage are restored from the profile before nav, so
           // evidence is available at domcontentloaded. Analytics-heavy portals rarely
           // reach true networkidle — a long wait here only added ~15s per validate.
-          const idleMs = Number(process.env.RESEARCH_VALIDATE_NETWORKIDLE_MS || 5_000);
-          const settleMs = Number(process.env.RESEARCH_VALIDATE_SETTLE_MS || 1_500);
+          // Defaults tightened: 3s idle + 800ms settle (override via env if needed).
+          const idleMs = Number(process.env.RESEARCH_VALIDATE_NETWORKIDLE_MS || 3_000);
+          const settleMs = Number(process.env.RESEARCH_VALIDATE_SETTLE_MS || 800);
           await page.waitForLoadState('networkidle', { timeout: idleMs }).catch(() => undefined);
           if (settleMs > 0) {
             await new Promise((r) => setTimeout(r, settleMs));

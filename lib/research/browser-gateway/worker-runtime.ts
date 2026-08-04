@@ -906,7 +906,17 @@ async function waitForManualLogin(input: {
           });
           return true;
         }
-        await handle.gotoLogin(session.loginUrl).catch(() => undefined);
+        // After an OTP submit (esp. MagicBricks cross-host), do NOT bounce back to
+        // the login URL — that destroys the post-OTP SSO handoff and re-triggers
+        // Akamai. Stay on the verify host and let the next poll re-score.
+        if (!otpJustApplied) {
+          await handle.gotoLogin(session.loginUrl).catch(() => undefined);
+        } else {
+          pushWorkerLog(
+            'info',
+            `login_wait_verify_probe_hold sessionId=${session.id} portal=${session.portal} — OTP applied; holding verify host (url=${probed.signals.url})`,
+          );
+        }
       }
     }
 
@@ -1122,23 +1132,23 @@ async function runValidateOnly(workspaceId: string, portal: string, connectId: s
 export async function validateDueSessions(workspaceId?: string): Promise<number> {
   const db = await getResearchDatabase();
   await ensureResearchIndexes(db);
+  const dueBefore = new Date(Date.now() - VALIDATE_EVERY_MS).toISOString();
+  // Push the age filter into Mongo so idle ticks don't pull + scan 50 warm sessions.
   const filter: Record<string, unknown> = {
     sessionStatus: 'valid',
     encryptedCookies: { $exists: true },
+    $or: [{ lastVerified: { $lt: dueBefore } }, { lastVerified: { $exists: false } }],
   };
   if (workspaceId) filter.workspaceId = workspaceId;
 
   const sessions = await db
     .collection(RESEARCH_COLLECTIONS.browserSessions)
     .find(filter)
-    .limit(50)
+    .limit(10)
     .toArray();
 
   let checked = 0;
-  const now = Date.now();
   for (const s of sessions) {
-    const last = s.lastVerified ? new Date(s.lastVerified).getTime() : 0;
-    if (now - last < VALIDATE_EVERY_MS) continue;
     const result = await browserSessionManager.validateSession(s.id, { force: true });
     checked += 1;
     if (!result.ok) {
