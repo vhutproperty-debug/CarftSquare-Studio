@@ -339,20 +339,42 @@ export async function startWorkerHttpServer(input: {
         if (action === 'dump_inputs') {
           const collect = async (frame: import('playwright').Frame) => {
             return frame
-              .evaluate(() =>
-                Array.from(document.querySelectorAll('input')).map((el) => {
-                  const r = el.getBoundingClientRect();
+              .evaluate(() => {
+                const rows: Array<{
+                  attrs: Record<string, string>;
+                  value: string;
+                  visible: boolean;
+                  w: number;
+                  h: number;
+                  kind: string;
+                }> = [];
+                const push = (el: Element, kind: string) => {
+                  const r = (el as HTMLElement).getBoundingClientRect();
                   const attrs: Record<string, string> = {};
                   for (const a of Array.from(el.attributes)) attrs[a.name] = a.value;
-                  return {
+                  const value =
+                    kind === 'contenteditable'
+                      ? (el.textContent || '').trim()
+                      : ((el as HTMLInputElement).value || '');
+                  rows.push({
                     attrs,
-                    value: (el as HTMLInputElement).value || '',
+                    value,
                     visible: r.width > 0 && r.height > 0,
                     w: Math.round(r.width),
                     h: Math.round(r.height),
-                  };
-                }),
-              )
+                    kind,
+                  });
+                };
+                for (const el of Array.from(document.querySelectorAll('input'))) {
+                  push(el, 'input');
+                }
+                for (const el of Array.from(
+                  document.querySelectorAll('[contenteditable="true"], [contenteditable=""]'),
+                )) {
+                  push(el, 'contenteditable');
+                }
+                return rows;
+              })
               .catch(() => []);
           };
           const all: unknown[] = [];
@@ -411,39 +433,80 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
-        // Type a human-solved CAPTCHA code into the visible captcha input.
+        // Type a human-solved CAPTCHA code into the visible captcha field.
+        // MagicBricks uses a contenteditable DIV (#captchaCodeSignIn), not an <input>.
         if (action === 'fill_captcha') {
           const code = String((body as { captcha?: string }).captcha || '').trim();
           if (!code) {
             json(res, 400, { ok: false, error: 'captcha code required' });
             return;
           }
-          const selectors = [
-            'input[name*="captcha" i]',
-            'input[id*="captcha" i]',
-            'input[placeholder*="captcha" i]',
-            'input[formcontrolname*="captcha" i]',
-            'input[ng-reflect-name*="captcha" i]',
-            'input[aria-label*="captcha" i]',
-            'input[placeholder*="code" i]:not([type="hidden"])',
-          ];
           let used: string | null = null;
-          for (const sel of selectors) {
+          let deep: Record<string, unknown> | null = null;
+
+          // 1) MagicBricks contenteditable captcha (primary path).
+          const mbSelectors = [
+            '#captchaCodeSignIn',
+            '[name="captchaCodeSignIn"]',
+            '#captchaDivSignIn [contenteditable]',
+            '.signup__captcha--input[contenteditable]',
+            '[contenteditable][name*="captcha" i]',
+            '[contenteditable][id*="captcha" i]',
+          ];
+          for (const sel of mbSelectors) {
             const loc = page.locator(sel).first();
             if ((await loc.count().catch(() => 0)) === 0) continue;
             if (!(await loc.isVisible().catch(() => false))) continue;
             try {
-              await loc.fill(code, { timeout: 5_000 });
-              used = sel;
+              await loc.click({ timeout: 3_000 });
+              // Clear then type — MagicBricks reads textContent / key events.
+              await page.keyboard.press('Control+A').catch(() => undefined);
+              await page.keyboard.press('Backspace').catch(() => undefined);
+              await page.keyboard.type(code, { delay: 50 });
+              await loc
+                .evaluate((el, expected) => {
+                  const text = (el.textContent || '').replace(/\s+/g, '');
+                  if (text === expected) return true;
+                  el.textContent = expected;
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                  el.dispatchEvent(new Event('blur', { bubbles: true }));
+                  return (el.textContent || '').replace(/\s+/g, '') === expected;
+                }, code)
+                .catch(() => false);
+              used = `mb-contenteditable:${sel}`;
               break;
             } catch {
               /* try next */
             }
           }
-          // Heuristic fallback: the CAPTCHA field is the short, empty, visible text
-          // input that is NOT the phone/email field (MagicBricks uses Angular with
-          // no captcha-named attribute). Pick the first empty visible text input
-          // whose value is empty and width is small.
+
+          // 2) Conventional <input> captcha fields.
+          if (!used) {
+            const selectors = [
+              'input[name*="captcha" i]',
+              'input[id*="captcha" i]',
+              'input[placeholder*="captcha" i]',
+              'input[formcontrolname*="captcha" i]',
+              'input[ng-reflect-name*="captcha" i]',
+              'input[aria-label*="captcha" i]',
+              'input[placeholder*="code" i]:not([type="hidden"])',
+            ];
+            for (const sel of selectors) {
+              const loc = page.locator(sel).first();
+              if ((await loc.count().catch(() => 0)) === 0) continue;
+              if (!(await loc.isVisible().catch(() => false))) continue;
+              try {
+                await loc.fill(code, { timeout: 5_000 });
+                used = sel;
+                break;
+              } catch {
+                /* try next */
+              }
+            }
+          }
+
+          // 3) Heuristic: short empty visible text input that is not phone/email.
           if (!used) {
             const inputs = page.locator(
               'input[type="text"]:visible, input:not([type]):visible, input[type="tel"]:visible',
@@ -465,101 +528,120 @@ export async function startWorkerHttpServer(input: {
               }
             }
           }
-          // MagicBricks: captcha input often has no name/id, may live in shadow DOM,
-          // or fail Playwright visibility. Walk light+shadow DOM near the captcha
-          // <img>; if still missing, click to the right of the image and type.
+
+          // 4) Deep DOM: shadow walk + captcha image geometry (id/class/src/bg).
           if (!used) {
-            const deep = await page
+            deep = await page
               .evaluate((captchaCode) => {
-                const walk = (root) => {
-                  const out = [];
+                const walk = (root: ParentNode): Element[] => {
+                  const out: Element[] = [];
                   const nodes = Array.from(root.querySelectorAll('*'));
                   for (const n of nodes) {
                     out.push(n);
-                    if (n.shadowRoot) out.push(...walk(n.shadowRoot));
+                    const sr = (n as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+                    if (sr) out.push(...walk(sr));
                   }
                   return out;
                 };
                 const all = walk(document);
-                const imgs = all.filter((el) => {
-                  if (el.tagName !== 'IMG') return false;
-                  const src = (el.src || '').toLowerCase();
-                  const alt = (el.alt || '').toLowerCase();
-                  return /captcha|simplecaptcha/.test(src + alt);
-                });
-                const img =
-                  imgs.find((el) => {
-                    const r = el.getBoundingClientRect();
-                    return r.width > 20 && r.height > 10;
-                  }) || null;
-                const imgRect = img ? img.getBoundingClientRect() : null;
 
-                const candidates = [];
+                let imgRect: DOMRect | null = null;
                 for (const el of all) {
-                  const tag = el.tagName;
-                  if (tag === 'INPUT') {
-                    const type = (el.getAttribute('type') || 'text').toLowerCase();
+                  if (el.tagName !== 'IMG') continue;
+                  const html = el as HTMLImageElement;
+                  const blob = `${html.id} ${html.className} ${html.src || ''} ${html.alt || ''}`.toLowerCase();
+                  const r = html.getBoundingClientRect();
+                  if (r.width < 20 || r.height < 10) continue;
+                  if (/captcha|simplecaptcha/.test(blob)) {
+                    imgRect = r;
+                    break;
+                  }
+                }
+                if (!imgRect) {
+                  for (const el of all) {
+                    try {
+                      const bg = getComputedStyle(el).backgroundImage || '';
+                      const blob = `${(el as HTMLElement).id} ${(el as HTMLElement).className} ${bg}`.toLowerCase();
+                      if (!/captcha|simplecaptcha/.test(blob)) continue;
+                      const r = (el as HTMLElement).getBoundingClientRect();
+                      if (r.width > 20 && r.height > 10) {
+                        imgRect = r;
+                        break;
+                      }
+                    } catch {
+                      /* ignore */
+                    }
+                  }
+                }
+
+                const fillEditable = (target: HTMLElement, mode: string) => {
+                  target.focus();
+                  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                    (target as HTMLInputElement).value = captchaCode;
+                  } else {
+                    target.textContent = captchaCode;
+                  }
+                  target.dispatchEvent(new Event('input', { bubbles: true }));
+                  target.dispatchEvent(new Event('change', { bubbles: true }));
+                  return {
+                    mode: 'dom',
+                    kind: mode,
+                    score: 999,
+                    img: imgRect
+                      ? { x: imgRect.x, y: imgRect.y, w: imgRect.width, h: imgRect.height }
+                      : null,
+                  };
+                };
+
+                // Prefer known MagicBricks contenteditable.
+                const mb = document.getElementById('captchaCodeSignIn') as HTMLElement | null;
+                if (mb) return fillEditable(mb, 'captchaCodeSignIn');
+
+                const candidates: Array<{ el: HTMLElement; score: number; kind: string }> = [];
+                for (const el of all) {
+                  const html = el as HTMLElement;
+                  if (html.tagName === 'INPUT') {
+                    const type = (html.getAttribute('type') || 'text').toLowerCase();
                     if (
-                      type === 'hidden' ||
-                      type === 'radio' ||
-                      type === 'checkbox' ||
-                      type === 'password' ||
-                      type === 'submit' ||
-                      type === 'button'
+                      ['hidden', 'radio', 'checkbox', 'password', 'submit', 'button'].includes(type)
                     )
                       continue;
-                    const id = `${el.id} ${el.name} ${el.className}`.toLowerCase();
+                    const id = `${html.id} ${html.getAttribute('name') || ''} ${html.className}`.toLowerCase();
                     if (/mobile|phone|email|password|remember|usertype|otp|verify0/.test(id))
                       continue;
-                    if ((el.value || '').trim().length > 0) continue;
-                    const r = el.getBoundingClientRect();
-                    if (r.width < 15 || r.height < 8) continue;
-                    let score = r.width < 220 ? 40 : 5;
+                    if (((html as HTMLInputElement).value || '').trim().length > 0) continue;
+                    const r = html.getBoundingClientRect();
+                    if (r.width < 8 || r.height < 8) continue;
+                    let score = r.width < 220 && r.width > 8 ? 40 : 5;
                     if (imgRect) {
                       const dx = Math.abs(r.left - imgRect.right);
                       const dy = Math.abs(r.top - imgRect.top);
                       score = 2000 - (dx + dy * 2);
                     }
-                    candidates.push({ el, score, kind: 'input' });
-                  } else if (el.isContentEditable || el.getAttribute('role') === 'textbox') {
-                    const r = el.getBoundingClientRect();
-                    if (r.width < 15 || r.height < 8) continue;
-                    let score = 20;
+                    candidates.push({ el: html, score, kind: 'input' });
+                  } else if (html.isContentEditable || html.getAttribute('role') === 'textbox') {
+                    const id = `${html.id} ${html.getAttribute('name') || ''} ${html.className}`.toLowerCase();
+                    const r = html.getBoundingClientRect();
+                    if (r.width < 8 || r.height < 8) continue;
+                    let score = /captcha/.test(id) ? 500 : 20;
                     if (imgRect) {
                       const dx = Math.abs(r.left - imgRect.right);
                       const dy = Math.abs(r.top - imgRect.top);
-                      score = 1500 - (dx + dy * 2);
+                      score = Math.max(score, 1500 - (dx + dy * 2));
                     }
-                    candidates.push({ el, score, kind: 'editable' });
+                    candidates.push({ el: html, score, kind: 'editable' });
                   }
                 }
                 candidates.sort((a, b) => b.score - a.score);
                 const best = candidates[0];
-                if (best && best.score > 0) {
-                  const target = best.el;
-                  target.focus();
-                  if (target.tagName === 'INPUT') {
-                    target.value = captchaCode;
-                    target.dispatchEvent(new Event('input', { bubbles: true }));
-                    target.dispatchEvent(new Event('change', { bubbles: true }));
-                  } else {
-                    target.textContent = captchaCode;
-                    target.dispatchEvent(new Event('input', { bubbles: true }));
-                  }
-                  return {
-                    mode: 'dom',
-                    kind: best.kind,
-                    score: best.score,
-                    img: imgRect
-                      ? { x: imgRect.x, y: imgRect.y, w: imgRect.width, h: imgRect.height }
-                      : null,
-                  };
+                if (best && best.score > 100) {
+                  return fillEditable(best.el, best.kind);
                 }
                 if (imgRect) {
                   return {
                     mode: 'click_xy',
                     kind: 'geom',
-                    score: 0,
+                    score: best ? best.score : 0,
                     img: {
                       x: imgRect.x,
                       y: imgRect.y,
@@ -568,28 +650,44 @@ export async function startWorkerHttpServer(input: {
                     },
                     click: {
                       x: Math.round(imgRect.right + 48),
-                      y: Math.round(imgRect.top + imgRect.height / 2),
+                      y: Math.round(imgRect.top + Math.max(imgRect.height, 20) / 2),
                     },
                   };
                 }
-                return { mode: 'miss', kind: 'none', score: 0, img: null };
+                return {
+                  mode: 'miss',
+                  kind: 'none',
+                  score: 0,
+                  img: null,
+                  candidateCount: candidates.length,
+                };
               }, code)
-              .catch(() => null);
+              .catch((e) => ({ mode: 'error', error: String(e) }));
 
             if (deep?.mode === 'dom') {
-              used = `deep-${deep.kind}:score=${deep.score}`;
-            } else if (deep?.mode === 'click_xy' && deep.click) {
-              await page.mouse.click(deep.click.x, deep.click.y);
+              used = `deep-${String(deep.kind)}:score=${String(deep.score)}`;
+            } else if (
+              deep?.mode === 'click_xy' &&
+              deep.click &&
+              typeof deep.click === 'object' &&
+              deep.click !== null &&
+              'x' in deep.click &&
+              'y' in deep.click
+            ) {
+              const click = deep.click as { x: number; y: number };
+              await page.mouse.click(click.x, click.y);
               await page.keyboard.type(code, { delay: 60 });
-              used = `geom-click:${deep.click.x},${deep.click.y}`;
+              used = `geom-click:${click.x},${click.y}`;
             }
           }
+
           let clicked: string | null = null;
           if (used) {
             for (const sel of [
+              'button#btnStep1',
+              'button:has-text("Next")',
               'button:has-text("Login")',
               'button:has-text("Sign In")',
-              'button:has-text("Next")',
               'button:has-text("Continue")',
               'button[type="submit"]',
             ]) {
@@ -612,6 +710,7 @@ export async function startWorkerHttpServer(input: {
             filled: Boolean(used),
             input: used,
             clicked,
+            deep: deep || undefined,
             url: page.url(),
             title: await page.title().catch(() => ''),
           });

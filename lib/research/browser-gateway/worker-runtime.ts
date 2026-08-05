@@ -875,16 +875,22 @@ async function waitForManualLogin(input: {
         otpAppliedPoll !== null && poll - otpAppliedPoll >= 1 && poll - otpAppliedPoll <= 8;
       const redirectedToVerifyHost =
         crossHostAuth && currentHost !== null && currentHost === verifyHost;
+      const stillOnLoginHost =
+        crossHostAuth && currentHost !== null && currentHost === loginHost;
       const solvingChallengeInLiveView =
         !otpJustApplied && (lastChallenge === 'captcha' || lastChallenge === 'otp');
       const score = result.score || 0;
+      // Cross-host (MagicBricks accounts → www): NEVER navigate to the verify host
+      // while the operator is still on the login host — that trips Akamai Access
+      // Denied and wipes the CAPTCHA/OTP form. Probe only after OTP apply or after
+      // the portal itself redirected to the verify host.
       const probeDue =
         poll - lastVerifyProbePoll >= 3 &&
         !solvingChallengeInLiveView &&
         (otpJustApplied ||
           redirectedToVerifyHost ||
-          (crossHostAuth && poll % 5 === 0 && score >= 40) ||
-          (poll % 15 === 0 && score >= 40));
+          (!stillOnLoginHost && crossHostAuth && poll % 5 === 0 && score >= 40) ||
+          (!crossHostAuth && poll % 15 === 0 && score >= 40));
 
       if (probeDue) {
         lastVerifyProbePoll = poll;

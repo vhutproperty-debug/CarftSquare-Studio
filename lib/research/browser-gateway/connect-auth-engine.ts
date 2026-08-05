@@ -64,9 +64,21 @@ function hasCaptchaOrChallenge(title: string, body: string): boolean {
   ) {
     return true;
   }
-  // Visible captcha image (MagicBricks simpleCaptcha) — match <img …captcha…> only,
-  // not bare path fragments in scripts.
-  if (/<img\b[^>]+(?:src|alt)=['"][^'"]*captcha/i.test(body)) {
+  // Visible captcha image — src/alt *or* MagicBricks id=captchaImageSignIn
+  // (image URL often has no "captcha" substring; id is the reliable signal).
+  if (
+    /<img\b[^>]+(?:src|alt|id|class)=['"][^'"]*captcha/i.test(body) ||
+    /id=["']captchaimagesignin["']/i.test(body)
+  ) {
+    return true;
+  }
+  // MagicBricks contenteditable captcha field (NOT an <input>).
+  if (
+    /id=["']captchacodesignin["']/i.test(body) ||
+    /signup__captcha--input/i.test(body) ||
+    /contenteditable=["']true["'][^>]*name=["'][^"']*captcha/i.test(body) ||
+    /name=["'][^"']*captcha[^"']*["'][^>]*contenteditable/i.test(body)
+  ) {
     return true;
   }
   // Visible captcha form copy / labeled inputs.
@@ -381,12 +393,19 @@ export async function applyPhoneOnPage(
   // request and trips the WAF (Access Denied). If a visible CAPTCHA input *or*
   // CAPTCHA image is present, fill the phone but DO NOT submit.
   const captchaInputSelectors = [
+    // MagicBricks: contenteditable div, not an <input>
+    '#captchaCodeSignIn',
+    '[name="captchaCodeSignIn"]',
+    '.signup__captcha--input[contenteditable]',
+    '#captchaDivSignIn [contenteditable]',
     'input[name*="captcha" i]',
     'input[id*="captcha" i]',
     'input[placeholder*="captcha" i]',
     'input[formcontrolname*="captcha" i]',
   ];
   const captchaImageSelectors = [
+    '#captchaImageSignIn',
+    'img[id*="captcha" i]',
     'img[src*="captcha" i]',
     'img[src*="simpleCaptcha" i]',
     'img[src*="contentsimpleCaptcha" i]',
