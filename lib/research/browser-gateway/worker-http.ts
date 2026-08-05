@@ -465,66 +465,123 @@ export async function startWorkerHttpServer(input: {
               }
             }
           }
-          // MagicBricks: captcha input often has no name/id and may fail Playwright
-          // visibility. Locate via DOM proximity to the captcha <img>, set value with
-          // native events, then click Next.
+          // MagicBricks: captcha input often has no name/id, may live in shadow DOM,
+          // or fail Playwright visibility. Walk light+shadow DOM near the captcha
+          // <img>; if still missing, click to the right of the image and type.
           if (!used) {
-            const nearImg = await page
+            const deep = await page
               .evaluate((captchaCode) => {
-                const imgs = Array.from(
-                  document.querySelectorAll(
-                    'img[src*="captcha" i], img[src*="Captcha"], img[alt*="captcha" i]',
-                  ),
-                ) as HTMLImageElement[];
+                const walk = (root) => {
+                  const out = [];
+                  const nodes = Array.from(root.querySelectorAll('*'));
+                  for (const n of nodes) {
+                    out.push(n);
+                    if (n.shadowRoot) out.push(...walk(n.shadowRoot));
+                  }
+                  return out;
+                };
+                const all = walk(document);
+                const imgs = all.filter((el) => {
+                  if (el.tagName !== 'IMG') return false;
+                  const src = (el.src || '').toLowerCase();
+                  const alt = (el.alt || '').toLowerCase();
+                  return /captcha|simplecaptcha/.test(src + alt);
+                });
                 const img =
                   imgs.find((el) => {
                     const r = el.getBoundingClientRect();
                     return r.width > 20 && r.height > 10;
                   }) || null;
-                const candidates = Array.from(
-                  document.querySelectorAll('input'),
-                ) as HTMLInputElement[];
-                const score = (el: HTMLInputElement) => {
-                  const type = (el.getAttribute('type') || 'text').toLowerCase();
-                  if (type === 'hidden' || type === 'radio' || type === 'checkbox' || type === 'password')
-                    return -1;
-                  const id = `${el.id} ${el.name} ${el.className}`.toLowerCase();
-                  if (/mobile|phone|email|password|remember|usertype|otp|verify0/.test(id))
-                    return -1;
-                  if ((el.value || '').trim().length > 0) return -1;
-                  const r = el.getBoundingClientRect();
-                  if (r.width < 20 || r.height < 10) return -1;
-                  if (!img) return r.width < 220 ? 50 : 10;
-                  const ir = img.getBoundingClientRect();
-                  const dx = Math.abs(r.left - ir.right);
-                  const dy = Math.abs(r.top - ir.top);
-                  return 1000 - (dx + dy);
-                };
-                let best: HTMLInputElement | null = null;
-                let bestScore = 0;
-                for (const el of candidates) {
-                  const s = score(el);
-                  if (s > bestScore) {
-                    bestScore = s;
-                    best = el;
+                const imgRect = img ? img.getBoundingClientRect() : null;
+
+                const candidates = [];
+                for (const el of all) {
+                  const tag = el.tagName;
+                  if (tag === 'INPUT') {
+                    const type = (el.getAttribute('type') || 'text').toLowerCase();
+                    if (
+                      type === 'hidden' ||
+                      type === 'radio' ||
+                      type === 'checkbox' ||
+                      type === 'password' ||
+                      type === 'submit' ||
+                      type === 'button'
+                    )
+                      continue;
+                    const id = `${el.id} ${el.name} ${el.className}`.toLowerCase();
+                    if (/mobile|phone|email|password|remember|usertype|otp|verify0/.test(id))
+                      continue;
+                    if ((el.value || '').trim().length > 0) continue;
+                    const r = el.getBoundingClientRect();
+                    if (r.width < 15 || r.height < 8) continue;
+                    let score = r.width < 220 ? 40 : 5;
+                    if (imgRect) {
+                      const dx = Math.abs(r.left - imgRect.right);
+                      const dy = Math.abs(r.top - imgRect.top);
+                      score = 2000 - (dx + dy * 2);
+                    }
+                    candidates.push({ el, score, kind: 'input' });
+                  } else if (el.isContentEditable || el.getAttribute('role') === 'textbox') {
+                    const r = el.getBoundingClientRect();
+                    if (r.width < 15 || r.height < 8) continue;
+                    let score = 20;
+                    if (imgRect) {
+                      const dx = Math.abs(r.left - imgRect.right);
+                      const dy = Math.abs(r.top - imgRect.top);
+                      score = 1500 - (dx + dy * 2);
+                    }
+                    candidates.push({ el, score, kind: 'editable' });
                   }
                 }
-                if (!best) return null;
-                best.focus();
-                best.value = captchaCode;
-                best.dispatchEvent(new Event('input', { bubbles: true }));
-                best.dispatchEvent(new Event('change', { bubbles: true }));
-                best.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-                return {
-                  id: best.id || null,
-                  name: best.name || null,
-                  cls: best.className || null,
-                  score: bestScore,
-                };
+                candidates.sort((a, b) => b.score - a.score);
+                const best = candidates[0];
+                if (best && best.score > 0) {
+                  const target = best.el;
+                  target.focus();
+                  if (target.tagName === 'INPUT') {
+                    target.value = captchaCode;
+                    target.dispatchEvent(new Event('input', { bubbles: true }));
+                    target.dispatchEvent(new Event('change', { bubbles: true }));
+                  } else {
+                    target.textContent = captchaCode;
+                    target.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                  return {
+                    mode: 'dom',
+                    kind: best.kind,
+                    score: best.score,
+                    img: imgRect
+                      ? { x: imgRect.x, y: imgRect.y, w: imgRect.width, h: imgRect.height }
+                      : null,
+                  };
+                }
+                if (imgRect) {
+                  return {
+                    mode: 'click_xy',
+                    kind: 'geom',
+                    score: 0,
+                    img: {
+                      x: imgRect.x,
+                      y: imgRect.y,
+                      w: imgRect.width,
+                      h: imgRect.height,
+                    },
+                    click: {
+                      x: Math.round(imgRect.right + 48),
+                      y: Math.round(imgRect.top + imgRect.height / 2),
+                    },
+                  };
+                }
+                return { mode: 'miss', kind: 'none', score: 0, img: null };
               }, code)
               .catch(() => null);
-            if (nearImg) {
-              used = `near-captcha-img:${nearImg.id || nearImg.name || nearImg.cls || 'anon'}`;
+
+            if (deep?.mode === 'dom') {
+              used = `deep-${deep.kind}:score=${deep.score}`;
+            } else if (deep?.mode === 'click_xy' && deep.click) {
+              await page.mouse.click(deep.click.x, deep.click.y);
+              await page.keyboard.type(code, { delay: 60 });
+              used = `geom-click:${deep.click.x},${deep.click.y}`;
             }
           }
           let clicked: string | null = null;
