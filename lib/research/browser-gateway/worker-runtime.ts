@@ -920,10 +920,17 @@ async function waitForManualLogin(input: {
           });
           return true;
         }
-        // After an OTP submit (esp. MagicBricks cross-host), do NOT bounce back to
-        // the login URL — that destroys the post-OTP SSO handoff and re-triggers
-        // Akamai. Stay on the verify host and let the next poll re-score.
-        if (!otpJustApplied) {
+        // Access Denied / WAF on verify host (MagicBricks www via Akamai): never
+        // leave the operator on the denial page — recover to login surface unless
+        // we just submitted OTP (SSO handoff must not be wiped).
+        const verifyBlocked =
+          /access\s*denied/i.test(probed.signals.title || '') ||
+          /access\s*denied/i.test(probed.signals.bodySnippet || '');
+        if (!otpJustApplied || verifyBlocked) {
+          pushWorkerLog(
+            verifyBlocked ? 'warn' : 'info',
+            `login_wait_verify_probe_recover sessionId=${session.id} portal=${session.portal} blocked=${verifyBlocked} otpJustApplied=${otpJustApplied}`,
+          );
           await handle.gotoLogin(session.loginUrl).catch(() => undefined);
         } else {
           pushWorkerLog(

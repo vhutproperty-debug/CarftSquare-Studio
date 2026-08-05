@@ -49,9 +49,10 @@ export function usesConnectAuthEngine(portal: string): boolean {
 
 /**
  * Active CAPTCHA challenge — must reflect *visible* challenge UI, not residual
- * script/CDN strings (MagicBricks keeps `contentsimpleCaptcha` / `verifycaptcha`
- * in HTML after the CAPTCHA is solved; matching those forever blocked the
- * cross-host verify probe and prevented Research Ready).
+ * script/CDN strings alone. MagicBricks keeps `contentsimpleCaptcha` in script
+ * URLs after solve (those must NOT block verify), but a live `<img src*="captcha">`
+ * on the phone step MUST keep challenge=captcha so the cross-host verify probe
+ * does not navigate to www and trip Akamai Access Denied mid-login.
  */
 function hasCaptchaOrChallenge(title: string, body: string): boolean {
   const hay = `${title} ${body}`.toLowerCase();
@@ -63,7 +64,12 @@ function hasCaptchaOrChallenge(title: string, body: string): boolean {
   ) {
     return true;
   }
-  // Visible captcha form copy / labeled inputs — not bare CDN path fragments.
+  // Visible captcha image (MagicBricks simpleCaptcha) — match <img …captcha…> only,
+  // not bare path fragments in scripts.
+  if (/<img\b[^>]+(?:src|alt)=['"][^'"]*captcha/i.test(body)) {
+    return true;
+  }
+  // Visible captcha form copy / labeled inputs.
   return (
     /enter\s*(the\s*)?captcha|please\s*enter\s*captcha|type\s*the\s*(code|captcha)|captcha\s*code|simple\s*captcha/i.test(
       hay,
