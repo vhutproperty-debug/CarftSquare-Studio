@@ -54,6 +54,8 @@ async function main() {
   if (otp) body.otp = otp;
   const captcha = arg('captcha');
   if (captcha) body.captcha = captcha;
+  const selector = arg('selector');
+  if (selector) body.selector = selector;
   const x = arg('x');
   const y = arg('y');
   const typeText = arg('text');

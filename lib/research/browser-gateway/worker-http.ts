@@ -421,6 +421,60 @@ export async function startWorkerHttpServer(input: {
           return;
         }
 
+        // Click by CSS/text selector (visible). Prefer over click_xy for labeled links.
+        if (action === 'click_selector') {
+          const selector = String((body as { selector?: string }).selector || '').trim();
+          if (!selector) {
+            json(res, 400, { ok: false, error: 'selector required' });
+            return;
+          }
+          const loc = page.locator(selector).first();
+          if ((await loc.count().catch(() => 0)) === 0) {
+            json(res, 404, { ok: false, action, error: `selector not found: ${selector}` });
+            return;
+          }
+          await loc.click({ timeout: 5_000, force: true });
+          await new Promise((r) => setTimeout(r, 800));
+          json(res, 200, {
+            ok: true,
+            action,
+            selector,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        // MagicBricks: voice OTP — calls window.resendOtp(true) (same as "Verify on Call").
+        if (action === 'mb_verify_on_call' || action === 'verify_on_call') {
+          const result = await page
+            .evaluate(() => {
+              const w = window as unknown as { resendOtp?: (onCall?: boolean) => void };
+              const link = document.querySelector(
+                '#smsCodeSentOnCall a, a[onclick*="resendOtp(true)"]',
+              ) as HTMLAnchorElement | null;
+              if (typeof w.resendOtp === 'function') {
+                w.resendOtp(true);
+                return { mode: 'resendOtp(true)', hasLink: Boolean(link) };
+              }
+              if (link) {
+                link.click();
+                return { mode: 'link.click', hasLink: true };
+              }
+              return { mode: 'miss', hasLink: false };
+            })
+            .catch((e) => ({ mode: 'error', error: String(e) }));
+          await new Promise((r) => setTimeout(r, 1_500));
+          json(res, 200, {
+            ok: result.mode !== 'miss' && result.mode !== 'error',
+            action,
+            ...result,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
         // Type text via keyboard into whatever element currently has focus.
         if (action === 'type_text') {
           const text = String((body as { text?: string }).text || '');
