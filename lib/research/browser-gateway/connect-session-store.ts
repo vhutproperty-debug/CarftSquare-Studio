@@ -146,6 +146,7 @@ export async function updateConnectSession(
       | 'finishedAt'
       | 'pendingOtp'
       | 'pendingOtpAt'
+      | 'otpAppliedAt'
       | 'authChallenge'
     >
   >,

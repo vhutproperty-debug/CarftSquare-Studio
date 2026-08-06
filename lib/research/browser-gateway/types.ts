@@ -46,6 +46,11 @@ export type ConnectSession = {
    */
   pendingOtp?: string | null;
   pendingOtpAt?: string | null;
+  /**
+   * Set when OTP was applied on the live page (chat assist or engine).
+   * Lets the wait loop treat post-OTP www Access Denied as SSO handoff, not WAF wipe.
+   */
+  otpAppliedAt?: string | null;
   /** Operator-facing challenge hint (captcha | otp | waf | …). */
   authChallenge?: string | null;
   createdBy: string;

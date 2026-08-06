@@ -433,6 +433,32 @@ export class RemoteBrowserSessionManager {
     return null;
   }
 
+  /** Capture encrypted cookies/storage from an in-flight Connect browser context. */
+  async captureConnectSecrets(connectSessionId: string): Promise<{
+    encryptedCookies: string;
+    encryptedStorage: string;
+    cookieCount: number;
+    portal: string;
+  }> {
+    const entry = this.active.get(connectSessionId);
+    if (!entry?.context) {
+      throw new Error('No live Connect browser context to capture');
+    }
+    const { getConnectSessionById } = await import(
+      '@/lib/research/browser-gateway/connect-session-store'
+    );
+    const sess = await getConnectSessionById(connectSessionId);
+    const portal = sess?.portal || 'unknown';
+    const loader = new SessionLoader();
+    const secrets = await loader.captureFromContext(entry.context, portal);
+    return {
+      encryptedCookies: secrets.encryptedCookies,
+      encryptedStorage: secrets.encryptedStorage,
+      cookieCount: secrets.cookieCount ?? 0,
+      portal,
+    };
+  }
+
   async captureSession(handle: BrowserLaunchHandle) {
     return handle.captureSecrets();
   }

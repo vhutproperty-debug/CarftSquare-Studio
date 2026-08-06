@@ -242,8 +242,20 @@ export async function startWorkerHttpServer(input: {
           const { applyOtpOnPage } = await import(
             '@/lib/research/browser-gateway/connect-auth-engine'
           );
+          const { updateConnectSession } = await import(
+            '@/lib/research/browser-gateway/connect-session-store'
+          );
           const otp = String(body.otp || '');
           const result = await applyOtpOnPage(page, otp);
+          if (result.ok) {
+            await updateConnectSession(connectSessionId, {
+              pendingOtp: null,
+              pendingOtpAt: null,
+              otpAppliedAt: new Date().toISOString(),
+              message: 'OTP submitted — verifying…',
+              authChallenge: 'none',
+            }).catch(() => undefined);
+          }
           await new Promise((r) => setTimeout(r, 1_500));
           json(res, 200, {
             ok: result.ok,
@@ -251,6 +263,159 @@ export async function startWorkerHttpServer(input: {
             filled: result.filled,
             clicked: result.clicked,
             detail: result.detail,
+            url: page.url(),
+            title: await page.title().catch(() => ''),
+          });
+          return;
+        }
+
+        // Force-capture cookies from the live Connect browser even if www is
+        // Akamai-blocked (MagicBricks post-OTP). Persists + validates → Connected.
+        if (action === 'force_capture') {
+          const { getConnectSessionById, updateConnectSession } = await import(
+            '@/lib/research/browser-gateway/connect-session-store'
+          );
+          const { upsertBrowserSession, touchBrowserSession } = await import(
+            '@/lib/research/sessions/session-store'
+          );
+          const { browserSessionManager } = await import(
+            '@/lib/research/sessions/browser-session-manager'
+          );
+          const { transitionConnectSession } = await import(
+            '@/lib/research/browser-gateway/connect-phase-machine'
+          );
+          const { upsertPortalConnection } = await import(
+            '@/lib/research/store/portal-connections'
+          );
+          const sess = await getConnectSessionById(connectSessionId);
+          if (!sess) {
+            json(res, 404, { ok: false, error: 'connect session not found' });
+            return;
+          }
+          let secrets: {
+            encryptedCookies: string;
+            encryptedStorage: string;
+            cookieCount: number;
+            portal: string;
+          };
+          try {
+            secrets = await remoteBrowserSessionManager.captureConnectSecrets(
+              connectSessionId,
+            );
+          } catch (e) {
+            json(res, 500, {
+              ok: false,
+              error: e instanceof Error ? e.message : String(e),
+            });
+            return;
+          }
+          if ((secrets.cookieCount || 0) < 1) {
+            json(res, 422, {
+              ok: false,
+              error: 'No cookies in browser context — login may not have completed',
+              cookieCount: secrets.cookieCount,
+            });
+            return;
+          }
+          // Phase machine: waiting_for_login → verifying → capturing → encrypting → validating → connected
+          await transitionConnectSession({
+            sessionId: connectSessionId,
+            to: 'verifying',
+            message: 'Force-capture: treating post-OTP cookies as verified…',
+            cookieCount: secrets.cookieCount,
+            caller: 'connect-act.force_capture.verify',
+          }).catch(() => undefined);
+          await transitionConnectSession({
+            sessionId: connectSessionId,
+            to: 'capturing',
+            message: 'Force-capturing session cookies…',
+            cookieCount: secrets.cookieCount,
+            caller: 'connect-act.force_capture',
+          }).catch(() => undefined);
+          const browserSession = await upsertBrowserSession({
+            workspaceId: sess.workspaceId,
+            portal: sess.portal,
+            browserProfile: `encrypted:${sess.portal}`,
+            encryptedCookies: secrets.encryptedCookies,
+            encryptedStorage: secrets.encryptedStorage,
+            sessionStatus: 'needs_login',
+          });
+          await touchBrowserSession(browserSession.id, {
+            sessionStatus: 'needs_login',
+            status: 'needs_login',
+            lastValidationError: 'Awaiting connector validator (force_capture)',
+          });
+          await transitionConnectSession({
+            sessionId: connectSessionId,
+            to: 'encrypting',
+            message: 'Encrypting force-captured session…',
+            browserSessionId: browserSession.id,
+            cookieCount: secrets.cookieCount,
+            caller: 'connect-act.force_capture.encrypt',
+          }).catch(() => undefined);
+          await transitionConnectSession({
+            sessionId: connectSessionId,
+            to: 'validating',
+            message: 'Validating force-captured session…',
+            browserSessionId: browserSession.id,
+            cookieCount: secrets.cookieCount,
+            caller: 'connect-act.force_capture.validate',
+          }).catch(() => undefined);
+          const validation = await browserSessionManager.validateSession(
+            browserSession.id,
+            { force: true },
+          );
+          if (!validation.ok) {
+            // Still persist cookies — operator can Refresh later. Mark needs_login.
+            await updateConnectSession(connectSessionId, {
+              phase: 'waiting_for_login',
+              message: `Captured ${secrets.cookieCount} cookies but validate failed: ${validation.message || validation.status}. Browser kept open.`,
+              browserSessionId: browserSession.id,
+              errorMessage: validation.message || validation.status,
+            }).catch(() => undefined);
+            json(res, 200, {
+              ok: false,
+              action,
+              captured: true,
+              cookieCount: secrets.cookieCount,
+              browserSessionId: browserSession.id,
+              validateOk: false,
+              validateMessage: validation.message || validation.status,
+              url: page.url(),
+              title: await page.title().catch(() => ''),
+            });
+            return;
+          }
+          await upsertPortalConnection({
+            workspaceId: sess.workspaceId,
+            portalKey: sess.portal,
+            portalName: sess.portalName || sess.portal,
+            status: 'connected',
+          }).catch(() => undefined);
+          await transitionConnectSession({
+            sessionId: connectSessionId,
+            to: 'connected',
+            message: 'Connected (force-captured after OTP).',
+            browserSessionId: browserSession.id,
+            cookieCount: secrets.cookieCount,
+            validationOk: true,
+            finishedAt: new Date().toISOString(),
+            caller: 'connect-act.force_capture.connected',
+          }).catch(async () => {
+            await updateConnectSession(connectSessionId, {
+              phase: 'connected',
+              message: 'Connected (force-captured after OTP).',
+              browserSessionId: browserSession.id,
+              finishedAt: new Date().toISOString(),
+            });
+          });
+          json(res, 200, {
+            ok: true,
+            action,
+            captured: true,
+            cookieCount: secrets.cookieCount,
+            browserSessionId: browserSession.id,
+            validateOk: true,
             url: page.url(),
             title: await page.title().catch(() => ''),
           });

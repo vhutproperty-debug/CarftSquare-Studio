@@ -1,7 +1,7 @@
 import type { BrowserProviderKind } from '@/lib/research/browser-gateway/types';
 import { RESEARCH_PROTOCOL_VERSION } from '@/lib/research/ops/metrics';
 
-export const WORKER_HTTP_VERSION = '1.3.4';
+export const WORKER_HTTP_VERSION = '1.3.5';
 
 export type WorkerLogLine = {
   at: string;

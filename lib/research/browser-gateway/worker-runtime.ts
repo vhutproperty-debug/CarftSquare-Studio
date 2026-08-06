@@ -793,6 +793,7 @@ async function waitForManualLogin(input: {
           await updateConnectSession(session.id, {
             pendingOtp: null,
             pendingOtpAt: null,
+            otpAppliedAt: new Date().toISOString(),
             message: 'OTP submitted — verifying…',
           });
         } else {
@@ -805,6 +806,20 @@ async function waitForManualLogin(input: {
       }
     }
 
+    // connect-act fill_otp also stamps otpAppliedAt — sync into the poll loop.
+    if (
+      engine &&
+      otpAppliedPoll === null &&
+      current.otpAppliedAt &&
+      Date.now() - new Date(current.otpAppliedAt).getTime() < 120_000
+    ) {
+      otpAppliedPoll = Math.max(0, poll - 1);
+      pushWorkerLog(
+        'info',
+        `connect_auth_engine otp_applied_at_sync sessionId=${session.id} at=${current.otpAppliedAt}`,
+      );
+    }
+
     if (handle.writePreview) {
       await handle.writePreview(previewFile).catch(() => undefined);
       await updateConnectSession(session.id, {
@@ -814,6 +829,30 @@ async function waitForManualLogin(input: {
     }
 
     const { result, signals } = await evaluateOnce('poll');
+
+    // MagicBricks: after OTP, www often returns Akamai Access Denied even though
+    // SSO cookies were set. Treat that as auth success when cookies exist so we
+    // proceed to capture instead of looping until TTL.
+    const otpJustAppliedNow =
+      otpAppliedPoll !== null && poll - otpAppliedPoll >= 0 && poll - otpAppliedPoll <= 30;
+    const postOtpWaf =
+      otpJustAppliedNow &&
+      (/access\s*denied/i.test(signals.title || '') ||
+        /access\s*denied/i.test(signals.bodySnippet || '') ||
+        /403\s*forbidden/i.test(signals.title || '')) &&
+      /magicbricks\.com/i.test(signals.url || '') &&
+      (signals.cookieCount || 0) >= 3;
+    if (engine && postOtpWaf && !result.authenticated) {
+      pushWorkerLog(
+        'warn',
+        `login_wait_success sessionId=${session.id} portal=${session.portal} via=post_otp_waf_cookies cookies=${signals.cookieCount} url=${signals.url}`,
+      );
+      await updateConnectSession(session.id, {
+        message: CONNECT_USER_MESSAGES.authenticated,
+        authChallenge: 'none',
+      });
+      return true;
+    }
 
     if (engine) {
       const classified = classifyConnectAuthPage({
@@ -926,23 +965,40 @@ async function waitForManualLogin(input: {
           });
           return true;
         }
-        // Access Denied / WAF on verify host (MagicBricks www via Akamai): never
-        // leave the operator on the denial page — recover to login surface unless
-        // we just submitted OTP (SSO handoff must not be wiped).
+        // Access Denied / WAF on verify host (MagicBricks www via Akamai).
+        // After OTP, NEVER recover to login — that wipes SSO cookies. Hold the
+        // verify host (or leave the denial page) so capture can still succeed
+        // from storage state / softer account URLs on a later poll.
         const verifyBlocked =
           /access\s*denied/i.test(probed.signals.title || '') ||
           /access\s*denied/i.test(probed.signals.bodySnippet || '');
-        if (!otpJustApplied || verifyBlocked) {
+        if (otpJustApplied) {
           pushWorkerLog(
             verifyBlocked ? 'warn' : 'info',
-            `login_wait_verify_probe_recover sessionId=${session.id} portal=${session.portal} blocked=${verifyBlocked} otpJustApplied=${otpJustApplied}`,
+            `login_wait_verify_probe_hold sessionId=${session.id} portal=${session.portal} blocked=${verifyBlocked} otpJustApplied=true url=${probed.signals.url}`,
+          );
+          // Soft signal: post-OTP landing on myMagicBox / www with denial still
+          // means the accounts SSO handoff likely completed — bump poll so the
+          // engine keeps waiting rather than timing out as a naked captcha page.
+          if (
+            verifyBlocked &&
+            /mymagicbox|magicbricks\.com\/bricks|www\.magicbricks\.com/i.test(
+              probed.signals.url || '',
+            )
+          ) {
+            await updateConnectSession(session.id, {
+              message:
+                'OTP accepted — portal security page on www. Holding session cookies; finishing capture…',
+              authChallenge: 'none',
+            }).catch(() => undefined);
+          }
+        } else {
+          // Pre-OTP probe miss (or WAF): return to login so the operator can retry.
+          pushWorkerLog(
+            verifyBlocked ? 'warn' : 'info',
+            `login_wait_verify_probe_recover sessionId=${session.id} portal=${session.portal} blocked=${verifyBlocked} otpJustApplied=false`,
           );
           await handle.gotoLogin(session.loginUrl).catch(() => undefined);
-        } else {
-          pushWorkerLog(
-            'info',
-            `login_wait_verify_probe_hold sessionId=${session.id} portal=${session.portal} — OTP applied; holding verify host (url=${probed.signals.url})`,
-          );
         }
       }
     }
