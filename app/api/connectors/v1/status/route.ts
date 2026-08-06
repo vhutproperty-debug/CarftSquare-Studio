@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { authResultToResponse } from '@/lib/auth/rbac/guard';
-import { requireResearchViewAccess } from '@/lib/research/auth';
 import {
   connectorApiErrorResponse,
   workspaceIdFromQuery,
 } from '@/lib/research/connector-api/http';
+import {
+  connectorConsumerAuthToResponse,
+  requireConnectorConsumerAccess,
+} from '@/lib/research/connector-api/prop-ai-auth';
 import { getConnectorStatuses } from '@/lib/research/connector-api/service';
 
 export const runtime = 'nodejs';
@@ -12,8 +14,9 @@ export const maxDuration = 60;
 
 /** Connector API v1 — provider-agnostic authentication status per provider. */
 export async function GET(request: Request) {
-  const auth = await requireResearchViewAccess(request);
-  const denied = authResultToResponse(auth);
+  // Prop AI machine key OR admin Research view RBAC (admin UI unchanged).
+  const auth = await requireConnectorConsumerAccess(request, 'view');
+  const denied = connectorConsumerAuthToResponse(auth);
   if (denied) return denied;
 
   try {

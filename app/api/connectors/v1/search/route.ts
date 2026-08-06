@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { authResultToResponse } from '@/lib/auth/rbac/guard';
-import { requireResearchEditAccess } from '@/lib/research/auth';
 import {
   connectorApiErrorResponse,
   resolveWorkspaceId,
 } from '@/lib/research/connector-api/http';
+import {
+  connectorConsumerAuthToResponse,
+  requireConnectorConsumerAccess,
+} from '@/lib/research/connector-api/prop-ai-auth';
 import {
   executeConnectorSearch,
   executeConnectorSearchMany,
@@ -24,10 +26,12 @@ export const maxDuration = 300;
  *
  * Uses the same validate → search pipeline as Research (freshness-aware
  * validation, worker-executed Chromium search, encrypted stored session).
+ *
+ * Auth: Prop AI machine key OR admin Research edit RBAC (admin UI unchanged).
  */
 export async function POST(request: Request) {
-  const auth = await requireResearchEditAccess(request);
-  const denied = authResultToResponse(auth);
+  const auth = await requireConnectorConsumerAccess(request, 'edit');
+  const denied = connectorConsumerAuthToResponse(auth);
   if (denied) return denied;
 
   try {

@@ -29,3 +29,12 @@ export {
   workspaceIdFromQuery,
   connectorApiErrorResponse,
 } from '@/lib/research/connector-api/http';
+
+export {
+  extractPropAiApiKey,
+  isValidPropAiApiKey,
+  requireConnectorConsumerAccess,
+  connectorConsumerAuthToResponse,
+  type ConnectorConsumerAuthResult,
+  type PropAiAuthSuccess,
+} from '@/lib/research/connector-api/prop-ai-auth';
