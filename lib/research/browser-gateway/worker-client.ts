@@ -329,7 +329,7 @@ export async function requestWorkerExecuteSearch(input: {
           skipValidation: input.skipValidation,
         }),
       },
-      110_000,
+      180_000,
     );
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
@@ -342,10 +342,15 @@ export async function requestWorkerExecuteSearch(input: {
     }
     return {
       ok: Boolean(json.ok),
-      listings: Array.isArray(json.listings) ? (json.listings as import('@/lib/research/types').ResearchListing[]) : [],
-      sessionStatus: String(json.sessionStatus || (json.ok ? 'valid' : 'error')) as import('@/lib/research/types').ResearchBrowserSessionStatus,
+      listings: Array.isArray(json.listings)
+        ? (json.listings as import('@/lib/research/types').ResearchListing[])
+        : [],
+      sessionStatus: String(
+        json.sessionStatus || (json.ok ? 'valid' : 'error'),
+      ) as import('@/lib/research/types').ResearchBrowserSessionStatus,
       message: typeof json.message === 'string' ? json.message : undefined,
-      screenshotPath: typeof json.screenshotPath === 'string' ? json.screenshotPath : undefined,
+      screenshotPath:
+        typeof json.screenshotPath === 'string' ? json.screenshotPath : undefined,
       degraded: Boolean(json.degraded),
       degradationReason:
         typeof json.degradationReason === 'string' ? json.degradationReason : undefined,

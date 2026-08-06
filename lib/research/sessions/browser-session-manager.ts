@@ -214,7 +214,48 @@ export class BrowserSessionManager implements SessionManager {
             bodySnippet,
           });
 
+          // HTTP 401/403 is not always "logged out". MagicBricks www often returns
+          // Akamai Access Denied (403) after a successful OTP while SSO cookies
+          // (ACEGI / userUniqToken) are already set. Score cookies before failing.
           if (httpStatus === 401 || httpStatus === 403) {
+            const {
+              scoreAuthEvidence,
+              hasStrongPortalSsoCookies,
+            } = await import('@/lib/research/auth-detection/auth-evidence-engine');
+            const cookies = await page.context().cookies().catch(() => []);
+            const cookieNames = cookies.map((c) => c.name);
+            const evidence = scoreAuthEvidence({
+              url: finalUrl,
+              title,
+              bodyHtml: bodySnippet,
+              cookies,
+              mode: 'verify',
+              verifyUrl,
+              portal,
+              settled: true,
+              readyState: 'complete',
+            });
+            const sso = hasStrongPortalSsoCookies(portal, cookieNames);
+            connectorLog(portal, 'validation_http_auth_wall', {
+              httpStatus,
+              title,
+              cookieCount: cookies.length,
+              sso,
+              evidenceAuth: evidence.authenticated,
+              cookieNames: cookieNames.slice(0, 24),
+            });
+            if (evidence.authenticated || sso) {
+              return {
+                httpStatus,
+                finalUrl,
+                title,
+                bodySnippet,
+                kind,
+                authenticated: true,
+                loginConfidence: evidence.confidence || 70,
+                message: `SSO cookies valid despite HTTP ${httpStatus} (${title || 'auth wall'})`,
+              } satisfies ValidationProbe;
+            }
             return {
               httpStatus,
               finalUrl,
@@ -223,10 +264,45 @@ export class BrowserSessionManager implements SessionManager {
               kind,
               authenticated: false,
               message: `Validation HTTP ${httpStatus} — session unauthorized`,
+              loginConfidence: evidence.confidence,
             } satisfies ValidationProbe;
           }
 
           if (isSecurityChallenge(httpStatus, title, body)) {
+            const {
+              scoreAuthEvidence,
+              hasStrongPortalSsoCookies,
+            } = await import('@/lib/research/auth-detection/auth-evidence-engine');
+            const cookies = await page.context().cookies().catch(() => []);
+            const evidence = scoreAuthEvidence({
+              url: finalUrl,
+              title,
+              bodyHtml: bodySnippet,
+              cookies,
+              mode: 'verify',
+              verifyUrl,
+              portal,
+              settled: true,
+              readyState: 'complete',
+            });
+            if (
+              evidence.authenticated ||
+              hasStrongPortalSsoCookies(
+                portal,
+                cookies.map((c) => c.name),
+              )
+            ) {
+              return {
+                httpStatus,
+                finalUrl,
+                title,
+                bodySnippet,
+                kind: kind === '406' ? '406' : kind,
+                authenticated: true,
+                loginConfidence: evidence.confidence || 70,
+                message: `SSO cookies valid despite security challenge (${title || 'wall'})`,
+              } satisfies ValidationProbe;
+            }
             return {
               httpStatus,
               finalUrl,

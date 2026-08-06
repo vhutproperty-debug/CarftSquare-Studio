@@ -25,6 +25,30 @@ export function secretsFingerprint(
     .slice(0, 24);
 }
 
+/** Akamai Bot Manager cookies bound to the Connect egress fingerprint. */
+const AKAMAI_SENSOR_COOKIE_RE = /^(?:_abck|bm_sz|bm_sv|bm_mi|ak_bmsc|bm_so)$/i;
+
+/**
+ * Drop stale Akamai sensor cookies before restoring SSO into a search browser.
+ * Sensor cookies from Connect's datacenter/headed session poison residential
+ * scrape.do egress; SSO cookies (ACEGI / userUniqToken) must be kept.
+ */
+export function sanitizeCookiesForSearchRestore(
+  portal: string,
+  cookies: Cookie[],
+): Cookie[] {
+  if (portal !== 'magicbricks') return cookies;
+  const kept = cookies.filter((c) => !AKAMAI_SENSOR_COOKIE_RE.test(c.name));
+  if (kept.length !== cookies.length) {
+    connectorLog(portal, 'cookie_sanitize_akamai_sensors', {
+      before: cookies.length,
+      after: kept.length,
+      dropped: cookies.length - kept.length,
+    });
+  }
+  return kept;
+}
+
 export class SessionLoader {
   encryptCookies(cookies: Cookie[], portal = 'unknown'): string {
     connectorLog(portal, 'encryption', { cookieCount: cookies.length });
@@ -75,9 +99,10 @@ export class SessionLoader {
     // Prefer full Playwright storageState when encryptedStorage carries cookies + origins.
     const storage = this.decryptStorage(input.encryptedStorage);
     const stateCookies = (storage.cookies || []) as Cookie[];
-    const legacyCookies = stateCookies.length
+    const rawCookies = stateCookies.length
       ? stateCookies
       : this.decryptCookies(input.encryptedCookies, portal);
+    const legacyCookies = sanitizeCookiesForSearchRestore(portal, rawCookies);
 
     try {
       if (legacyCookies.length) {

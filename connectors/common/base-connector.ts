@@ -311,10 +311,45 @@ export abstract class BasePortalConnector implements PortalConnector {
       `search-${this.key}`,
       async (page) => {
         const tNav = researchPerfNow();
-        await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
-        await page
-          .waitForSelector(LISTING_READY_SELECTOR, { timeout: 2_500 })
-          .catch(() => undefined);
+        // MagicBricks SERP through residential proxy often never reaches full
+        // domcontentloaded (analytics/Akamai). Commit + selector wait is enough.
+        if (this.key === 'magicbricks') {
+          await page.goto(searchUrl, { waitUntil: 'commit', timeout: 45_000 });
+          const title = await page.title().catch(() => '');
+          if (/access\s*denied/i.test(title)) {
+            throw new Error(
+              `MagicBricks search Access Denied (Akamai) url=${page.url()}`,
+            );
+          }
+          const probeText = await page
+            .evaluate(() => (document.body?.innerText || '').slice(0, 600))
+            .catch(() => '');
+          if (/monthly request limit exceeded|scrape\.do/i.test(probeText)) {
+            throw new Error(
+              'MagicBricks search proxy quota exceeded. Set RESEARCH_PORTAL_SEARCH_PROXY_MAGICBRICKS to a working residential/ISP proxy (scrape.do monthly limit hit on shared 99acres token).',
+            );
+          }
+          await page
+            .waitForSelector(
+              '.mb-srp__card, .srpTuple, .m-srp-card, a[href*="propertyDetails"], a[href*="Property"]',
+              { timeout: 30_000 },
+            )
+            .catch(() => undefined);
+          // Let late Akamai/client redirects finish before DOM extract.
+          await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => undefined);
+          await new Promise((r) => setTimeout(r, 1_500));
+          const titleAfter = await page.title().catch(() => '');
+          if (/access\s*denied/i.test(titleAfter)) {
+            throw new Error(
+              `MagicBricks search Access Denied after settle url=${page.url()}`,
+            );
+          }
+        } else {
+          await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
+          await page
+            .waitForSelector(LISTING_READY_SELECTOR, { timeout: 2_500 })
+            .catch(() => undefined);
+        }
         researchPerfLog('search_navigation', tNav, { portal: this.key });
         const tExtract = researchPerfNow();
         const listings = await this.parseListingsFromPage(page, this.key);

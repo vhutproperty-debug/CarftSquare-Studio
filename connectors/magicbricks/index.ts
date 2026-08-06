@@ -53,9 +53,10 @@ export class MagicbricksConnector extends BasePortalConnector {
         weight: 10,
       },
       {
+        // Soft signal only — www Access Denied is common post-OTP with valid SSO.
         name: 'magicbricks_not_access_denied',
         pass: !/access\s*denied/.test(body) && !/access\s*denied/.test(title),
-        weight: 20,
+        weight: 5,
       },
     ];
   }
@@ -65,8 +66,8 @@ export class MagicbricksConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
-    const cards = await page
-      .evaluate((max) => {
+    const extract = async () =>
+      page.evaluate((max) => {
         const nodes = Array.from(
           document.querySelectorAll(
             '.mb-srp__card, .srpTuple, .m-srp-card, [class*="mb-srp__list"] > div',
@@ -90,8 +91,26 @@ export class MagicbricksConnector extends BasePortalConnector {
             link: linkEl?.href || '',
           };
         });
-      }, 40)
-      .catch(() => [] as Array<{ title: string; price: string; text: string; link: string }>);
+      }, 40);
+
+    let cards: Array<{ title: string; price: string; text: string; link: string }> = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        cards = await extract();
+        break;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (!/Execution context was destroyed|most likely because of a navigation/i.test(msg)) {
+          throw error;
+        }
+        await page
+          .waitForSelector('.mb-srp__card, .srpTuple, a[href*="property"]', {
+            timeout: 10_000,
+          })
+          .catch(() => undefined);
+        await new Promise((r) => setTimeout(r, 1_000));
+      }
+    }
 
     if (cards.length >= 3) {
       return cards.map((row) => {
@@ -112,7 +131,7 @@ export class MagicbricksConnector extends BasePortalConnector {
       });
     }
 
-    return collectGenericListings(page, portal);
+    return collectGenericListings(page, portal).catch(() => [] as ResearchListing[]);
   }
 }
 

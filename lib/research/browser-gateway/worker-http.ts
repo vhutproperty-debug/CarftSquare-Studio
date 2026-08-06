@@ -365,13 +365,45 @@ export async function startWorkerHttpServer(input: {
             browserSession.id,
             { force: true },
           );
-          if (!validation.ok) {
+          // Fallback: even if HTML validate is still WAF-blocked on an older
+          // worker build, treat MagicBricks ACEGI / userUniqToken cookies as Connected.
+          let validateOk = validation.ok;
+          let validateMessage = validation.message || validation.status;
+          if (!validateOk) {
+            try {
+              const { SessionLoader } = await import(
+                '@/lib/research/browser/session-loader'
+              );
+              const { hasStrongPortalSsoCookies } = await import(
+                '@/lib/research/auth-detection/auth-evidence-engine'
+              );
+              const loader = new SessionLoader();
+              const storage = loader.decryptStorage(secrets.encryptedStorage);
+              const cookies =
+                storage.cookies && storage.cookies.length > 0
+                  ? storage.cookies
+                  : loader.decryptCookies(secrets.encryptedCookies, sess.portal);
+              if (hasStrongPortalSsoCookies(sess.portal, cookies.map((c) => c.name))) {
+                validateOk = true;
+                validateMessage = 'SSO cookies force-capture soft-pass';
+                await touchBrowserSession(browserSession.id, {
+                  sessionStatus: 'valid',
+                  status: 'valid',
+                  lastVerified: new Date().toISOString(),
+                  lastValidationError: '',
+                });
+              }
+            } catch {
+              /* keep validateOk false */
+            }
+          }
+          if (!validateOk) {
             // Still persist cookies — operator can Refresh later. Mark needs_login.
             await updateConnectSession(connectSessionId, {
               phase: 'waiting_for_login',
-              message: `Captured ${secrets.cookieCount} cookies but validate failed: ${validation.message || validation.status}. Browser kept open.`,
+              message: `Captured ${secrets.cookieCount} cookies but validate failed: ${validateMessage}. Browser kept open.`,
               browserSessionId: browserSession.id,
-              errorMessage: validation.message || validation.status,
+              errorMessage: validateMessage,
             }).catch(() => undefined);
             json(res, 200, {
               ok: false,
@@ -380,7 +412,7 @@ export async function startWorkerHttpServer(input: {
               cookieCount: secrets.cookieCount,
               browserSessionId: browserSession.id,
               validateOk: false,
-              validateMessage: validation.message || validation.status,
+              validateMessage,
               url: page.url(),
               title: await page.title().catch(() => ''),
             });
@@ -1074,7 +1106,10 @@ export async function startWorkerHttpServer(input: {
           session,
           `inspect-${portal}`,
           async (page) => {
-            const response = await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+            const response = await page.goto(targetUrl, { waitUntil: 'commit' });
+            await page
+              .waitForLoadState('domcontentloaded', { timeout: 20_000 })
+              .catch(() => undefined);
             await new Promise((r) => setTimeout(r, 2_500));
             const httpStatus = response?.status() ?? null;
             const title = await page.title().catch(() => '');

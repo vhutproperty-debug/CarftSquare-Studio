@@ -62,19 +62,28 @@ export class BrowserFactory {
     await clearChromiumProfileLocks(userDataDir);
 
     // Headed Research on Railway requires a live Xvfb DISPLAY (Connect uses its own).
-    if (!RESEARCH_BROWSER_CONFIG.headless) {
+    const forceHeaded = portal === 'magicbricks' || !RESEARCH_BROWSER_CONFIG.headless;
+    if (forceHeaded) {
       await ensureResearchDisplay();
     }
 
-    const { resolvePortalProxy } = await import('@/lib/research/browser/portal-proxy');
-    const proxy = resolvePortalProxy(portal);
+    // Search/validate pool only — Connect OTP browsers use resolvePortalProxy.
+    const { resolvePortalSearchProxy } = await import('@/lib/research/browser/portal-proxy');
+    const proxy = resolvePortalSearchProxy(portal);
     if (proxy) {
-      console.info(`[browser-factory] browser_proxy portal=${portal} server=${proxy.server}`);
+      console.info(`[browser-factory] browser_search_proxy portal=${portal} server=${proxy.server}`);
     }
+
+    // MagicBricks Akamai needs full page assets/scripts; resource blocks on a
+    // cold residential session can worsen Access Denied / empty SERP extracts.
+    const blockResources =
+      RESEARCH_BROWSER_CONFIG.blockHeavyResources && portal !== 'magicbricks';
 
     const launch = async () =>
       chromium.launchPersistentContext(userDataDir, {
-        headless: RESEARCH_BROWSER_CONFIG.headless,
+        // MagicBricks www Akamai blocks headless automation even with SSO cookies
+        // (local proof: headless=Access Denied, headed=30 listings).
+        headless: portal === 'magicbricks' ? false : RESEARCH_BROWSER_CONFIG.headless,
         viewport: { width: 1365, height: 900 },
         // scrape.do and similar MITM the TLS chain with their own CA; accept it
         // only for the proxied context, never for direct connections.
@@ -115,8 +124,16 @@ export class BrowserFactory {
 
     context.setDefaultTimeout(RESEARCH_BROWSER_CONFIG.defaultTimeoutMs);
     context.setDefaultNavigationTimeout(RESEARCH_BROWSER_CONFIG.navigationTimeoutMs);
-    await installAutomationResourceBlocks(context);
-    researchPerfLog('browser_startup', t0, { workspaceId, portal, warm: false });
+    if (blockResources) {
+      await installAutomationResourceBlocks(context);
+    }
+    researchPerfLog('browser_startup', t0, {
+      workspaceId,
+      portal,
+      warm: false,
+      proxied: Boolean(proxy),
+      blockResources,
+    });
     return context;
   }
 }

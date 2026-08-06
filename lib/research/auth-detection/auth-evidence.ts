@@ -119,7 +119,17 @@ export type PortalAuthTrace = {
 
 const EXPECTED_AUTH_COOKIE_HINTS: Record<string, string[]> = {
   housing: ['session', 'token', 'auth', 'user', 'login'],
-  magicbricks: ['session', 'token', 'auth', 'user', 'login', 'mb'],
+  magicbricks: [
+    'session',
+    'token',
+    'auth',
+    'user',
+    'login',
+    'mb',
+    'acegi',
+    'useruniq',
+    'usercookie',
+  ],
   '99acres': ['session', 'token', 'auth', 'user', 'login'],
   nobroker: ['session', 'token', 'auth', 'user', 'login', 'nb'],
   squareyards: ['session', 'token', 'auth', 'user', 'login'],

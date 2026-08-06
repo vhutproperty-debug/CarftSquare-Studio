@@ -111,6 +111,26 @@ function hasSecurityWall(title: string, body: string): boolean {
 }
 
 /**
+ * Portal SSO cookies that prove login even when www HTML is Akamai Access Denied.
+ * MagicBricks sets these on .magicbricks.com after OTP — independent of the WAF page.
+ */
+export function hasStrongPortalSsoCookies(
+  portal: string | undefined,
+  cookieNames: string[],
+): boolean {
+  const lower = cookieNames.map((n) => n.toLowerCase());
+  const has = (re: RegExp) => lower.some((n) => re.test(n));
+  if (portal === 'magicbricks') {
+    // ACEGI remember-me is definitive; userUniqToken+userCookie is the post-OTP pair.
+    return (
+      has(/^acegi_security_hashed_remember_me_cookie$/) ||
+      (has(/^useruniqtoken$/) && has(/^usercookie$/))
+    );
+  }
+  return false;
+}
+
+/**
  * Score authentication from a snapshot. Cookies/storage are primary.
  * No URL substring logout heuristics.
  */
@@ -236,8 +256,22 @@ export function scoreAuthEvidence(input: AuthEvidenceSnapshot): AuthEvidenceResu
     (localKeys.length > 0 || sessionKeys.length > 0 || cookieCount >= 5) &&
     breakdown.total >= Math.min(threshold, 50);
 
-  const finalAuth = authenticated || storagePrimaryPass;
-  const confidence = breakdown.total;
+  // MagicBricks (and similar): OTP succeeds and SSO cookies are set, but www
+  // often returns Akamai Access Denied. Treat strong SSO cookies as auth for
+  // verify mode so Connect/validate are not false-failed by the WAF HTML.
+  const ssoCookies = hasStrongPortalSsoCookies(input.portal, cookieNames);
+  const wafSoftPass =
+    Boolean(security) &&
+    input.mode === 'verify' &&
+    ssoCookies &&
+    !hardGateFail &&
+    !loginForm &&
+    cookieCount >= 5;
+
+  const finalAuth = authenticated || storagePrimaryPass || wafSoftPass;
+  const confidence = wafSoftPass
+    ? Math.max(breakdown.total, threshold)
+    : breakdown.total;
 
   const summary = [
     'Authentication score (AuthEvidenceEngine):',
@@ -248,9 +282,13 @@ export function scoreAuthEvidence(input: AuthEvidenceSnapshot): AuthEvidenceResu
     `TOTAL..........${confidence}`,
     `Threshold......${threshold}`,
     hardGateFail ? `Hard gate: FAIL (cookies < ${AUTH_COOKIE_HARD_GATE})` : 'Hard gate: PASS',
+    ssoCookies ? 'SSO cookies: PASS' : 'SSO cookies: n/a',
+    wafSoftPass ? 'WAF soft-pass: YES (SSO cookies despite security wall)' : null,
     `Decision: ${finalAuth ? 'PASS' : 'FAIL'}`,
     ...breakdown.pointsLost.map((p) => `Lost: ${p.category} -${p.lost} (${p.reason})`),
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return {
     authenticated: finalAuth,
