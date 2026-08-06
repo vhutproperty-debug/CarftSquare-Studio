@@ -12,3 +12,6 @@ tsconfig.tsbuildinfo
 .ops-auth-trace.log
 .research-profiles
 .research-screenshots
+
+# Local debug / smoke artifacts (do not commit)
+tmp/
