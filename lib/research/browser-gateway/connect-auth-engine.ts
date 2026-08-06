@@ -254,25 +254,47 @@ export async function applyOtpOnPage(
         filledCount += 1;
       }
       if (filledCount >= 4) {
+        // Prefer MagicBricks OTP submit — a hidden OAuth "Continue" also exists on
+        // the same page and steals button:has-text("Continue").first().
         const submitSelectors = [
-          'button:has-text("Verify")',
-          'button:has-text("Submit")',
-          'button:has-text("Continue")',
-          'button:has-text("Confirm")',
-          'button:has-text("Login")',
-          '[type="submit"]',
+          '#verifyOtpDiv button.m-login__btn',
+          'button[onclick*="verifyOtp"]',
+          '#verifyOtpDiv button:has-text("Continue")',
+          'button:has-text("Verify"):visible',
+          'button:has-text("Submit"):visible',
+          'button:has-text("Continue"):visible',
+          'button:has-text("Confirm"):visible',
+          'button:has-text("Login"):visible',
+          '[type="submit"]:visible',
         ];
         let clicked: string | null = null;
         for (const s of submitSelectors) {
           const loc = page.locator(s).first();
           if ((await loc.count().catch(() => 0)) === 0) continue;
+          if (!(await loc.isVisible().catch(() => false))) continue;
           try {
-            await loc.click({ timeout: 2_000 });
+            await loc.click({ timeout: 3_000, force: true });
             clicked = s;
             break;
           } catch {
             /* next */
           }
+        }
+        if (!clicked) {
+          // MagicBricks wires Enter → verifyOtp(); also call it directly.
+          await page.keyboard.press('Enter').catch(() => undefined);
+          const invoked = await page
+            .evaluate(() => {
+              const fn = (window as unknown as { verifyOtp?: () => void }).verifyOtp;
+              if (typeof fn === 'function') {
+                fn();
+                return 'verifyOtp()';
+              }
+              return null;
+            })
+            .catch(() => null);
+          if (invoked) clicked = invoked;
+          else clicked = 'Enter';
         }
         return {
           ok: true,
