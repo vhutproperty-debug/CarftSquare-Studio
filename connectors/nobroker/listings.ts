@@ -222,20 +222,67 @@ export async function extractNobrokerListingsFromPage(
 
   if (bag.length) return mapBag(bag, portal, limit);
 
-  // In-page fetch using whatever query the SPA already resolved (incl. searchParam).
+  // Build searchParam via autosuggest (locality slug alone often yields empty filter).
   const fetched = await page
     .evaluate(async () => {
       const loc = window.location;
       const path = loc.pathname || '';
       const mode = /\/property\/sale\//i.test(path) ? 'SALE' : 'RENT';
       const parts = path.split('/').filter(Boolean);
-      const city = parts[2] || 'mumbai';
+      const city = (parts[2] || 'mumbai').toLowerCase();
+      const localityRaw = decodeURIComponent((parts[3] || '').replace(/_/g, ' ')).trim();
       const params = new URLSearchParams(loc.search);
+
+      let searchParam = params.get('searchParam') || '';
+      if (!searchParam && localityRaw) {
+        const suggestUrls = [
+          `${loc.origin}/api/v1/localities/autosuggest?key=${encodeURIComponent(localityRaw)}&city=${encodeURIComponent(city)}`,
+          `${loc.origin}/api/v1/localities/autocomplete?key=${encodeURIComponent(localityRaw)}&city=${encodeURIComponent(city)}`,
+          `${loc.origin}/api/v2/localities/autosuggest?showMap=false&term=${encodeURIComponent(localityRaw)}&city=${encodeURIComponent(city)}`,
+        ];
+        for (const su of suggestUrls) {
+          try {
+            const sr = await fetch(su, {
+              credentials: 'include',
+              headers: { Accept: 'application/json' },
+            });
+            if (!sr.ok) continue;
+            const sj = await sr.json();
+            const list = Array.isArray(sj)
+              ? sj
+              : Array.isArray(sj?.data)
+                ? sj.data
+                : Array.isArray(sj?.predictions)
+                  ? sj.predictions
+                  : Array.isArray(sj?.localities)
+                    ? sj.localities
+                    : [];
+            const hit = list.find((x: any) => x && (x.placeId || x.place_id || x.id));
+            if (!hit) continue;
+            const place = {
+              lat: hit.lat || hit.latitude || hit.geometry?.location?.lat,
+              lon: hit.lon || hit.lng || hit.longitude || hit.geometry?.location?.lng,
+              placeId: hit.placeId || hit.place_id || hit.id,
+              placeName: hit.placeName || hit.name || hit.description || localityRaw,
+              showMap: false,
+            };
+            if (place.lat != null && place.lon != null && place.placeId) {
+              searchParam = btoa(unescape(encodeURIComponent(JSON.stringify([place]))));
+              break;
+            }
+          } catch {
+            /* try next suggest URL */
+          }
+        }
+      }
+
+      if (searchParam) params.set('searchParam', searchParam);
       params.set('pageNo', '1');
       params.set('city', params.get('city') || city);
       if (!params.has('orderBy')) params.set('orderBy', 'nbRank,desc');
       if (!params.has('sharedAccomodation')) params.set('sharedAccomodation', '0');
       if (!params.has('radius')) params.set('radius', '2');
+
       const api = `${loc.origin}/api/v3/multi/property/${mode}/filter?${params.toString()}`;
       const res = await fetch(api, {
         credentials: 'include',
@@ -246,9 +293,15 @@ export async function extractNobrokerListingsFromPage(
       try {
         data = JSON.parse(text);
       } catch {
-        data = { raw: text.slice(0, 300) };
+        data = { raw: text.slice(0, 400) };
       }
-      return { ok: res.ok, status: res.status, api, data };
+      return {
+        ok: res.ok,
+        status: res.status,
+        api: api.slice(0, 240),
+        hasSearchParam: Boolean(searchParam),
+        data,
+      };
     })
     .catch(() => null);
 
