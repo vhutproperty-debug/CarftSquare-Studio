@@ -35,8 +35,25 @@ export function buildPortalSearchUrl(portal: string, criteria: ResearchPlanCrite
       return txn === 'buy'
         ? `https://www.99acres.com/search/property/buy/${city}?keyword=${q}${bhk ? `&bedroom_num=${bhk}` : ''}`
         : `https://www.99acres.com/search/property/rent/${city}?keyword=${q}${bhk ? `&bedroom_num=${bhk}` : ''}`;
-    case 'nobroker':
-      return `https://www.nobroker.in/${txn}/${city}?searchParam=${q}${bhk ? `&type=${bhk}bhk` : ''}`;
+    case 'nobroker': {
+      // Canonical SERP: /property/{rent|sale}/{city}/{Locality_Name}?type=BHK2
+      const txnPath = txn === 'buy' ? 'sale' : 'rent';
+      const localitySlug =
+        slugifyProject(criteria.locality || criteria.project || '') || city;
+      // NoBroker locality slugs use underscores in many SERPs (Andheri_West).
+      const locality = localitySlug.replace(/-/g, '_');
+      const params = new URLSearchParams();
+      if (bhk) params.set('type', `BHK${bhk}`);
+      params.set('sharedAccomodation', '0');
+      params.set('orderBy', 'nbRank,desc');
+      params.set('radius', '2');
+      if (criteria.minBudget != null || criteria.maxBudget != null) {
+        const min = criteria.minBudget != null ? String(criteria.minBudget) : '0';
+        const max = criteria.maxBudget != null ? String(criteria.maxBudget) : '10000000';
+        params.set('rent', `${min},${max}`);
+      }
+      return `https://www.nobroker.in/property/${txnPath}/${city}/${locality}?${params.toString()}`;
+    }
     case 'squareyards':
       return `https://www.squareyards.com/search?q=${q}&city=${encodeURIComponent(criteria.city || 'Mumbai')}&propertyType=Apartment&transaction=${txn === 'buy' ? 'Sale' : 'Rent'}`;
     default:

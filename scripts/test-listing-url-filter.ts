@@ -69,6 +69,12 @@ const CASES: Case[] = [
     expect: true,
     label: 'NB sale detail',
   },
+  {
+    portal: 'nobroker',
+    url: 'https://www.nobroker.in/flats-for-sale-in-andheri_west_mumbai',
+    expect: false,
+    label: 'NB flats-for-sale landing',
+  },
 
   // SquareYards — reject
   {

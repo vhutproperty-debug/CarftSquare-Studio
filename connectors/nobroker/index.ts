@@ -3,6 +3,7 @@ import { BasePortalConnector } from '@/connectors/common/base-connector';
 import { collectGenericListings } from '@/connectors/common/listing-parser';
 import type { LoginConfidenceSignal } from '@/connectors/common/login-confidence';
 import { buildPortalSearchUrl } from '@/connectors/common/search-url';
+import { extractNobrokerListingsFromPage } from '@/connectors/nobroker/listings';
 import { connectorLog } from '@/lib/research/browser/connector-log';
 import type { ConnectorSearchRequest, ResearchListing } from '@/lib/research/types';
 
@@ -101,10 +102,21 @@ export class NobrokerConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
+    const fromApi = await extractNobrokerListingsFromPage(page, portal).catch((error) => {
+      connectorLog(
+        this.key,
+        'nobroker_api_extract_failed',
+        { error: error instanceof Error ? error.message : String(error) },
+        'warn',
+      );
+      return [] as ResearchListing[];
+    });
+    if (fromApi.length) return fromApi;
+
     await page
       .waitForSelector(
         'a[href*="/property/rent/"], a[href*="/property/sale/"], a[href*="/property/buy/"]',
-        { timeout: 12_000 },
+        { timeout: 8_000 },
       )
       .catch(() => undefined);
     return collectGenericListings(page, portal);
