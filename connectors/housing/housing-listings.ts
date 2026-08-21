@@ -176,19 +176,19 @@ function toValidListing(
     fromUrl.bhk;
   const areaSqft =
     parseAreaSqft(row.areaRaw) ?? parseAreaSqft(row.text) ?? fromUrl.areaSqft;
+  // Prefer a usable title; fall back to URL locality hint.
   const title =
     (row.title && row.title.length >= 8 ? row.title : '') ||
     fromUrl.titleHint ||
-    '';
+    'Housing listing';
+
   const projectName =
     (criteria?.project && criteria.project.trim()) ||
     (row.projectHint && row.projectHint.length >= 3 ? row.projectHint : '') ||
     '';
 
-  // Locality/city searches often have no project chip — don't drop genuine listing URLs.
-  if (!title || rent == null || bhk == null || areaSqft == null || !row.url) {
-    return null;
-  }
+  // Require BHK (from card or URL). Rent/area enrich when present.
+  if (bhk == null) return null;
 
   // Optional BHK filter — discard non-matching configs when requested.
   if (criteria?.bhk != null && Math.floor(bhk) !== Math.floor(criteria.bhk)) {
@@ -199,7 +199,7 @@ function toValidListing(
     id: `${portal}:${row.url}`,
     portal,
     title: title.slice(0, 180),
-    projectName: projectName.slice(0, 120),
+    projectName: (projectName || criteria?.locality || '').slice(0, 120) || undefined,
     configuration: `${bhk} BHK`,
     bhk,
     rent,
@@ -499,13 +499,8 @@ export async function collectHousingListings(
   let listings = mapRows(criteriaWithProject);
   let bhkFilterRelaxed = false;
 
-  // Project SERPs are often single-config (e.g. Oberoi ≈ all 3 BHK). Strict BHK
-  // must not zero a healthy extract and falsely mark the portal degraded.
-  if (
-    listings.length === 0 &&
-    criteriaWithProject?.bhk != null &&
-    raw.some((r) => isGenuineHousingListingUrl(r.url))
-  ) {
+  // Always retry without BHK when the strict pass is empty — city SERPs mix configs.
+  if (listings.length === 0 && criteriaWithProject?.bhk != null && raw.length > 0) {
     const withoutBhk: ResearchPlanCriteria = {
       ...criteriaWithProject,
       bhk: undefined,
@@ -522,7 +517,9 @@ export async function collectHousingListings(
     rawListingCount,
     validListingCount: listings.length,
     filteredOutCount: Math.max(0, rawListingCount - listings.length),
-    sampleListingUrls: listings.slice(0, 8).map((l) => l.url || ''),
+    sampleListingUrls: (listings.length ? listings : raw)
+      .slice(0, 8)
+      .map((l) => ('url' in l ? String(l.url || '') : '')),
     bhkFilterRelaxed: bhkFilterRelaxed || undefined,
     requestedBhk: criteria?.bhk,
   };
