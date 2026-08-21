@@ -185,7 +185,8 @@ function toValidListing(
     (row.projectHint && row.projectHint.length >= 3 ? row.projectHint : '') ||
     '';
 
-  if (!title || !projectName || rent == null || bhk == null || areaSqft == null || !row.url) {
+  // Locality/city searches often have no project chip — don't drop genuine listing URLs.
+  if (!title || rent == null || bhk == null || areaSqft == null || !row.url) {
     return null;
   }
 
