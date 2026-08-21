@@ -12,6 +12,10 @@ import type { ResearchListing } from '@/lib/research/types';
 
 type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function walkUrls(node: Json, out: string[]) {
   if (node == null) return;
   if (typeof node === 'string') {
@@ -66,13 +70,23 @@ export async function extractSquareyardsListingsFromPage(
 
   page.on('response', onResponse);
   try {
+    const waitJson = page
+      .waitForResponse(
+        (res) =>
+          /squareyards\.com/i.test(res.url()) &&
+          (res.headers()['content-type'] || '').includes('json') &&
+          res.ok(),
+        { timeout: 30_000 },
+      )
+      .catch(() => null);
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => undefined);
-    await page.waitForTimeout(4_000);
+    await waitJson;
+    await delay(2_000);
     for (let i = 0; i < 4; i++) {
       await page.mouse.wheel(0, 1600);
-      await page.waitForTimeout(800);
+      await delay(800);
     }
-    await page.waitForTimeout(1_500);
+    await delay(1_500);
   } finally {
     page.off('response', onResponse);
   }

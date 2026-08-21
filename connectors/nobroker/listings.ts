@@ -14,6 +14,10 @@ import type { ResearchListing } from '@/lib/research/types';
 
 type NobrokerProperty = Record<string, unknown>;
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : '';
 }
@@ -59,7 +63,7 @@ function pickDetailUrl(prop: NobrokerProperty, mode: 'rent' | 'sale'): string {
   return `https://www.nobroker.in/property/${mode}/${city}/${locality}/${pathBuilding}/${id}`;
 }
 
-function propertiesFromPayload(payload: unknown): NobrokerProperty[] {
+export function propertiesFromPayload(payload: unknown): NobrokerProperty[] {
   if (!payload || typeof payload !== 'object') return [];
   const root = payload as Record<string, unknown>;
   const candidates = [root.data, root.properties, root.propertyList, root.list, root];
@@ -117,15 +121,25 @@ export function mapNobrokerProperty(
 }
 
 async function readFilterResponse(res: Response): Promise<NobrokerProperty[]> {
-  if (!/\/api\/v3\/multi\/property\/(?:RENT|SALE)\/filter/i.test(res.url())) return [];
+  // Ignore /filter/nearby empty shells; prefer primary filter.
+  if (!/\/api\/v3\/multi\/property\/(?:RENT|SALE)\/filter(?:\?|$)/i.test(res.url())) return [];
+  if (/\/filter\/nearby/i.test(res.url())) return [];
   if (!res.ok()) return [];
   const json = await res.json().catch(() => null);
   return propertiesFromPayload(json);
 }
 
+function mapBag(props: NobrokerProperty[], portal: string, limit: number): ResearchListing[] {
+  return filterGenuineListingUrls(
+    portal,
+    props
+      .map((p) => mapNobrokerProperty(p, portal))
+      .filter((x): x is ResearchListing => Boolean(x)),
+  ).slice(0, limit);
+}
+
 /**
- * Reload SERP with a response listener so filter API payloads are captured,
- * then map properties to genuine detail URLs.
+ * Capture filter API payloads (reload with listener) and map to detail URLs.
  */
 export async function extractNobrokerListingsFromPage(
   page: Page,
@@ -135,72 +149,87 @@ export async function extractNobrokerListingsFromPage(
   const bag: NobrokerProperty[] = [];
   const seenIds = new Set<string>();
 
+  const ingest = (props: NobrokerProperty[]) => {
+    for (const p of props) {
+      const id = asString(p.id || p.propertyId || p.nbId) || JSON.stringify(p).slice(0, 80);
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      bag.push(p);
+    }
+  };
+
   const onResponse = async (res: Response) => {
     try {
-      const props = await readFilterResponse(res);
-      for (const p of props) {
-        const id = asString(p.id || p.propertyId || p.nbId) || JSON.stringify(p).slice(0, 80);
-        if (seenIds.has(id)) continue;
-        seenIds.add(id);
-        bag.push(p);
-      }
+      ingest(await readFilterResponse(res));
     } catch {
-      /* ignore parse errors */
+      /* ignore */
     }
   };
 
   page.on('response', onResponse);
   try {
-    // Listener is attached after the first goto in BaseConnector — reload to refill.
+    const waitNonEmpty = page
+      .waitForResponse(
+        async (res) => {
+          try {
+            const props = await readFilterResponse(res);
+            return props.length > 0;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: 45_000 },
+      )
+      .catch(() => null);
+
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => undefined);
-    await page.waitForTimeout(4_000);
-    for (let i = 0; i < 4; i++) {
-      await page.mouse.wheel(0, 1600);
-      await page.waitForTimeout(800);
+    await waitNonEmpty;
+    await delay(2_000);
+    for (let i = 0; i < 5; i++) {
+      await page.mouse.wheel(0, 1800);
+      await delay(900);
+      if (bag.length >= limit) break;
     }
-    // One more soft wait for late filter pages.
-    await page.waitForTimeout(1_500);
+    await delay(1_500);
   } finally {
     page.off('response', onResponse);
   }
 
-  const mapped = bag
-    .map((p) => mapNobrokerProperty(p, portal))
-    .filter((x): x is ResearchListing => Boolean(x));
+  if (bag.length) return mapBag(bag, portal, limit);
 
-  const genuine = filterGenuineListingUrls(portal, mapped).slice(0, limit);
-  if (genuine.length) return genuine;
-
-  // Last resort: in-page fetch of the same filter the SPA uses (cookies included).
+  // In-page fetch using whatever query the SPA already resolved (incl. searchParam).
   const fetched = await page
     .evaluate(async () => {
       const loc = window.location;
       const path = loc.pathname || '';
       const mode = /\/property\/sale\//i.test(path) ? 'SALE' : 'RENT';
       const parts = path.split('/').filter(Boolean);
-      // /property/rent/mumbai/Andheri_West
       const city = parts[2] || 'mumbai';
       const params = new URLSearchParams(loc.search);
-      params.set('pageNo', params.get('pageNo') || '1');
+      params.set('pageNo', '1');
       params.set('city', params.get('city') || city);
       if (!params.has('orderBy')) params.set('orderBy', 'nbRank,desc');
       if (!params.has('sharedAccomodation')) params.set('sharedAccomodation', '0');
       if (!params.has('radius')) params.set('radius', '2');
       const api = `${loc.origin}/api/v3/multi/property/${mode}/filter?${params.toString()}`;
-      const res = await fetch(api, { credentials: 'include', headers: { Accept: 'application/json' } });
-      if (!res.ok) return { ok: false, status: res.status, data: null as unknown };
-      return { ok: true, status: res.status, data: await res.json() };
+      const res = await fetch(api, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      const text = await res.text();
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text.slice(0, 300) };
+      }
+      return { ok: res.ok, status: res.status, api, data };
     })
     .catch(() => null);
 
-  if (fetched?.ok) {
+  if (fetched?.data) {
     const props = propertiesFromPayload(fetched.data);
-    return filterGenuineListingUrls(
-      portal,
-      props
-        .map((p) => mapNobrokerProperty(p, portal))
-        .filter((x): x is ResearchListing => Boolean(x)),
-    ).slice(0, limit);
+    if (props.length) return mapBag(props, portal, limit);
   }
 
   return [];
