@@ -358,6 +358,7 @@ export abstract class BasePortalConnector implements PortalConnector {
           }
         } else if (this.key === 'nobroker' || this.key === 'squareyards') {
           // Wait longer — listing cards hydrate from XHR after first paint.
+          // Do not read response bodies here (single-consume); extractors own that.
           await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
           await page
             .waitForResponse(

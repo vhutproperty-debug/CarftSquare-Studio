@@ -125,8 +125,14 @@ async function readFilterResponse(res: Response): Promise<NobrokerProperty[]> {
   if (!/\/api\/v3\/multi\/property\/(?:RENT|SALE)\/filter(?:\?|$)/i.test(res.url())) return [];
   if (/\/filter\/nearby/i.test(res.url())) return [];
   if (!res.ok()) return [];
-  const json = await res.json().catch(() => null);
-  return propertiesFromPayload(json);
+  // Prefer text→JSON so a failed parse doesn't wedge the body stream oddly.
+  const text = await res.text().catch(() => '');
+  if (!text) return [];
+  try {
+    return propertiesFromPayload(JSON.parse(text));
+  } catch {
+    return [];
+  }
 }
 
 function mapBag(props: NobrokerProperty[], portal: string, limit: number): ResearchListing[] {
@@ -168,29 +174,48 @@ export async function extractNobrokerListingsFromPage(
 
   page.on('response', onResponse);
   try {
-    const waitNonEmpty = page
-      .waitForResponse(
-        async (res) => {
-          try {
-            const props = await readFilterResponse(res);
-            return props.length > 0;
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 45_000 },
-      )
-      .catch(() => null);
+    // Prefer capturing from the current page first (BaseConnector already navigated).
+    // Avoid reload+double body reads; recover the filter URL from performance entries.
+    for (let i = 0; i < 30 && bag.length === 0; i++) {
+      await delay(500);
+    }
 
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => undefined);
-    await waitNonEmpty;
-    await delay(2_000);
+    if (bag.length === 0) {
+      const filterUrls = await page
+        .evaluate(() =>
+          performance
+            .getEntriesByType('resource')
+            .map((e) => String((e as PerformanceResourceTiming).name || ''))
+            .filter((n) => /\/api\/v3\/multi\/property\/(?:RENT|SALE)\/filter\?/i.test(n))
+            .filter((n) => !/\/filter\/nearby/i.test(n)),
+        )
+        .catch(() => [] as string[]);
+
+      for (const api of filterUrls.slice(0, 3)) {
+        const fetched = await page
+          .evaluate(async (apiUrl) => {
+            const res = await fetch(apiUrl, {
+              credentials: 'include',
+              headers: { Accept: 'application/json' },
+            });
+            const text = await res.text();
+            try {
+              return { ok: res.ok, status: res.status, data: JSON.parse(text) };
+            } catch {
+              return { ok: res.ok, status: res.status, data: null };
+            }
+          }, api)
+          .catch(() => null);
+        if (fetched?.data) ingest(propertiesFromPayload(fetched.data));
+        if (bag.length) break;
+      }
+    }
+
     for (let i = 0; i < 5; i++) {
       await page.mouse.wheel(0, 1800);
       await delay(900);
       if (bag.length >= limit) break;
     }
-    await delay(1_500);
   } finally {
     page.off('response', onResponse);
   }
