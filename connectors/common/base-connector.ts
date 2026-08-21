@@ -356,6 +356,20 @@ export abstract class BasePortalConnector implements PortalConnector {
               `MagicBricks search Access Denied after settle url=${page.url()}`,
             );
           }
+        } else if (this.key === 'nobroker' || this.key === 'squareyards') {
+          // Wait longer — listing cards hydrate from XHR after first paint.
+          await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+          await page
+            .waitForResponse(
+              (res) =>
+                res.ok() &&
+                (/\/api\/v3\/multi\/property\/(?:RENT|SALE)\/filter(?:\?|$)/i.test(res.url()) ||
+                  (/squareyards\.com/i.test(res.url()) &&
+                    (res.headers()['content-type'] || '').includes('json'))),
+              { timeout: 35_000 },
+            )
+            .catch(() => undefined);
+          await new Promise((r) => setTimeout(r, 2_000));
         } else {
           await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
           await page
