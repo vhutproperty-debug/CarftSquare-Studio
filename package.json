@@ -24,7 +24,9 @@
         "test:connect-login-fix": "npx tsx scripts/validate-connect-login-fix.ts",
         "test:connect-login-nb-sy": "npx tsx scripts/validate-nobroker-squareyards-login.ts",
         "test:connect-smoke-prod": "npx tsx scripts/smoke-connect-production.ts",
-        "test:research-smoke-prod": "npx tsx scripts/smoke-research-production.ts"
+        "test:research-smoke-prod": "npx tsx scripts/smoke-research-production.ts",
+        "test:listing-urls": "npx tsx scripts/test-listing-url-filter.ts",
+        "test:listing-urls:prod": "npx tsx scripts/smoke-listing-urls-prod.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

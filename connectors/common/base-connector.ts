@@ -6,6 +6,7 @@ import type {
   LoginConfidenceSignal,
 } from '@/connectors/common/login-confidence';
 import type { PortalConnector } from '@/connectors/common/portal-connector';
+import { filterGenuineListingUrls } from '@/connectors/common/listing-url';
 import { connectorLog } from '@/lib/research/browser/connector-log';
 import { researchBrowserManager } from '@/lib/research/browser/browser-manager';
 import { getPortalMeta, RESEARCH_BROWSER_CONFIG } from '@/lib/research/browser/config';
@@ -30,9 +31,20 @@ import type {
   ResearchPortalConnection,
 } from '@/lib/research/types';
 
-/** Prefer listing anchors over waiting for analytics-driven networkidle. */
-const LISTING_READY_SELECTOR =
-  'a[href*="property"], a[href*="/rent"], a[href*="/buy"], a[href*="flat"], a[href*="apartment"], a[href*="resale"]';
+/** Prefer listing-detail anchors over waiting for analytics-driven networkidle. */
+const LISTING_READY_SELECTOR = [
+  'a[href*="/property/rent/"]',
+  'a[href*="/property/sale/"]',
+  'a[href*="propertyDetails"]',
+  'a[href*="-ppid-"]',
+  'a[href*="-spid-"]',
+  'a[href*="-sqft-"][href*="-bhk-"]',
+  'a[href*="/rent/"]',
+  'a[href*="/sale/property/"]',
+  'a[href*="property"]',
+  'a[href*="/rent"]',
+  'a[href*="/buy"]',
+].join(', ');
 
 /**
  * Production BaseConnector — owns browser/session lifecycle via BrowserManager + ConnectorRuntime.
@@ -352,10 +364,15 @@ export abstract class BasePortalConnector implements PortalConnector {
         }
         researchPerfLog('search_navigation', tNav, { portal: this.key });
         const tExtract = researchPerfNow();
-        const listings = await this.parseListingsFromPage(page, this.key);
+        const rawListings = await this.parseListingsFromPage(page, this.key);
+        // Defense in depth: never return nav/marketing/city-landing URLs to Prop AI.
+        const listings = filterGenuineListingUrls(this.key, rawListings).filter((row) =>
+          Boolean(row.url),
+        );
         researchPerfLog('result_extraction', tExtract, {
           portal: this.key,
           count: listings.length,
+          rawCount: rawListings.length,
         });
         return listings;
       },

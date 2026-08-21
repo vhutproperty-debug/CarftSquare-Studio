@@ -101,6 +101,12 @@ export class NobrokerConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
+    await page
+      .waitForSelector(
+        'a[href*="/property/rent/"], a[href*="/property/sale/"], a[href*="/property/buy/"]',
+        { timeout: 12_000 },
+      )
+      .catch(() => undefined);
     return collectGenericListings(page, portal);
   }
 }

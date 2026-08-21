@@ -7,6 +7,7 @@ import {
   parseBhk,
   parseMoney,
 } from '@/connectors/common/listing-parser';
+import { filterGenuineListingUrls } from '@/connectors/common/listing-url';
 import type { LoginConfidenceSignal } from '@/connectors/common/login-confidence';
 import { buildPortalSearchUrl } from '@/connectors/common/search-url';
 import type { ConnectorSearchRequest, ResearchListing } from '@/lib/research/types';
@@ -76,7 +77,7 @@ export class MagicbricksConnector extends BasePortalConnector {
         return nodes.map((el) => {
           const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
           const linkEl = el.querySelector(
-            'a[href*="property"], a[href*="Property"], a[href]',
+            'a[href*="propertyDetails"], a[href*="-ppid-"], a[href*="property"], a[href*="Property"]',
           ) as HTMLAnchorElement | null;
           const titleEl = el.querySelector(
             'h2, h3, .mb-srp__card--title, [class*="title"]',
@@ -113,22 +114,26 @@ export class MagicbricksConnector extends BasePortalConnector {
     }
 
     if (cards.length >= 3) {
-      return cards.map((row) => {
-        const price = parseMoney(row.price) ?? parseMoney(row.text);
-        const bhk = parseBhk(row.title) ?? parseBhk(row.text);
-        return {
-          id: `${portal}:${row.link || uuidv4()}`,
-          portal,
-          title: row.title || 'Listing',
-          configuration: bhk != null ? `${bhk} BHK` : undefined,
-          bhk,
-          rent: price,
-          salePrice: price,
-          url: row.link || undefined,
-          rawText: row.text.slice(0, 500),
-          listedBy: detectListedBy(row.text),
-        } satisfies ResearchListing;
-      });
+      const mapped = cards
+        .filter((row) => Boolean(row.link))
+        .map((row) => {
+          const price = parseMoney(row.price) ?? parseMoney(row.text);
+          const bhk = parseBhk(row.title) ?? parseBhk(row.text);
+          return {
+            id: `${portal}:${row.link || uuidv4()}`,
+            portal,
+            title: row.title || 'Listing',
+            configuration: bhk != null ? `${bhk} BHK` : undefined,
+            bhk,
+            rent: price,
+            salePrice: price,
+            url: row.link || undefined,
+            rawText: row.text.slice(0, 500),
+            listedBy: detectListedBy(row.text),
+          } satisfies ResearchListing;
+        });
+      const genuine = filterGenuineListingUrls(portal, mapped);
+      if (genuine.length > 0) return genuine;
     }
 
     return collectGenericListings(page, portal).catch(() => [] as ResearchListing[]);

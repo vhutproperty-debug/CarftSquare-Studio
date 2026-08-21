@@ -38,6 +38,12 @@ export class SquareyardsConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
+    await page
+      .waitForSelector(
+        'a[href*="/rent/"][href*="-"], a[href*="/sale/property/"], a[href*="/properties/"]',
+        { timeout: 12_000 },
+      )
+      .catch(() => undefined);
     return collectGenericListings(page, portal);
   }
 }

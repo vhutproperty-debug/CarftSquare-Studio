@@ -1,5 +1,10 @@
 ﻿import type { Page } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  filterGenuineListingUrls,
+  isGenuineListingUrl,
+  localityFromNobrokerUrl,
+} from '@/connectors/common/listing-url';
 import type { ResearchListing } from '@/lib/research/types';
 
 export type ListedByKind = 'owner' | 'broker' | 'builder' | 'unknown';
@@ -71,16 +76,40 @@ export function detectListedBy(raw?: string | null): ListedByKind {
 /**
  * Portal-agnostic listing harvest from the current search results page.
  * Prefer portal-specific parsers when selectors are stable; this is the fallback.
+ *
+ * Always filters through {@link isGenuineListingUrl} so nav/marketing/city-landing
+ * anchors are never returned as listings (Prop AI contract).
  */
 export async function collectGenericListings(
   page: Page,
   portal: string,
   limit = 40,
 ): Promise<ResearchListing[]> {
+  // Over-collect then filter — nav chrome often matches the loose href substring.
+  const harvestLimit = Math.max(limit * 4, 80);
   const rows = await page.evaluate((max) => {
     const anchors = Array.from(
       document.querySelectorAll<HTMLAnchorElement>(
-        'a[href*="property"], a[href*="/rent"], a[href*="/buy"], a[href*="flat"], a[href*="apartment"], a[href*="resale"]',
+        [
+          'a[href*="/property/rent/"]',
+          'a[href*="/property/sale/"]',
+          'a[href*="propertyDetails"]',
+          'a[href*="-ppid-"]',
+          'a[href*="-spid-"]',
+          'a[href*="-npsid-"]',
+          'a[href*="-pdetails"]',
+          'a[href*="-sqft-"][href*="-bhk-"]',
+          'a[href*="-pid-"]',
+          'a[href*="/rent/"]',
+          'a[href*="/sale/property/"]',
+          'a[href*="/properties/"]',
+          'a[href*="property"]',
+          'a[href*="/rent"]',
+          'a[href*="/buy"]',
+          'a[href*="flat"]',
+          'a[href*="apartment"]',
+          'a[href*="resale"]',
+        ].join(', '),
       ),
     );
     const seen = new Set<string>();
@@ -91,29 +120,33 @@ export async function collectGenericListings(
     }> = [];
 
     for (const a of anchors) {
-      const href = a.href || '';
+      const href = (a.href || '').split('#')[0];
       if (!href || href.startsWith('javascript:') || seen.has(href)) continue;
       const title = (a.getAttribute('title') || a.innerText || '').replace(/\s+/g, ' ').trim();
       if (title.length < 8) continue;
       const card =
-        a.closest('article, li, [class*="card"], [class*="Card"], [class*="tuple"], [data-id]')
-        || a.parentElement;
+        a.closest(
+          'article, li, [class*="card"], [class*="Card"], [class*="tuple"], [class*="nbp"], [data-id], [id*="property"]',
+        ) || a.parentElement;
       const text = (card?.textContent || title).replace(/\s+/g, ' ').trim().slice(0, 500);
       seen.add(href);
       out.push({ title: title.slice(0, 180), url: href, text });
       if (out.length >= max) break;
     }
     return out;
-  }, limit);
+  }, harvestLimit);
 
-  return rows.map((row) => {
+  const mapped = rows.map((row) => {
     const rent = parseMoney(row.text.match(/(?:₹|rs\.?)\s*[\d,.]+(?:\s*(?:k|lakh|lac|l))?/i)?.[0]);
     const bhk = parseBhk(row.text);
     const listedBy = detectListedBy(row.text);
+    const locality =
+      portal === 'nobroker' ? localityFromNobrokerUrl(row.url) : undefined;
     return {
       id: `${portal}:${row.url || uuidv4()}`,
       portal,
       title: row.title,
+      locality,
       configuration: bhk != null ? `${bhk} BHK` : undefined,
       bhk,
       rent,
@@ -122,6 +155,10 @@ export async function collectGenericListings(
       listedBy,
     } satisfies ResearchListing;
   });
+
+  return filterGenuineListingUrls(portal, mapped)
+    .filter((row) => isGenuineListingUrl(portal, row.url))
+    .slice(0, limit);
 }
 
 export function slugifyProject(value?: string): string {

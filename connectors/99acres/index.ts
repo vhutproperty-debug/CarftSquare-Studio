@@ -38,6 +38,11 @@ export class NinetyNineAcresConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
+    await page
+      .waitForSelector('a[href*="-spid-"], a[href*="-npsid-"], a[href*="-pdetails"]', {
+        timeout: 12_000,
+      })
+      .catch(() => undefined);
     return collectGenericListings(page, portal);
   }
 }
