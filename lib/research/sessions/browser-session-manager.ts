@@ -133,13 +133,25 @@ export class BrowserSessionManager implements SessionManager {
     });
 
     if (session.expiresAt && new Date(session.expiresAt).getTime() < Date.now()) {
-      const message = 'Stored session TTL expired — mark needs_login';
-      connectorLog(portal, 'validation_response', { kind: 'expired', message }, 'warn');
-      await touchBrowserSession(sessionId, {
-        sessionStatus: 'needs_login',
-        lastValidationError: message,
-      });
-      return { ok: false, status: 'needs_login', message, responseKind: 'other' };
+      // Soft TTL: if we still have encrypted cookies/storage, attempt a live
+      // browser validation instead of hard-failing. Cookie sessions often outlive
+      // the stored expiresAt clock. Only mark needs_login when there is nothing
+      // to validate with.
+      if (!session.encryptedCookies && !session.encryptedStorage) {
+        const message = 'Stored session TTL expired — mark needs_login';
+        connectorLog(portal, 'validation_response', { kind: 'expired', message }, 'warn');
+        await touchBrowserSession(sessionId, {
+          sessionStatus: 'needs_login',
+          lastValidationError: message,
+        });
+        return { ok: false, status: 'needs_login', message, responseKind: 'other' };
+      }
+      connectorLog(
+        portal,
+        'validation_ttl_expired_retry_live',
+        { expiresAt: session.expiresAt },
+        'warn',
+      );
     }
 
     if (!meta) {
@@ -491,6 +503,7 @@ export class BrowserSessionManager implements SessionManager {
       sessionStatus: 'valid',
       lastVerified: new Date().toISOString(),
       lastValidationError: '',
+      expiresAt: new Date(Date.now() + RESEARCH_BROWSER_CONFIG.sessionTtlMs).toISOString(),
     });
     researchPerfLog('session_validation', t0, {
       portal,
