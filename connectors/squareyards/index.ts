@@ -3,6 +3,8 @@ import { BasePortalConnector } from '@/connectors/common/base-connector';
 import { collectGenericListings } from '@/connectors/common/listing-parser';
 import type { LoginConfidenceSignal } from '@/connectors/common/login-confidence';
 import { buildPortalSearchUrl } from '@/connectors/common/search-url';
+import { extractSquareyardsListingsFromPage } from '@/connectors/squareyards/listings';
+import { connectorLog } from '@/lib/research/browser/connector-log';
 import type { ConnectorSearchRequest, ResearchListing } from '@/lib/research/types';
 
 export class SquareyardsConnector extends BasePortalConnector {
@@ -38,10 +40,21 @@ export class SquareyardsConnector extends BasePortalConnector {
   }
 
   protected async parseListingsFromPage(page: Page, portal: string): Promise<ResearchListing[]> {
+    const fromApi = await extractSquareyardsListingsFromPage(page, portal).catch((error) => {
+      connectorLog(
+        this.key,
+        'squareyards_api_extract_failed',
+        { error: error instanceof Error ? error.message : String(error) },
+        'warn',
+      );
+      return [] as ResearchListing[];
+    });
+    if (fromApi.length) return fromApi;
+
     await page
       .waitForSelector(
         'a[href*="/rent/"][href*="-"], a[href*="/sale/property/"], a[href*="/properties/"]',
-        { timeout: 12_000 },
+        { timeout: 8_000 },
       )
       .catch(() => undefined);
     return collectGenericListings(page, portal);
