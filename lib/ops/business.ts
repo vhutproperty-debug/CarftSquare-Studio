@@ -124,7 +124,7 @@ export const DEMAND_CHANNELS = [
   { id: 'magicbricks', label: 'MagicBricks', live: false },
   { id: 'meta_ads', label: 'Meta Ads', live: false },
   { id: 'google_ads', label: 'Google Ads', live: false },
-  { id: 'whatsapp', label: 'WhatsApp', live: false },
+  { id: 'whatsapp', label: 'WhatsApp', live: true },
   { id: 'referrals', label: 'Referrals', live: false },
   { id: 'manual_entry', label: 'Manual Entry', live: false },
   { id: 'csv_api_imports', label: 'CSV / API Imports', live: false },
@@ -151,7 +151,7 @@ export type OpsNavItem = {
   pillar?: OpsPillarId;
   pipelineStage?: PipelineStageId;
   status: 'active' | 'coming_soon';
-  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations' | 'brokers';
+  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations' | 'brokers' | 'whatsapp';
   exact?: boolean;
 };
 
@@ -178,6 +178,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'demand',
         status: 'active',
         icon: 'demand',
+      },
+      {
+        href: '/ops/whatsapp',
+        label: 'WhatsApp',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'whatsapp',
       },
       {
         href: '/ops/supply',

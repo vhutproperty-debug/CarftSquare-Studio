@@ -142,6 +142,54 @@ export async function updateConversationMatch(
   );
 }
 
+export async function clearConversationUnread(
+  db: Db,
+  conversationId: string,
+): Promise<void> {
+  await ensureInteraktConversationIndexes(db);
+  await db.collection(INTERAKT_CONVERSATIONS_COLLECTION).updateOne(
+    { id: conversationId },
+    {
+      $set: {
+        unreadCount: 0,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  );
+}
+
+export async function setConversationManualLink(
+  db: Db,
+  conversationId: string,
+  primaryLink: InteraktLinkCandidate,
+  candidateLinks?: InteraktLinkCandidate[],
+): Promise<InteraktConversation | null> {
+  await ensureInteraktConversationIndexes(db);
+  const existing = await getConversationById(db, conversationId);
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  const candidates = candidateLinks && candidateLinks.length
+    ? candidateLinks
+    : existing.candidateLinks.some((c) => c.entityId === primaryLink.entityId && c.entityType === primaryLink.entityType)
+      ? existing.candidateLinks
+      : [...existing.candidateLinks, primaryLink];
+
+  await db.collection(INTERAKT_CONVERSATIONS_COLLECTION).updateOne(
+    { id: conversationId },
+    {
+      $set: {
+        matchStatus: 'manually_linked',
+        primaryLink,
+        candidateLinks: candidates,
+        updatedAt: now,
+      },
+    },
+  );
+
+  return getConversationById(db, conversationId);
+}
+
 export async function touchConversationMessageMeta(
   db: Db,
   conversationId: string,

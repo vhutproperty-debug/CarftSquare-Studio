@@ -1,8 +1,19 @@
 import { createHash } from 'crypto';
 import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
 
+/** Legacy CraftSquare marketing WhatsApp — must never be the Interakt production line. */
+export const LEGACY_MARKETING_WA_NUMBER = '917304242604';
+
+/** Locked production Interakt business WhatsApp (E.164 digits). */
+export const INTERAKT_PRODUCTION_WA_NUMBER = '919867525258';
+
 export function getInteraktBusinessWaNumber(): string {
   const value = String(process.env.INTERAKT_BUSINESS_WA_NUMBER || '').replace(/\D/g, '');
+  if (value === LEGACY_MARKETING_WA_NUMBER) {
+    throw new Error(
+      'INTERAKT_BUSINESS_WA_NUMBER is set to the legacy marketing number. Use 919867525258.',
+    );
+  }
   return value;
 }
 

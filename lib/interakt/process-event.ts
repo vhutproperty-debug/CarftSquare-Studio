@@ -6,6 +6,7 @@ import {
   upsertConversationIdentity,
 } from '@/lib/interakt/conversation-store';
 import { upsertInteraktMessage } from '@/lib/interakt/message-store';
+import { runInboundMessageAutomations } from '@/lib/interakt/automation';
 import {
   getInteraktBusinessWaNumber,
   maskPhoneForLog,
@@ -178,7 +179,7 @@ async function processMessageReceived(
     || event.webhookTimestamp
     || event.receivedAt;
 
-  const { created } = await upsertInteraktMessage(db, {
+  const { created, message: savedMessage } = await upsertInteraktMessage(db, {
     conversationId: conversation.id,
     providerMessageId,
     providerCustomerId: event.providerCustomerId,
@@ -200,6 +201,23 @@ async function processMessageReceived(
     direction: 'inbound',
     incrementUnread: created,
   });
+
+  try {
+    await runInboundMessageAutomations(db, {
+      conversation,
+      message: savedMessage,
+      messageCreated: created,
+    });
+  } catch (autoError) {
+    console.error(
+      '[interakt] automation_failed',
+      JSON.stringify({
+        eventId: event.id,
+        conversationId: conversation.id,
+        error: autoError instanceof Error ? autoError.message : 'automation_failed',
+      }),
+    );
+  }
 
   console.info(
     '[interakt] inbound_processed',

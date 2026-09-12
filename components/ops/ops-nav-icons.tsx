@@ -5,6 +5,7 @@ import {
   Handshake,
   Inbox,
   LayoutDashboard,
+  MessageCircle,
   MessagesSquare,
   PhoneCall,
   Plug,
@@ -23,6 +24,7 @@ const ICONS = {
   intelligence: BarChart3,
   integrations: Plug,
   brokers: MessagesSquare,
+  whatsapp: MessageCircle,
 } as const;
 
 export function OpsNavIcon({ icon, className }: { icon: OpsNavItem['icon']; className?: string }) {

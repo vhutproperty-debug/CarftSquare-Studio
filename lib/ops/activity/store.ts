@@ -48,7 +48,10 @@ export type OpsActivityAction =
   | 'broker_project_alias_mutated'
   | 'view_broker_analytics'
   | 'view_broker_review_queue'
-  | 'view_broker_directory';
+  | 'view_broker_directory'
+  | 'view_whatsapp_inbox'
+  | 'send_whatsapp_template'
+  | 'link_whatsapp_conversation';
 
 export type OpsActivityLog = {
   id: string;
