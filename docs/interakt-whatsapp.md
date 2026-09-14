@@ -117,6 +117,8 @@ Recipients on `ops_wa_campaign_recipients` gain `deliveryState` (legacy `status`
 
 `/api/ops/followups/tick` also runs delivery retries, stuck-SUBMITTING reclaim, and campaign reconciliation.
 
+Vercel Hobby allows **at most one cron run per day**; Production uses `0 6 * * *` (06:00 UTC). For near-real-time retries, use Ops → Automation → **Process due now**, an external cron hitting the tick URL with `CRON_SECRET`, or upgrade Vercel to Pro for `*/5` schedules.
+
 ### Ops UI
 
 `/ops/campaigns` — delivery stats, recipient states, manual retry/cancel/reconcile.
