@@ -307,6 +307,29 @@ async function processOutboundStatus(
     incrementUnread: false,
   });
 
+  try {
+    const { applyOutboundStatusToDeliveryEngine } = await import(
+      '@/lib/interakt/delivery/webhook-bridge'
+    );
+    await applyOutboundStatusToDeliveryEngine(db, {
+      providerMessageId,
+      providerEventId: event.id,
+      interaktStatus: status,
+      callbackData: extractCallbackData(message),
+      channelErrorCode: message?.channel_error_code,
+      channelFailureReason: message?.channel_failure_reason,
+    });
+  } catch (deliveryError) {
+    console.error(
+      '[interakt] delivery_bridge_failed',
+      JSON.stringify({
+        eventId: event.id,
+        providerMessageId,
+        error: deliveryError instanceof Error ? deliveryError.message : 'bridge_failed',
+      }),
+    );
+  }
+
   console.info(
     '[interakt] status_processed',
     JSON.stringify({

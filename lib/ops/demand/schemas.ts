@@ -25,6 +25,8 @@ export const patchDemandRecordSchema = z.object({
   nextFollowUpAt: z.string().min(1).optional().or(z.literal('')),
   followUpCompleted: z.boolean().optional(),
   lostReason: z.string().trim().max(500).optional(),
+  /** When true/omitted with nextFollowUpAt, also enqueue WhatsApp template job if phone exists. */
+  scheduleWhatsApp: z.boolean().optional(),
 });
 
 export const demandQueueQuerySchema = z.object({

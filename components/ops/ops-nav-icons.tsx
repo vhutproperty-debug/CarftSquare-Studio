@@ -10,6 +10,8 @@ import {
   PhoneCall,
   Plug,
   TrendingUp,
+  Timer,
+  Megaphone,
 } from 'lucide-react';
 import type { OpsNavItem } from '@/lib/ops/business';
 
@@ -25,6 +27,8 @@ const ICONS = {
   integrations: Plug,
   brokers: MessagesSquare,
   whatsapp: MessageCircle,
+  automation: Timer,
+  campaigns: Megaphone,
 } as const;
 
 export function OpsNavIcon({ icon, className }: { icon: OpsNavItem['icon']; className?: string }) {

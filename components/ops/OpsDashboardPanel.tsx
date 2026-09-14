@@ -30,6 +30,12 @@ function formatReceivedAt(value: string) {
 export default function OpsDashboardPanel() {
   const [stats, setStats] = useState<OpsDashboardStats | null>(null);
   const [callMetrics, setCallMetrics] = useState<CallWorkspaceMetrics | null>(null);
+  const [waStatus, setWaStatus] = useState<{
+    businessWaNumber?: string | null;
+    businessWaMatchesProduction?: boolean;
+    apiKeyConfigured?: boolean;
+    webhookSecretConfigured?: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,18 +44,21 @@ export default function OpsDashboardPanel() {
       setLoading(true);
       setError('');
       try {
-        const [dashboardRes, metricsRes] = await Promise.all([
+        const [dashboardRes, metricsRes, waRes] = await Promise.all([
           fetch('/api/ops/dashboard', { credentials: 'include' }),
           fetch('/api/ops/calls/metrics', { credentials: 'include' }),
+          fetch('/api/ops/whatsapp/status', { credentials: 'include' }),
         ]);
         const dashboardData = await dashboardRes.json().catch(() => ({}));
         const metricsData = await metricsRes.json().catch(() => ({}));
+        const waData = await waRes.json().catch(() => ({}));
         if (!dashboardRes.ok) {
           setError(dashboardData.error || 'Unable to load dashboard.');
           return;
         }
         setStats(dashboardData.stats);
         setCallMetrics(metricsData.metrics || null);
+        setWaStatus(waData.status || null);
       } catch {
         setError('Unable to load dashboard.');
       } finally {
@@ -101,6 +110,43 @@ export default function OpsDashboardPanel() {
           actionLabel="Open Supply Workspace"
         />
       </div>
+
+      {waStatus && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">WhatsApp / Interakt</CardTitle>
+            <div className="flex gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/ops/whatsapp">Inbox</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/ops/automation">Automation</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/ops/campaigns">Campaigns</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-sm sm:grid-cols-4">
+            <div>
+              <p className="text-xs text-slate-500">Business WA</p>
+              <p className="font-medium">{waStatus.businessWaNumber || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Production lock</p>
+              <p className="font-medium">{waStatus.businessWaMatchesProduction ? 'OK' : 'Mismatch'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">API key</p>
+              <p className="font-medium">{waStatus.apiKeyConfigured ? 'Configured' : 'Missing'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Webhook secret</p>
+              <p className="font-medium">{waStatus.webhookSecretConfigured ? 'Configured' : 'Missing'}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible xl:grid-cols-7">
         <StatCard label="Total enquiries" value={stats.totalLeads} />

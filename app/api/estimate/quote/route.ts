@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { getProjectCategory } from '@/lib/estimate/consultant/categories';
 import { applyPricingDefaults, validateConsultationAnswers, isValidIndianPhone } from '@/lib/estimate/consultant';
 import { notifyEnquiryCreated } from '@/lib/estimate/integrations';
+import { registerEstimateWhatsAppHooks } from '@/lib/estimate/integrations/whatsapp-hooks';
 import { calculateLeadScore, extractTimeline } from '@/lib/estimate/lead-score';
+
+registerEstimateWhatsAppHooks();
+
 import { calculateQuotation } from '@/lib/estimate/pricing-engine';
 import { resolveActiveModule, resolvePropertyPurpose } from '@/lib/estimate/modules/registry';
 import { estimateLeadSchema } from '@/lib/estimate/schemas';

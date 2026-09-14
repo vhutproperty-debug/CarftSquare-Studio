@@ -14,6 +14,13 @@ type Metrics = {
 
 type FilterId = 'all' | 'unread' | 'unmatched' | 'ambiguous' | 'matched';
 
+type TemplateOption = {
+  name: string;
+  label: string;
+  languageCode: string;
+  bodyVariableCount: number;
+};
+
 function matchLabel(status: InteraktConversation['matchStatus']) {
   switch (status) {
     case 'matched':
@@ -38,9 +45,11 @@ export default function WhatsAppInbox() {
   const [messages, setMessages] = useState<InteraktMessage[]>([]);
   const [selected, setSelected] = useState<InteraktConversation | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [templateName, setTemplateName] = useState('');
   const [bodyValues, setBodyValues] = useState('');
   const [sendStatus, setSendStatus] = useState('');
+  const [followUpHours, setFollowUpHours] = useState('24');
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -67,6 +76,17 @@ export default function WhatsAppInbox() {
       setLoading(false);
     }
   }, [filter, search]);
+
+  useEffect(() => {
+    fetch('/api/ops/whatsapp/status', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.status?.templates || []) as TemplateOption[];
+        setTemplates(list);
+        if (list[0]?.name) setTemplateName((prev) => prev || list[0].name);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const loadThread = useCallback(async (id: string) => {
     setThreadLoading(true);
@@ -115,9 +135,40 @@ export default function WhatsAppInbox() {
       return;
     }
     setSendStatus('Template queued.');
-    setTemplateName('');
     setBodyValues('');
     await loadThread(selectedId);
+  }
+
+  async function scheduleFollowUp() {
+    if (!selected) return;
+    setSendStatus('Scheduling…');
+    const hours = Math.max(1, Number(followUpHours) || 24);
+    const scheduledFor = new Date(Date.now() + hours * 60 * 60_000).toISOString();
+    const values = bodyValues
+      .split('\n')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    const res = await fetch('/api/ops/followups', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetType: 'interakt_conversation',
+        targetId: selected.id,
+        phone: selected.normalizedPhone,
+        conversationId: selected.id,
+        templateName: templateName || undefined,
+        bodyValues: values.length ? values : undefined,
+        scheduledFor,
+        idempotencyKey: `inbox-followup:${selected.id}:${scheduledFor}`,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSendStatus(data.error || 'Schedule failed.');
+      return;
+    }
+    setSendStatus(`Follow-up scheduled for ${scheduledFor}`);
   }
 
   async function linkCandidate(candidate: InteraktLinkCandidate) {
@@ -132,6 +183,9 @@ export default function WhatsAppInbox() {
     await loadThread(selectedId);
     await loadQueue();
   }
+
+  const aiInsight = (selected as { lastAiInsight?: { intent?: string; suggestedNextAction?: string } } | null)
+    ?.lastAiInsight;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -190,6 +244,9 @@ export default function WhatsAppInbox() {
                 <div className={`mt-0.5 text-xs ${selectedId === c.id ? 'text-slate-300' : 'text-slate-500'}`}>
                   {matchLabel(c.matchStatus)}
                   {c.primaryLink?.label ? ` · ${c.primaryLink.label}` : ''}
+                  {(c as { lastAiInsight?: { intent?: string } }).lastAiInsight?.intent
+                    ? ` · ${(c as { lastAiInsight?: { intent?: string } }).lastAiInsight?.intent}`
+                    : ''}
                 </div>
               </button>
             </li>
@@ -212,6 +269,11 @@ export default function WhatsAppInbox() {
                   ? ` · ${selected.primaryLink.entityType} ${selected.primaryLink.label || selected.primaryLink.entityId}`
                   : ''}
               </p>
+              {aiInsight && (
+                <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                  AI ({aiInsight.intent}): {aiInsight.suggestedNextAction}
+                </p>
+              )}
               {(selected.matchStatus === 'ambiguous' || selected.matchStatus === 'unmatched')
                 && selected.candidateLinks.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -253,12 +315,26 @@ export default function WhatsAppInbox() {
               <p className="mb-2 text-xs text-slate-500">
                 Outbound uses Interakt approved templates (public API is Template-only). Free-form session replies remain in Interakt until a documented session API is available.
               </p>
-              <input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Template code name"
-                className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              />
+              {templates.length > 0 ? (
+                <select
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                >
+                  {templates.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {t.label} ({t.name})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Template code name"
+                  className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              )}
               <textarea
                 value={bodyValues}
                 onChange={(e) => setBodyValues(e.target.value)}
@@ -266,13 +342,31 @@ export default function WhatsAppInbox() {
                 rows={3}
                 className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={sendTemplate}
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
                 >
                   Send template
+                </button>
+                <label className="flex items-center gap-2 text-xs text-slate-600">
+                  Follow-up in
+                  <input
+                    type="number"
+                    min={1}
+                    value={followUpHours}
+                    onChange={(e) => setFollowUpHours(e.target.value)}
+                    className="w-16 rounded border border-slate-200 px-2 py-1"
+                  />
+                  hours
+                </label>
+                <button
+                  type="button"
+                  onClick={scheduleFollowUp}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800"
+                >
+                  Schedule follow-up
                 </button>
                 {sendStatus && <span className="text-xs text-slate-500">{sendStatus}</span>}
               </div>

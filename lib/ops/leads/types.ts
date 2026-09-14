@@ -6,7 +6,8 @@ export type OpsLeadSource =
   | 'designer_callback'
   | 'quotation'
   | 'housing_com'
-  | 'housing';
+  | 'housing'
+  | 'meta_ads';
 
 export type OpsLeadCategory =
   | 'general'
@@ -70,6 +71,7 @@ export const OPS_LEAD_SOURCES: OpsLeadSource[] = [
   'quotation',
   'housing_com',
   'housing',
+  'meta_ads',
 ];
 
 export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
@@ -81,6 +83,7 @@ export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
   quotation: 'AI Quotation',
   housing_com: 'Housing.com (Manual)',
   housing: 'Housing.com (API)',
+  meta_ads: 'Meta Lead Ads',
 };
 
 export const OPS_LEAD_CATEGORY_LABELS: Record<OpsLeadCategory, string> = {

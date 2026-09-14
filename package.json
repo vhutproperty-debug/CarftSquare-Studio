@@ -27,7 +27,9 @@
         "test:research-smoke-prod": "npx tsx scripts/smoke-research-production.ts",
         "test:listing-urls": "npx tsx scripts/test-listing-url-filter.ts",
         "test:listing-urls:prod": "npx tsx scripts/smoke-listing-urls-prod.ts",
-        "test:interakt-phase1": "npx tsx scripts/test-interakt-phase1.ts"
+        "test:interakt-phase1": "npx tsx scripts/test-interakt-phase1.ts",
+        "test:interakt-platform": "npx tsx scripts/test-interakt-platform.ts",
+        "test:interakt-delivery": "npx tsx scripts/test-interakt-delivery-engine.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

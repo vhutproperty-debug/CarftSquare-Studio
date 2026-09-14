@@ -12,6 +12,7 @@
  */
 
 const INTERAKT_MESSAGE_URL = 'https://api.interakt.ai/v1/public/message/';
+const MAX_ATTEMPTS = 3;
 
 export type InteraktSendTemplateInput = {
   countryCode: string;
@@ -43,6 +44,14 @@ function getApiKey(): string {
   return key;
 }
 
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function sendInteraktTemplate(
   input: InteraktSendTemplateInput,
 ): Promise<InteraktSendTemplateResult> {
@@ -56,31 +65,73 @@ export async function sendInteraktTemplate(
   if (input.callbackData) body.callbackData = input.callbackData;
   if (input.campaignId) body.campaignId = input.campaignId;
 
-  const response = await fetch(INTERAKT_MESSAGE_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let lastError: Error | null = null;
 
-  const raw = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const err = new Error(
-      `Interakt template send failed with HTTP ${response.status}`,
-    ) as Error & { status?: number; details?: unknown };
-    err.status = response.status;
-    err.details = raw;
-    throw err;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(INTERAKT_MESSAGE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const raw = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const err = new Error(
+          `Interakt template send failed with HTTP ${response.status}`,
+        ) as Error & { status?: number; details?: unknown; retryable?: boolean };
+        err.status = response.status;
+        err.details = raw;
+        err.retryable = isRetryableStatus(response.status);
+        if (err.retryable && attempt < MAX_ATTEMPTS) {
+          lastError = err;
+          console.warn(
+            '[interakt] template_send_retry',
+            JSON.stringify({ attempt, status: response.status }),
+          );
+          await sleep(attempt * 750);
+          continue;
+        }
+        throw err;
+      }
+
+      const result = {
+        result: Boolean((raw as { result?: boolean }).result),
+        message: (raw as { message?: string }).message,
+        id: (raw as { id?: string }).id,
+        raw,
+      };
+
+      console.info(
+        '[interakt] template_send_ok',
+        JSON.stringify({
+          attempt,
+          id: result.id || null,
+          template: input.template.name,
+        }),
+      );
+      return result;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const retryable = (err as { retryable?: boolean }).retryable !== false
+        && !(err as { status?: number }).status;
+      if (retryable && attempt < MAX_ATTEMPTS && !(err as { status?: number }).status) {
+        lastError = err;
+        console.warn(
+          '[interakt] template_send_network_retry',
+          JSON.stringify({ attempt, error: err.message }),
+        );
+        await sleep(attempt * 750);
+        continue;
+      }
+      throw err;
+    }
   }
 
-  return {
-    result: Boolean((raw as { result?: boolean }).result),
-    message: (raw as { message?: string }).message,
-    id: (raw as { id?: string }).id,
-    raw,
-  };
+  throw lastError || new Error('Interakt template send failed after retries.');
 }
 
 /**

@@ -37,6 +37,13 @@ const LEAD_PHONE_SOURCES: LeadPhoneSource[] = [
     matchField: 'lead.mobile',
     namePath: 'normalized.customerName',
   },
+  {
+    source: 'meta_ads',
+    collection: 'meta_ads_leads',
+    phonePaths: ['phone'],
+    matchField: 'lead.phone',
+    namePath: 'name',
+  },
 ];
 
 function personKeyForCandidate(c: Omit<InteraktLinkCandidate, 'personKey'> & { prospectIdHint?: string }): string {

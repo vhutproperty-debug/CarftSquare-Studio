@@ -51,7 +51,9 @@ export type OpsActivityAction =
   | 'view_broker_directory'
   | 'view_whatsapp_inbox'
   | 'send_whatsapp_template'
-  | 'link_whatsapp_conversation';
+  | 'link_whatsapp_conversation'
+  | 'schedule_whatsapp_followup'
+  | 'create_whatsapp_campaign';
 
 export type OpsActivityLog = {
   id: string;

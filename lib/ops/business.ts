@@ -122,7 +122,7 @@ export const DEMAND_CHANNELS = [
   { id: 'housing_com', label: 'Housing.com', live: true },
   { id: '99acres', label: '99acres', live: false },
   { id: 'magicbricks', label: 'MagicBricks', live: false },
-  { id: 'meta_ads', label: 'Meta Ads', live: false },
+  { id: 'meta_ads', label: 'Meta Ads', live: true },
   { id: 'google_ads', label: 'Google Ads', live: false },
   { id: 'whatsapp', label: 'WhatsApp', live: true },
   { id: 'referrals', label: 'Referrals', live: false },
@@ -151,7 +151,20 @@ export type OpsNavItem = {
   pillar?: OpsPillarId;
   pipelineStage?: PipelineStageId;
   status: 'active' | 'coming_soon';
-  icon: 'overview' | 'demand' | 'supply' | 'matching' | 'deal' | 'revenue' | 'agreement' | 'intelligence' | 'integrations' | 'brokers' | 'whatsapp';
+  icon:
+    | 'overview'
+    | 'demand'
+    | 'supply'
+    | 'matching'
+    | 'deal'
+    | 'revenue'
+    | 'agreement'
+    | 'intelligence'
+    | 'integrations'
+    | 'brokers'
+    | 'whatsapp'
+    | 'automation'
+    | 'campaigns';
   exact?: boolean;
 };
 
@@ -186,6 +199,22 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'demand',
         status: 'active',
         icon: 'whatsapp',
+      },
+      {
+        href: '/ops/automation',
+        label: 'Automation',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'automation',
+      },
+      {
+        href: '/ops/campaigns',
+        label: 'Campaigns',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'campaigns',
       },
       {
         href: '/ops/supply',

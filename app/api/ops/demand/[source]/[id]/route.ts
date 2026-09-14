@@ -181,6 +181,32 @@ export async function PATCH(request: Request, context: RouteContext) {
         actorEmail: auth.admin.email,
         actorName: auth.admin.name,
       });
+
+      const phone = detail.lead?.phone;
+      if (phone && patch.scheduleWhatsApp !== false) {
+        try {
+          const { enqueueFollowUpJob } = await import('@/lib/ops/followups/store');
+          const { getDefaultFollowUpTemplate } = await import('@/lib/interakt/templates');
+          const template = getDefaultFollowUpTemplate();
+          await enqueueFollowUpJob(db, {
+            targetType: 'ops_lead',
+            targetId: id,
+            targetSource: source,
+            phone,
+            templateName: template.name,
+            languageCode: template.languageCode,
+            bodyValues: [detail.lead?.name || 'there'],
+            scheduledFor: patch.nextFollowUpAt,
+            createdBy: auth.admin.id,
+            idempotencyKey: `demand-followup:${source}:${id}:${patch.nextFollowUpAt}`,
+          });
+        } catch (followUpError) {
+          console.warn(
+            '[ops-demand] whatsapp_followup_enqueue_skipped',
+            followUpError instanceof Error ? followUpError.message : followUpError,
+          );
+        }
+      }
     }
 
     if (patch.followUpCompleted) {
