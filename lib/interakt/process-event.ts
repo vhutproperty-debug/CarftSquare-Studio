@@ -40,6 +40,8 @@ const HANDLED_EVENTS = new Set([
   'message_received',
   ...OUTBOUND_STATUS_EVENTS,
   'message_api_clicked',
+  'Webhook Test',
+  'webhook_test',
 ]);
 
 function extractCustomerPhone(payload: InteraktProviderWebhookBody): string {
@@ -392,6 +394,16 @@ export async function processInteraktWebhookEvent(
       return;
     }
 
+    // Interakt dashboard "Test webhook" ping — confirm receipt only.
+    if (event.eventType === 'Webhook Test' || event.eventType === 'webhook_test') {
+      console.info(
+        '[interakt] webhook_test_ok',
+        JSON.stringify({ eventId: event.id }),
+      );
+      await markWebhookEventStatus(db, event.id, 'processed');
+      return;
+    }
+
     if (event.eventType === 'message_received') {
       await processMessageReceived(db, event);
       return;
@@ -407,13 +419,4 @@ export async function processInteraktWebhookEvent(
       return;
     }
 
-    await markWebhookEventStatus(db, event.id, 'ignored', 'unsupported_event_type');
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'process_failed';
-    console.error(
-      '[interakt] process_failed',
-      JSON.stringify({ eventId: event.id, eventType: event.eventType, error: message }),
-    );
-    await markWebhookEventStatus(db, event.id, 'failed', message);
-  }
-}
+    await markWebhookEventStatus(db, event.id, 'ignor
