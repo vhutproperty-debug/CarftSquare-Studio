@@ -2,12 +2,13 @@
  * Meta Pixel (browser) + Conversions API (server) tracking utilities.
  *
  * Browser Pixel fires in production. Matching CAPI events are sent server-side
- * with the same event_id for Meta deduplication.
+ * with the same event_id for Meta deduplication (except PageView — browser only).
  *
  * Server secrets (META_ACCESS_TOKEN) never leave /api/meta/capi.
  */
 
-import type { MetaCapiEventName, MetaRawUserData } from '@/lib/meta-capi/types';
+import type { MetaCapiEventName, MetaCapiProxyEventName, MetaRawUserData } from '@/lib/meta-capi/types';
+import { META_CAPI_PROXY_EVENTS } from '@/lib/meta-capi/types';
 import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
 
 declare global {
@@ -23,6 +24,8 @@ export type MetaLeadSource =
   | 'designer_callback'
   | 'partner_callback'
   | 'painting_landing';
+
+const CAPI_EVENTS = new Set<string>(META_CAPI_PROXY_EVENTS);
 
 export function isMetaPixelEnabled(): boolean {
   return process.env.NODE_ENV === 'production' && Boolean(getMetaPixelId());
@@ -50,10 +53,24 @@ function readCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match[1]) : undefined;
 }
 
+/** Prefer _fbc cookie; if missing but fbclid is in URL, build Meta-compatible fbc. */
+function resolveFbc(): string | undefined {
+  const cookie = readCookie('_fbc');
+  if (cookie) return cookie;
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const fbclid = new URLSearchParams(window.location.search).get('fbclid');
+    if (!fbclid) return undefined;
+    return `fb.1.${Date.now()}.${fbclid}`;
+  } catch {
+    return undefined;
+  }
+}
+
 function getMetaCookies(): Pick<MetaRawUserData, 'fbp' | 'fbc'> {
   return {
     fbp: readCookie('_fbp'),
-    fbc: readCookie('_fbc'),
+    fbc: resolveFbc(),
   };
 }
 
@@ -83,7 +100,7 @@ function safeFbq(...args: unknown[]): void {
 }
 
 function sendMetaCapiEvent(
-  eventName: MetaCapiEventName,
+  eventName: MetaCapiProxyEventName,
   eventId: string,
   customData?: Record<string, unknown>,
   userData?: MetaRawUserData,
@@ -119,8 +136,9 @@ function trackMetaEvent(
   const eventId = generateMetaEventId();
 
   safeFbq('track', eventName, customData ?? {}, { eventID: eventId });
-  if (eventName === 'Lead') {
-    sendMetaCapiEvent(eventName, eventId, customData, userData);
+
+  if (CAPI_EVENTS.has(eventName)) {
+    sendMetaCapiEvent(eventName as MetaCapiProxyEventName, eventId, customData, userData);
   }
 
   return eventId;
@@ -132,6 +150,18 @@ export function trackPageView(customData?: Record<string, unknown>): string {
 
 export function trackViewContent(customData?: Record<string, unknown>): string {
   return trackMetaEvent('ViewContent', customData);
+}
+
+export function trackSearch(
+  searchString: string,
+  extra?: Record<string, unknown>,
+): string {
+  const trimmed = searchString.trim();
+  if (!trimmed) return '';
+  return trackMetaEvent('Search', {
+    search_string: trimmed.slice(0, 200),
+    ...extra,
+  });
 }
 
 export function trackLead(
@@ -171,6 +201,7 @@ export function trackLeadFromSource(
   return trackLead(
     {
       content_name: source,
+      content_category: 'lead',
       ...extra,
       ...(landingPage ? { landing_page: landingPage } : {}),
     },
@@ -185,12 +216,50 @@ export function splitFullName(fullName: string): { firstName?: string; lastName?
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 }
 
+/**
+ * Meaningful project/service detail views only — not every page.
+ */
 export function shouldTrackViewContent(pathname: string): boolean {
+  if (!pathname || pathname === '/') return false;
+  if (pathname.startsWith('/ops') || pathname.startsWith('/admin') || pathname.startsWith('/research')) {
+    return false;
+  }
+
   return (
     pathname === '/estimate' ||
     pathname.startsWith('/estimate/') ||
     pathname.startsWith('/services/') ||
     pathname === '/rental-interiors' ||
-    pathname === '/painting'
+    pathname === '/painting' ||
+    pathname === '/free-interior-consultation' ||
+    pathname === '/oberoi-elysian-rental-interiors' ||
+    pathname === '/auris-serenity' ||
+    pathname === '/satellite-elegance' ||
+    pathname === '/gallery' ||
+    pathname.startsWith('/blog/')
   );
+}
+
+export function viewContentPayloadForPath(pathname: string): Record<string, unknown> {
+  const contentId = pathname.replace(/^\//, '') || 'home';
+  let contentCategory = 'page';
+  if (pathname.startsWith('/services/')) contentCategory = 'service';
+  else if (pathname.startsWith('/estimate')) contentCategory = 'estimate';
+  else if (
+    pathname.includes('elysian') ||
+    pathname.includes('auris') ||
+    pathname.includes('satellite') ||
+    pathname === '/free-interior-consultation'
+  ) {
+    contentCategory = 'project';
+  } else if (pathname.startsWith('/blog/')) contentCategory = 'blog';
+  else if (pathname === '/painting') contentCategory = 'painting';
+
+  return {
+    content_name: pathname,
+    content_ids: [contentId],
+    content_type: 'product',
+    content_category: contentCategory,
+    page_path: pathname,
+  };
 }

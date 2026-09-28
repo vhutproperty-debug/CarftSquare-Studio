@@ -1,13 +1,21 @@
 import { META_PIXEL_ID } from '@/lib/meta-pixel-id';
 
-const GRAPH_API_VERSION = 'v21.0';
+/** Override via META_GRAPH_API_VERSION (e.g. v22.0). Default tracks current Graph major. */
+const DEFAULT_GRAPH_API_VERSION = 'v22.0';
 
 export interface MetaCapiConfigStatus {
   enabled: boolean;
   pixelId: boolean;
   accessToken: boolean;
   testEventCode: boolean;
+  graphApiVersion: string;
   missing: string[];
+}
+
+export function getMetaGraphApiVersion(): string {
+  const raw = process.env.META_GRAPH_API_VERSION?.trim();
+  if (raw && /^v\d+\.\d+$/.test(raw)) return raw;
+  return DEFAULT_GRAPH_API_VERSION;
 }
 
 export function getMetaPixelIdServer(): string | null {
@@ -36,6 +44,7 @@ export function validateMetaCapiConfig(): MetaCapiConfigStatus {
     pixelId,
     accessToken,
     testEventCode,
+    graphApiVersion: getMetaGraphApiVersion(),
     missing,
   };
 }
@@ -45,6 +54,7 @@ export function isMetaCapiEnabled(): boolean {
 }
 
 export function getMetaGraphEventsUrl(pixelId: string, accessToken: string): string {
+  const version = getMetaGraphApiVersion();
   const params = new URLSearchParams({ access_token: accessToken });
-  return `https://graph.facebook.com/${GRAPH_API_VERSION}/${pixelId}/events?${params.toString()}`;
+  return `https://graph.facebook.com/${version}/${pixelId}/events?${params.toString()}`;
 }

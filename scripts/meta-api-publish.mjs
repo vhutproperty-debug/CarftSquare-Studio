@@ -4,7 +4,7 @@
  */
 const API = 'v21.0';
 const TOKEN = process.env.META_ACCESS_TOKEN;
-const PIXEL_ID = '1340743388120075';
+const PIXEL_ID = '1391594993119180';
 const CAMPAIGN_NAMES = [
   'CraftSquare – Free Interior Consultation – Mumbai',
   'CraftSquare - Free Interior Consultation - Mumbai',

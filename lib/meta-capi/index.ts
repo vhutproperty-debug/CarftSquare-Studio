@@ -1,5 +1,6 @@
 export {
   getMetaAccessToken,
+  getMetaGraphApiVersion,
   getMetaGraphEventsUrl,
   getMetaPixelIdServer,
   getMetaTestEventCode,
@@ -9,8 +10,10 @@ export {
 export { hashUserData, splitFullName } from './hash';
 export { metaCapiRequestSchema } from './schemas';
 export { sendMetaConversionEvent } from './server';
+export { META_CAPI_PROXY_EVENTS } from './types';
 export type {
   MetaCapiEventName,
+  MetaCapiProxyEventName,
   MetaCapiSendResult,
   MetaConversionEventInput,
   MetaHashedUserData,

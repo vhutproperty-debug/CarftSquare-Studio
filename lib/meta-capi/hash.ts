@@ -22,6 +22,17 @@ function normalizeName(value: string): string | null {
   return normalized || null;
 }
 
+/** City/state/zip: lowercase, strip spaces and punctuation per Meta docs. */
+function normalizeGeo(value: string): string | null {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  return normalized || null;
+}
+
+function normalizeExternalId(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 export function hashUserData(
   raw: MetaRawUserData | undefined,
   requestMeta?: { clientIpAddress?: string; clientUserAgent?: string },
@@ -48,6 +59,27 @@ export function hashUserData(
     if (lastName) hashed.ln = [sha256(lastName)];
   }
 
+  if (raw?.city) {
+    const city = normalizeGeo(raw.city);
+    if (city) hashed.ct = [sha256(city)];
+  }
+
+  if (raw?.state) {
+    const state = normalizeGeo(raw.state);
+    if (state) hashed.st = [sha256(state)];
+  }
+
+  if (raw?.zip) {
+    const zip = normalizeGeo(raw.zip);
+    if (zip) hashed.zp = [sha256(zip)];
+  }
+
+  if (raw?.externalId) {
+    const externalId = normalizeExternalId(raw.externalId);
+    if (externalId) hashed.external_id = [sha256(externalId)];
+  }
+
+  // Do NOT hash fbp / fbc / IP / UA — Meta requires raw values.
   if (raw?.fbp) hashed.fbp = raw.fbp;
   if (raw?.fbc) hashed.fbc = raw.fbc;
   if (requestMeta?.clientIpAddress) hashed.client_ip_address = requestMeta.clientIpAddress;

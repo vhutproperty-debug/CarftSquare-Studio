@@ -2,27 +2,33 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
-import { isMetaPixelEnabled, shouldTrackViewContent, trackPageView, trackViewContent } from '@/lib/meta-pixel';
+import {
+  isMetaPixelEnabled,
+  shouldTrackViewContent,
+  trackPageView,
+  trackViewContent,
+  viewContentPayloadForPath,
+} from '@/lib/meta-pixel';
+
 
 /**
- * Fires PageView (+ ViewContent on key pages) with shared event_id for Pixel + CAPI.
- * Initial PageView is handled here (layout script only runs fbq init).
+ * Fires PageView on route changes (layout script only runs fbq init — no duplicate PageView).
+ * ViewContent only on meaningful project/service detail paths; CAPI shares event_id.
  */
 export default function MetaPixelPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!pathname || pathname.startsWith('/ops')) return;
+    if (!pathname || pathname.startsWith('/ops') || pathname.startsWith('/admin') || pathname.startsWith('/research')) {
+      return;
+    }
     if (!isMetaPixelEnabled()) return;
 
     trackPageView({ page_path: pathname });
 
     if (shouldTrackViewContent(pathname)) {
-      trackViewContent({
-        content_name: pathname,
-        page_path: pathname,
-      });
+      trackViewContent(viewContentPayloadForPath(pathname));
     }
   }, [pathname, searchParams]);
 

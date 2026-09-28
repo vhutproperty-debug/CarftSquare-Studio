@@ -1,4 +1,10 @@
-import { getMetaAccessToken, getMetaGraphEventsUrl, getMetaPixelIdServer, getMetaTestEventCode, validateMetaCapiConfig } from './config';
+import {
+  getMetaAccessToken,
+  getMetaGraphEventsUrl,
+  getMetaPixelIdServer,
+  getMetaTestEventCode,
+  validateMetaCapiConfig,
+} from './config';
 import { hashUserData } from './hash';
 import type { MetaConversionEventInput, MetaCapiSendResult } from './types';
 
@@ -8,6 +14,7 @@ function summarizeHashedUserData(userData: ReturnType<typeof hashUserData>) {
     hasPhone: Boolean(userData.ph?.length),
     hasFirstName: Boolean(userData.fn?.length),
     hasLastName: Boolean(userData.ln?.length),
+    hasExternalId: Boolean(userData.external_id?.length),
     hasFbp: Boolean(userData.fbp),
     hasFbc: Boolean(userData.fbc),
     hasIp: Boolean(userData.client_ip_address),
@@ -15,7 +22,9 @@ function summarizeHashedUserData(userData: ReturnType<typeof hashUserData>) {
   };
 }
 
-export async function sendMetaConversionEvent(input: MetaConversionEventInput): Promise<MetaCapiSendResult> {
+export async function sendMetaConversionEvent(
+  input: MetaConversionEventInput,
+): Promise<MetaCapiSendResult> {
   const config = validateMetaCapiConfig();
   if (!config.enabled) {
     console.warn('[Meta CAPI] Skipped — missing configuration:', {
@@ -37,11 +46,16 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
     clientUserAgent: input.clientUserAgent,
   });
 
+  const eventTime =
+    typeof input.eventTime === 'number' && Number.isFinite(input.eventTime)
+      ? Math.floor(input.eventTime)
+      : Math.floor(Date.now() / 1000);
+
   const payload: Record<string, unknown> = {
     data: [
       {
         event_name: input.eventName,
-        event_time: Math.floor(Date.now() / 1000),
+        event_time: eventTime,
         event_id: input.eventId,
         action_source: 'website',
         event_source_url: input.eventSourceUrl,
@@ -60,6 +74,7 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
     eventName: input.eventName,
     eventId: input.eventId,
     eventSourceUrl: input.eventSourceUrl,
+    graphApiVersion: config.graphApiVersion,
     landingPage: input.customData?.landing_page,
     contentName: input.customData?.content_name,
     testMode: Boolean(testEventCode),
@@ -76,7 +91,9 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message =
-        typeof result?.error?.message === 'string' ? result.error.message : 'Meta CAPI request failed.';
+        typeof result?.error?.message === 'string'
+          ? result.error.message
+          : 'Meta CAPI request failed.';
       console.error('[Meta CAPI] Graph API error:', {
         eventName: input.eventName,
         eventId: input.eventId,
@@ -84,10 +101,7 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
         message,
         fbtraceId: result?.error?.fbtrace_id,
       });
-      return {
-        ok: false,
-        error: message,
-      };
+      return { ok: false, error: message };
     }
 
     console.info('[Meta CAPI] Event accepted:', {
@@ -106,9 +120,6 @@ export async function sendMetaConversionEvent(input: MetaConversionEventInput): 
       eventId: input.eventId,
       message,
     });
-    return {
-      ok: false,
-      error: message,
-    };
+    return { ok: false, error: message };
   }
 }
