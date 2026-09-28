@@ -217,6 +217,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'campaigns',
       },
       {
+        href: '/ops/ads',
+        label: 'Meta Ads',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'campaigns',
+      },
+      {
         href: '/ops/supply',
         label: 'Supply',
         pillar: 'supply',

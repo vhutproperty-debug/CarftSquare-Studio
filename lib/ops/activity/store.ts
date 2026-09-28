@@ -53,7 +53,12 @@ export type OpsActivityAction =
   | 'send_whatsapp_template'
   | 'link_whatsapp_conversation'
   | 'schedule_whatsapp_followup'
-  | 'create_whatsapp_campaign';
+  | 'create_whatsapp_campaign'
+  | 'meta_ads_generate_creatives'
+  | 'meta_ads_creative_approve'
+  | 'meta_ads_creative_reject'
+  | 'meta_ads_campaign_create'
+  | 'meta_ads_publish_paused';
 
 export type OpsActivityLog = {
   id: string;
