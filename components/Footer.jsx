@@ -36,6 +36,8 @@ export default function Footer() {
               <li><a href="/blog" className="hover:text-orange-600">Blog</a></li>
               <li><a href="/partner" className="hover:text-orange-600">Partner Network</a></li>
               <li><a href="/privacy-policy" className="hover:text-orange-600">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-orange-600">Terms of Use</a></li>
+              <li><a href="/data-deletion" className="hover:text-orange-600">Data deletion</a></li>
             </ul>
           </div>
           <div>
