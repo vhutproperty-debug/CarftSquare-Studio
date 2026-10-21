@@ -33,7 +33,7 @@ function confirmationCode(userId?: string) {
 export async function GET(request: Request) {
   const code = new URL(request.url).searchParams.get('code') || new URL(request.url).searchParams.get('id');
   if (!code) {
-    return NextResponse.redirect(new URL('/data-deletion', getSiteUrl()), 302);
+    return NextResponse.redirect(`${getSiteUrl()}/data-deletion`, 302);
   }
   return NextResponse.json({
     confirmation_code: code,
