@@ -419,4 +419,13 @@ export async function processInteraktWebhookEvent(
       return;
     }
 
-    await markWebhookEventStatus(db, event.id, 'ignor
+    await markWebhookEventStatus(db, event.id, 'ignored', 'unsupported_event_type');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'process_failed';
+    console.error(
+      '[interakt] process_failed',
+      JSON.stringify({ eventId: event.id, eventType: event.eventType, error: message }),
+    );
+    await markWebhookEventStatus(db, event.id, 'failed', message);
+  }
+}
