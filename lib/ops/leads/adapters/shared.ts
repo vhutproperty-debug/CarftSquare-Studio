@@ -16,13 +16,31 @@ export type LeadSourceAdapter = {
   countLeads: (db: Db, filters: Omit<AdapterQueryFilters, 'limit'>) => Promise<number>;
 };
 
+const ADAPTER_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export async function runAdapterSafely<T>(
   source: OpsLeadSource,
   fn: () => Promise<T>,
   fallback: T,
 ): Promise<{ value: T; status: 'ok' | 'error' }> {
   try {
-    const value = await fn();
+    const value = await withTimeout(fn(), ADAPTER_TIMEOUT_MS, `adapter_${source}`);
     return { value, status: 'ok' };
   } catch (error) {
     console.error(

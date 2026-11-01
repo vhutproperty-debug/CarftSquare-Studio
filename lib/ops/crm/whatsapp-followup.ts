@@ -4,7 +4,7 @@
  */
 import type { Db } from 'mongodb';
 import { enqueueFollowUpJob } from '@/lib/ops/followups/store';
-import { getDefaultFollowUpTemplate } from '@/lib/interakt/templates';
+import { getDefaultFollowUpTemplate } from '@/lib/whatsapp-cloud/templates';
 import type { FollowUpTargetType } from '@/lib/ops/followups/types';
 
 export async function scheduleCrmWhatsAppFollowUp(

@@ -17,13 +17,50 @@ export async function getMetaAdsDatabase(): Promise<Db> {
   return getDb() as Promise<Db>;
 }
 
+export async function dedupeDryRunCampaigns(db: Db): Promise<number> {
+  const rows = (await db.collection(META_ADS_CAMPAIGNS_COLLECTION)
+    .find({ name: 'CraftSquare Leads — Dry Run', objective: 'OUTCOME_LEADS' })
+    .sort({ updatedAt: -1 })
+    .toArray()) as unknown as MetaAdsCampaignRecord[];
+  if (rows.length < 2) {
+    if (rows[0] && !rows[0].idempotencyKey) {
+      await db.collection(META_ADS_CAMPAIGNS_COLLECTION).updateOne(
+        { id: rows[0].id },
+        { $set: { idempotencyKey: `${rows[0].name}|${rows[0].objective}|dry_run` } },
+      );
+    }
+    return 0;
+  }
+  const [keep, ...rest] = rows;
+  const patch: Partial<MetaAdsCampaignRecord> = {
+    idempotencyKey: `${keep.name}|${keep.objective}|dry_run`,
+  };
+  for (const row of rest) {
+    for (const key of ['metaCampaignId', 'metaAdSetId', 'metaCreativeId', 'metaAdId', 'metaLeadFormId'] as const) {
+      if (!keep[key] && row[key]) patch[key] = row[key];
+    }
+  }
+  await db.collection(META_ADS_CAMPAIGNS_COLLECTION).updateOne({ id: keep.id }, { $set: patch });
+  await db.collection(META_ADS_CAMPAIGNS_COLLECTION).deleteMany({ id: { $in: rest.map((row) => row.id) } });
+  return rest.length;
+}
+
 export async function ensureMetaAdsIndexes(db: Db): Promise<void> {
   if (indexesEnsured) return;
+  await dedupeDryRunCampaigns(db);
   await db.collection(META_ADS_CREATIVES_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(META_ADS_CREATIVES_COLLECTION).createIndex({ status: 1, createdAt: -1 });
   await db.collection(META_ADS_CAMPAIGNS_COLLECTION).createIndex({ id: 1 }, { unique: true });
   await db.collection(META_ADS_CAMPAIGNS_COLLECTION).createIndex({ status: 1, createdAt: -1 });
   await db.collection(META_ADS_CAMPAIGNS_COLLECTION).createIndex({ creativeId: 1 });
+  try {
+    await db.collection(META_ADS_CAMPAIGNS_COLLECTION).createIndex(
+      { idempotencyKey: 1 },
+      { unique: true, sparse: true },
+    );
+  } catch (error) {
+    console.warn('[meta-ads] idempotency_index', error instanceof Error ? error.message : error);
+  }
   indexesEnsured = true;
 }
 
@@ -59,7 +96,7 @@ export async function getCreative(db: Db, id: string): Promise<MetaAdsCreative |
   return (await db.collection(META_ADS_CREATIVES_COLLECTION).findOne(
     { id },
     { projection: { _id: 0 } },
-  )) as MetaAdsCreative | null;
+  )) as unknown as MetaAdsCreative | null;
 }
 
 export async function updateCreativeStatus(
@@ -83,15 +120,35 @@ export async function createCampaignRecord(
 ): Promise<MetaAdsCampaignRecord> {
   await ensureMetaAdsIndexes(db);
   const now = new Date().toISOString();
+  const idempotencyKey = `${input.name}|${input.objective}|dry_run`;
+  const existing = (await db.collection(META_ADS_CAMPAIGNS_COLLECTION).findOne(
+    { idempotencyKey, status: { $nin: ['cancelled', 'failed'] } },
+    { projection: { _id: 0 } },
+  )) as unknown as MetaAdsCampaignRecord | null;
+  if (existing) return existing;
+
   const doc: MetaAdsCampaignRecord = {
     ...input,
     id: uuidv4(),
     dryRun: true,
     metaStatus: 'NONE',
+    idempotencyKey,
     createdAt: now,
     updatedAt: now,
   };
-  await db.collection(META_ADS_CAMPAIGNS_COLLECTION).insertOne(doc);
+  try {
+    await db.collection(META_ADS_CAMPAIGNS_COLLECTION).insertOne(doc);
+  } catch (error) {
+    const code = (error as { code?: number }).code;
+    if (code === 11000) {
+      const raced = (await db.collection(META_ADS_CAMPAIGNS_COLLECTION).findOne(
+        { idempotencyKey },
+        { projection: { _id: 0 } },
+      )) as unknown as MetaAdsCampaignRecord | null;
+      if (raced) return raced;
+    }
+    throw error;
+  }
   return doc;
 }
 
@@ -110,7 +167,7 @@ export async function getCampaignRecord(db: Db, id: string): Promise<MetaAdsCamp
   return (await db.collection(META_ADS_CAMPAIGNS_COLLECTION).findOne(
     { id },
     { projection: { _id: 0 } },
-  )) as MetaAdsCampaignRecord | null;
+  )) as unknown as MetaAdsCampaignRecord | null;
 }
 
 export async function updateCampaignRecord(

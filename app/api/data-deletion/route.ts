@@ -1,53 +1,31 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { getDb } from '@/lib/mongodb';
+import { getMetaAppSecret } from '@/lib/meta/config';
+import { acceptDataDeletionRequest, lookupDataDeletion } from '@/lib/meta/data-deletion';
 import { getSiteUrl } from '@/lib/site';
 
 export const runtime = 'nodejs';
 
-function appSecret() {
-  return String(process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || '').trim();
-}
-
-function parseSignedRequest(signedRequest: string, secret: string): { user_id?: string } | null {
-  const parts = String(signedRequest || '').split('.');
-  if (parts.length !== 2) return null;
-  const [encodedSig, payload] = parts;
-  const sig = Buffer.from(encodedSig.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-  const expected = createHmac('sha256', secret).update(payload).digest();
-  if (sig.length !== expected.length || !timingSafeEqual(sig, expected)) return null;
-  try {
-    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-    return JSON.parse(json) as { user_id?: string };
-  } catch {
-    return null;
-  }
-}
-
-function confirmationCode(userId?: string) {
-  const suffix = randomBytes(4).toString('hex');
-  const who = String(userId || 'user').replace(/\W/g, '').slice(-8) || 'user';
-  return `csdel_${who}_${suffix}`;
-}
-
-/** Facebook data-deletion status check (user opens this URL). */
 export async function GET(request: Request) {
   const code = new URL(request.url).searchParams.get('code') || new URL(request.url).searchParams.get('id');
   if (!code) {
     return NextResponse.redirect(`${getSiteUrl()}/data-deletion`, 302);
   }
-  return NextResponse.json({
-    confirmation_code: code,
-    status: 'received',
-    message: 'CraftSquare has received this deletion request. Email notifications@craftsquare.studio if you need an update.',
-  });
+  try {
+    const db = await getDb();
+    const status = await lookupDataDeletion(db, code);
+    if (!status) {
+      return NextResponse.json({ confirmation_code: code, status: 'unknown' }, { status: 404 });
+    }
+    return NextResponse.json(status);
+  } catch (error) {
+    console.error('[meta] data_deletion_lookup_failed', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Unable to load deletion status.' }, { status: 500 });
+  }
 }
 
-/**
- * Meta App → Settings → Basic → Data Deletion Request Callback.
- * Facebook POSTs signed_request. Respond with confirmation_code + status URL.
- */
 export async function POST(request: Request) {
-  const secret = appSecret();
+  const secret = getMetaAppSecret();
   if (!secret) {
     return NextResponse.json({ error: 'Data deletion callback is not configured.' }, { status: 503 });
   }
@@ -66,13 +44,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid body.' }, { status: 400 });
   }
 
-  const parsed = parseSignedRequest(signedRequest, secret);
-  if (!parsed) {
-    return NextResponse.json({ error: 'Invalid signed_request.' }, { status: 400 });
+  try {
+    const db = await getDb();
+    const result = await acceptDataDeletionRequest(db, signedRequest, secret);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    console.info('[meta] data_deletion_received', result.confirmation_code);
+    return NextResponse.json({ url: result.url, confirmation_code: result.confirmation_code });
+  } catch (error) {
+    console.error('[meta] data_deletion_failed', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Unable to record deletion request.' }, { status: 500 });
   }
-
-  const code = confirmationCode(parsed.user_id);
-  const url = `${getSiteUrl().replace(/\/$/, '')}/api/data-deletion?code=${encodeURIComponent(code)}`;
-  console.info('[meta] data_deletion_received', code);
-  return NextResponse.json({ url, confirmation_code: code });
 }

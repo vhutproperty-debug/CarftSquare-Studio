@@ -119,6 +119,27 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Unable to update record.' }, { status: 500 });
     }
 
+    if (patch.status === 'CONTACTED' || patch.status === 'LOST') {
+      const phone = detail.lead?.phone;
+      if (phone) {
+        const { normalizeIndianMobile } = await import('@/lib/phone/indian-mobile');
+        const normalizedPhone = normalizeIndianMobile(phone);
+        if (normalizedPhone) {
+          await db.collection('ops_follow_up_jobs').updateMany(
+            { normalizedPhone, status: { $in: ['queued', 'retrying'] } },
+            {
+              $set: {
+                status: 'cancelled',
+                lastError: `Cancelled: demand status ${patch.status}`,
+                cancelledAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          );
+        }
+      }
+    }
+
     if (patch.status && patch.status !== detail.demand.status) {
       await createDemandActivity(db, {
         source,
@@ -186,7 +207,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (phone && patch.scheduleWhatsApp !== false) {
         try {
           const { enqueueFollowUpJob } = await import('@/lib/ops/followups/store');
-          const { getDefaultFollowUpTemplate } = await import('@/lib/interakt/templates');
+          const { getDefaultFollowUpTemplate } = await import('@/lib/whatsapp-cloud/templates');
           const template = getDefaultFollowUpTemplate();
           await enqueueFollowUpJob(db, {
             targetType: 'ops_lead',

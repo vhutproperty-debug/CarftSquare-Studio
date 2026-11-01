@@ -10,7 +10,7 @@ export type FollowUpTargetType =
   | 'ops_prospect'
   | 'ops_supply_record'
   | 'ops_lead'
-  | 'interakt_conversation';
+  | 'wa_conversation';
 
 export type OpsFollowUpJob = {
   id: string;

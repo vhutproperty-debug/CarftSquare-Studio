@@ -62,6 +62,8 @@ type QueuePanelProps = {
   mineOnly: boolean;
   onMineOnlyChange: (value: boolean) => void;
   loading: boolean;
+  error?: string;
+  onRetry?: () => void;
   onNextLead: () => void;
   onAddProspect: () => void;
 };
@@ -78,6 +80,8 @@ export default function QueuePanel({
   mineOnly,
   onMineOnlyChange,
   loading,
+  error,
+  onRetry,
   onNextLead,
   onAddProspect,
 }: QueuePanelProps) {
@@ -156,7 +160,14 @@ export default function QueuePanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
+        {error ? (
+          <div className="space-y-2 px-4 py-8 text-center text-sm text-rose-700">
+            <p>{error}</p>
+            {onRetry ? (
+              <Button type="button" size="sm" variant="outline" onClick={onRetry}>Retry</Button>
+            ) : null}
+          </div>
+        ) : loading ? (
           <p className="px-4 py-8 text-center text-sm text-slate-500">Loading queue…</p>
         ) : !items.length ? (
           <p className="px-4 py-8 text-center text-sm text-slate-500">No records in this outreach queue.</p>

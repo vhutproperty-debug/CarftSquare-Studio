@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
-import { getInteraktIntegrationStatus } from '@/lib/interakt/status';
-import { getInteraktConversationMetrics } from '@/lib/interakt/conversation-query';
-import { getInteraktDatabase } from '@/lib/interakt/webhook-store';
+import { buildWhatsAppHealth } from '@/lib/whatsapp-cloud/status';
+import { getWaConversationMetrics } from '@/lib/whatsapp-cloud/conversation-query';
+import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
@@ -11,10 +11,10 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   try {
-    const status = getInteraktIntegrationStatus();
-    const db = await getInteraktDatabase();
-    const metrics = await getInteraktConversationMetrics(db);
-    const { collectDeliveryAlerts } = await import('@/lib/interakt/delivery/alerts');
+    const db = await getWaDatabase();
+    const status = await buildWhatsAppHealth(db);
+    const metrics = await getWaConversationMetrics(db);
+    const { collectDeliveryAlerts } = await import('@/lib/whatsapp-cloud/delivery/alerts');
     const deliveryAlerts = await collectDeliveryAlerts(db);
     return NextResponse.json({ status, metrics, deliveryAlerts });
   } catch (error) {

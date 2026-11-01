@@ -14,6 +14,8 @@ type Readiness = {
   permissions: string[];
   hasAdsManagement: boolean;
   canPublishPaused: boolean;
+  adsEnabled?: boolean;
+  missingPermissions?: string[];
   blockers: string[];
   warnings: string[];
 };
@@ -216,9 +218,17 @@ function MetaAdsWorkspace() {
             </span>
           </div>
           <p className="mt-3 text-xs text-slate-600">
-            Dry-run only. Active spend locked ({readiness.activeSpendAllowed ? 'UNLOCKED' : 'locked'}).
-            Permissions: {readiness.permissions.join(', ') || 'none'}
+            Marketing API {readiness.adsEnabled ? 'enabled' : 'behind META_ADS_ENABLED'}. Active spend {readiness.activeSpendAllowed ? 'UNLOCKED' : 'locked'}.
+            Publishes stay PAUSED.
           </p>
+          <p className="mt-1 text-xs text-slate-600">
+            Granted: {readiness.permissions.join(', ') || 'none'}
+          </p>
+          {!!readiness.missingPermissions?.length && (
+            <p className="mt-1 text-xs text-rose-700">
+              Missing: {readiness.missingPermissions.join(', ')}
+            </p>
+          )}
           {!!readiness.blockers.length && (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-rose-700">
               {readiness.blockers.map((b) => (

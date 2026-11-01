@@ -45,6 +45,8 @@ export default function CallsWorkspace() {
   const loadQueue = useCallback(async () => {
     setQueueLoading(true);
     setQueueError('');
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 20000);
     try {
       const params = new URLSearchParams({ section: sectionConfig.apiSection });
       if (sectionConfig.callStatus) params.set('callStatus', sectionConfig.callStatus);
@@ -52,8 +54,8 @@ export default function CallsWorkspace() {
       if (mineOnly) params.set('mineOnly', 'true');
 
       const [queueRes, metricsRes] = await Promise.all([
-        fetch(`/api/ops/calls/queue?${params.toString()}`, { credentials: 'include' }),
-        fetch('/api/ops/calls/metrics', { credentials: 'include' }),
+        fetch(`/api/ops/calls/queue?${params.toString()}`, { credentials: 'include', signal: controller.signal }),
+        fetch('/api/ops/calls/metrics', { credentials: 'include', signal: controller.signal }),
       ]);
 
       const queueData = await queueRes.json().catch(() => ({}));
@@ -67,9 +69,13 @@ export default function CallsWorkspace() {
 
       const metricsData = await metricsRes.json().catch(() => ({}));
       if (metricsRes.ok) setMetrics(metricsData.metrics || null);
-    } catch {
-      setQueueError('Unable to load call queue.');
+    } catch (loadError) {
+      const aborted = loadError instanceof DOMException && loadError.name === 'AbortError';
+      setQueueError(aborted
+        ? 'Call queue timed out. Retry — a slow lead source was skipped on the server when possible.'
+        : 'Unable to load call queue.');
     } finally {
+      window.clearTimeout(timer);
       setQueueLoading(false);
     }
   }, [debouncedSearch, mineOnly, sectionConfig.apiSection, sectionConfig.callStatus]);
@@ -302,6 +308,8 @@ export default function CallsWorkspace() {
             mineOnly={mineOnly}
             onMineOnlyChange={setMineOnly}
             loading={queueLoading}
+            error={queueError}
+            onRetry={loadQueue}
             onNextLead={goToNextLead}
             onAddProspect={() => setAddOpen(true)}
           />

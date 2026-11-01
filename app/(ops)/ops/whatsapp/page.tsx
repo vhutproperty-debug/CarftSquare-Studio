@@ -5,7 +5,7 @@ export default function OpsWhatsAppPage() {
   return (
     <OpsShell
       title="WhatsApp Inbox"
-      subtitle="Interakt conversations linked to CraftSquare demand and supply records."
+      subtitle="WhatsApp Cloud conversations linked to CraftSquare demand and supply records."
       workspace
       pipelineStage="demand"
     >

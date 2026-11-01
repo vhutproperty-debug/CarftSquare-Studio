@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
-import { clearConversationUnread, getConversationById } from '@/lib/interakt/conversation-store';
-import { getInteraktDatabase } from '@/lib/interakt/webhook-store';
+import { clearConversationUnread, getConversationById } from '@/lib/whatsapp-cloud/conversation-store';
+import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const { id } = await params;
   try {
-    const db = await getInteraktDatabase();
+    const db = await getWaDatabase();
     const existing = await getConversationById(db, id);
     if (!existing) {
       return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });

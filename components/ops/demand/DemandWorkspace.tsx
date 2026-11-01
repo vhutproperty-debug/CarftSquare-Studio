@@ -49,12 +49,15 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
   const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
   const [selected, setSelected] = useState<DemandQueueItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     setError('');
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 20000);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '25' });
       if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
@@ -72,7 +75,10 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
       if (filters.overdueOnly) params.set('overdueOnly', 'true');
 
       // Single request — queue payload already includes metrics, sources, team, and currentUserId.
-      const queueRes = await fetch(`/api/ops/demand/queue?${params.toString()}`, { credentials: 'include' });
+      const queueRes = await fetch(`/api/ops/demand/queue?${params.toString()}`, {
+        credentials: 'include',
+        signal: controller.signal,
+      });
       const queueData = await queueRes.json().catch(() => ({}));
       if (!queueRes.ok) {
         setError(queueData.error || 'Unable to load demand workspace.');
@@ -85,9 +91,19 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
       setPagination(queueData.pagination || { page: 1, pageSize: 25, total: 0, totalPages: 1 });
       if (Array.isArray(queueData.team)) setTeam(queueData.team);
       if (typeof queueData.currentUserId === 'string') setCurrentUserId(queueData.currentUserId);
-    } catch {
-      setError('Unable to load demand workspace.');
+      const health = queueData.sourceHealth || {};
+      setSourceErrors(
+        Object.entries(health)
+          .filter(([, status]) => status === 'error')
+          .map(([source]) => source),
+      );
+    } catch (loadError) {
+      const aborted = loadError instanceof DOMException && loadError.name === 'AbortError';
+      setError(aborted
+        ? 'Demand queue timed out. A source did not respond — other enquiries are unaffected. Retry.'
+        : 'Unable to load demand workspace.');
     } finally {
+      window.clearTimeout(timer);
       setLoading(false);
     }
   }, [debouncedSearch, filters, page]);
@@ -119,7 +135,15 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
       />
 
       {error ? (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</div>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          <span>{error}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => loadWorkspace()}>Retry</Button>
+        </div>
+      ) : null}
+      {sourceErrors.length ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Some sources failed and were skipped: {sourceErrors.join(', ')}. Housing.com errors stay on the connector page and do not clear this queue.
+        </div>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -136,7 +160,9 @@ export default function DemandWorkspace({ refreshToken = 0 }: DemandWorkspacePro
 
       <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-600">
-          Page {pagination.page} of {pagination.totalPages} · {pagination.total} enquiries
+          {loading
+            ? 'Loading enquiries…'
+            : `Page ${pagination.page} of ${pagination.totalPages} · ${pagination.total} enquiries`}
         </p>
         <div className="flex gap-2">
           <Button

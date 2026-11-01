@@ -17,7 +17,7 @@ export default function OpsAutomationPage() {
   return (
     <OpsShell
       title="Automation"
-      subtitle="Scheduled WhatsApp follow-ups and Interakt integration health."
+      subtitle="Scheduled WhatsApp follow-ups and Cloud API health."
       workspace
       pipelineStage="demand"
     >
@@ -74,24 +74,32 @@ function AutomationWorkspace() {
       {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Interakt status</h2>
+        <h2 className="text-sm font-semibold text-slate-900">WhatsApp Cloud API</h2>
         {status ? (
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-slate-500">Business WA</dt>
+              <dt className="text-slate-500">Display number</dt>
               <dd className="font-medium">{String(status.businessWaNumber || '—')}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Matches production lock</dt>
-              <dd className="font-medium">{status.businessWaMatchesProduction ? 'Yes' : 'No'}</dd>
+              <dt className="text-slate-500">Quality rating</dt>
+              <dd className="font-medium">{String(status.qualityRating || '—')}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">API key</dt>
-              <dd className="font-medium">{status.apiKeyConfigured ? 'Configured' : 'Missing'}</dd>
+              <dt className="text-slate-500">Name status</dt>
+              <dd className="font-medium">{String(status.nameStatus || '—')}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Webhook secret</dt>
-              <dd className="font-medium">{status.webhookSecretConfigured ? 'Configured' : 'Missing'}</dd>
+              <dt className="text-slate-500">Sending</dt>
+              <dd className="font-medium">{status.sendingPaused ? 'Paused (account restricted)' : 'Allowed'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Last webhook</dt>
+              <dd className="font-medium">{String(status.lastWebhookAt || '—')}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Follow-ups queued</dt>
+              <dd className="font-medium">{String(status.followUpQueued ?? 0)}</dd>
             </div>
           </dl>
         ) : (

@@ -1,13 +1,13 @@
 import { registerIntegrationHooks } from '@/lib/estimate/integrations';
 import { enqueueFollowUpJob, getFollowUpDatabase } from '@/lib/ops/followups/store';
-import { getInteraktTemplateCatalog } from '@/lib/interakt/templates';
+import { getWaTemplateCatalog } from '@/lib/whatsapp-cloud/templates';
 import { normalizeIndianMobile, isValidIndianMobile } from '@/lib/phone/indian-mobile';
 
 let registered = false;
 
 /**
  * Wire quotation enquiry → optional delayed WhatsApp welcome/follow-up template job.
- * Never blocks quote creation. Requires INTERAKT_API_KEY + approved template names.
+ * Never blocks quote creation. Requires WA_API_KEY + approved template names.
  */
 export function registerEstimateWhatsAppHooks(): void {
   if (registered) return;
@@ -20,8 +20,8 @@ export function registerEstimateWhatsAppHooks(): void {
       if (!isValidIndianMobile(normalized)) return;
 
       const welcome =
-        getInteraktTemplateCatalog().find((t) => t.purpose === 'welcome')
-        || getInteraktTemplateCatalog()[0];
+        getWaTemplateCatalog().find((t) => t.purpose === 'welcome')
+        || getWaTemplateCatalog()[0];
       if (!welcome) return;
 
       const db = await getFollowUpDatabase();

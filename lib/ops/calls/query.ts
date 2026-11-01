@@ -65,7 +65,7 @@ function computeQueueRank(item: {
 }
 
 async function fetchRecentUnifiedLeads(db: Db): Promise<NormalizedOpsLead[]> {
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     LEAD_SOURCE_ADAPTERS.map(async (adapter) => {
       const result = await runAdapterSafely(
         adapter.source,
@@ -75,7 +75,8 @@ async function fetchRecentUnifiedLeads(db: Db): Promise<NormalizedOpsLead[]> {
       return result.value;
     }),
   );
-  return sortLeadsNewestFirst(results.flat()).slice(0, QUEUE_LEAD_LIMIT);
+  const leads = results.map((entry) => (entry.status === 'fulfilled' ? entry.value : []));
+  return sortLeadsNewestFirst(leads.flat()).slice(0, QUEUE_LEAD_LIMIT);
 }
 
 function leadToQueueItem(

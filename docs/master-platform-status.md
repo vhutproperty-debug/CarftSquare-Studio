@@ -1,21 +1,21 @@
 # CraftSquare Master Platform — Continuity Report
 
-**Status: NOT COMPLETE.** Interakt foundation + Ops inbox + follow-up/campaign/Meta foundations are in progress. Do not treat this as master-platform done.
+**Status: NOT COMPLETE.** WhatsApp Cloud API, ops inbox, follow-ups, and Meta lead foundations are in progress. Do not treat this as master-platform done.
 
 ## A. Already existing (pre-continue)
 
-- Phase 1 Interakt webhook ingest, HMAC verify, idempotent events, conversations/messages
+- WhatsApp webhook ingest, signature verify, idempotent events, conversations/messages
 - Non-destructive identity matching
 - Ops WhatsApp Inbox UI + reply/link/read APIs
 - Meta Pixel + CAPI infrastructure (`lib/meta-capi`)
 - CRM demand/supply/deals/calls/matching workspaces
-- Locked production WA `919867525258`
+- WhatsApp phone number id `1307101749164145`
 
 ## B. Newly built (this continue pass)
 
 - Scheduled follow-up engine (`ops_follow_up_jobs`, worker, cron tick GET+POST)
 - Template catalog + integration status API
-- Rules-based AI insights with provenance (`interakt_ai_insights`)
+- Rules-based AI insights with provenance (`wa_ai_insights`)
 - WhatsApp campaigns (create/start/batch, throttling, recipient claim)
 - Meta Lead Ads webhook + `meta_ads` lead adapter + optional CAPI Lead
 - Ops pages: `/ops/automation`, `/ops/campaigns`
@@ -25,33 +25,32 @@
 
 ## C. Modified
 
-- `lib/ops/business.ts` nav, `ops-nav-icons`, dashboard Interakt strip
+- `lib/ops/business.ts` nav, `ops-nav-icons`, dashboard WhatsApp strip
 - WhatsApp inbox template picker + schedule follow-up
-- Interakt client retries
+- Cloud API client retries
 - Demand patch schema (`scheduleWhatsApp`)
 - `vercel.json` cron
 - `.env.example` / docs
 
 ## D. Fully tested
 
-- Run `npm run test:interakt-phase1` and `npm run test:interakt-platform` after changes.
-- Live WhatsApp E2E and live template send are **not** claimed tested without Interakt dashboard + `INTERAKT_API_KEY` + approved template names.
+- Run `npm run test:wa-cloud`, `npm run test:meta-leads`, and `npm run test:lead-pipeline` after changes.
+- Live WhatsApp E2E is not claimed without approved templates and a system user token.
 
 ## E. Production configuration still requiring manual credentials
 
 | Item | Where |
 |---|---|
-| Interakt Developer webhook URL + secret + events | Interakt dashboard |
-| `INTERAKT_API_KEY` | Vercel Production |
-| Approved template code names matching catalog | Interakt + optional `INTERAKT_TEMPLATE_CATALOG` |
+| WhatsApp webhook URL + verify token + `META_APP_SECRET` | Meta App + Vercel |
+| `WHATSAPP_ACCESS_TOKEN` or `META_SYSTEM_USER_TOKEN` | Vercel Production |
+| Approved template names (`lead_welcome` and follow-ups) | WhatsApp Manager |
 | `CRON_SECRET` / `OPS_FOLLOWUPS_CRON_SECRET` | Vercel |
 | Meta Lead Ads page subscription + `META_LEAD_ADS_VERIFY_TOKEN` | Meta App |
-| Optional `META_APP_SECRET`, page token enrich | Meta / Vercel |
-| Interakt plan for inbound customer webhooks | Interakt billing |
+| `META_PAGE_ACCESS_TOKEN` for lead enrich | Meta / Vercel |
 
 ## F. Remaining technical debt
 
-- Session free-form WhatsApp API not documented by Interakt — agents use Interakt UI for session chat
+- Session text is sent only inside the 24-hour customer-care window
 - AI is rules-only (no OpenAI enrichment yet)
 - Campaign audiences are manual phones only (CRM audience selectors partial)
 - Meta lead dedupe vs existing CRM is adapter/list-level; no destructive merge

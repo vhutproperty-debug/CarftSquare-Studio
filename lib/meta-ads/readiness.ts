@@ -7,7 +7,9 @@ import {
   getMetaAdsPixelId,
   getMetaAdsGraphVersion,
   isMetaAdsActiveSpendAllowed,
+  isMetaAdsPublishEnabled,
 } from '@/lib/meta-ads/config';
+import { REQUIRED_ADS_PERMISSIONS } from '@/lib/meta/config';
 import type { MetaAdsReadiness } from '@/lib/meta-ads/types';
 
 export async function getMetaAdsReadiness(): Promise<MetaAdsReadiness> {
@@ -37,8 +39,15 @@ export async function getMetaAdsReadiness(): Promise<MetaAdsReadiness> {
     }
   }
 
+  const requiredPermissions = [...REQUIRED_ADS_PERMISSIONS];
+  const missingPermissions = requiredPermissions.filter((permission) => !permissions.includes(permission));
   const hasAdsManagement = permissions.includes('ads_management');
   const hasAdsRead = permissions.includes('ads_read') || hasAdsManagement;
+  const adsEnabled = isMetaAdsPublishEnabled();
+
+  if (!adsEnabled) {
+    blockers.push('META_ADS_ENABLED is not true. Marketing API publishing stays off until App Review.');
+  }
 
   if (tokenConfigured && !hasAdsManagement) {
     blockers.push(
@@ -87,7 +96,10 @@ export async function getMetaAdsReadiness(): Promise<MetaAdsReadiness> {
     permissions,
     hasAdsManagement,
     hasAdsRead,
-    canPublishPaused: tokenConfigured && hasAdsManagement && blockers.length === 0,
+    adsEnabled,
+    requiredPermissions,
+    missingPermissions,
+    canPublishPaused: adsEnabled && tokenConfigured && hasAdsManagement && blockers.length === 0,
     blockers,
     warnings,
   };

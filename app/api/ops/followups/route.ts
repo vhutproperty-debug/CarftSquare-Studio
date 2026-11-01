@@ -10,7 +10,7 @@ import {
   cancelFollowUpJob,
   rescheduleFollowUpJob,
 } from '@/lib/ops/followups/store';
-import { getDefaultFollowUpTemplate } from '@/lib/interakt/templates';
+import { getDefaultFollowUpTemplate } from '@/lib/whatsapp-cloud/templates';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 }
 
 const createSchema = z.object({
-  targetType: z.enum(['ops_prospect', 'ops_supply_record', 'ops_lead', 'interakt_conversation']),
+  targetType: z.enum(['ops_prospect', 'ops_supply_record', 'ops_lead', 'wa_conversation']),
   targetId: z.string().trim().min(1).max(120),
   targetSource: z.string().trim().max(80).optional(),
   phone: z.string().trim().min(10).max(20),

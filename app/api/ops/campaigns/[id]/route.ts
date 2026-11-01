@@ -6,12 +6,12 @@ import { OPS_WA_CAMPAIGN_RECIPIENTS_COLLECTION } from '@/lib/ops/campaigns/store
 import {
   computeCampaignDeliveryStats,
   reconcileCampaign,
-} from '@/lib/interakt/delivery/reconcile';
-import { listAttemptsForRecipient } from '@/lib/interakt/delivery/attempts';
-import { listTransitionsForRecipient } from '@/lib/interakt/delivery/transitions';
-import { scheduleDeliveryRetry, cancelRetryJobsForRecipient } from '@/lib/interakt/delivery/retry-scheduler';
-import { transitionRecipientState, getDeliveryRecipient } from '@/lib/interakt/delivery/recipient-state';
-import { submitRecipientMessage } from '@/lib/interakt/delivery/submit';
+} from '@/lib/whatsapp-cloud/delivery/reconcile';
+import { listAttemptsForRecipient } from '@/lib/whatsapp-cloud/delivery/attempts';
+import { listTransitionsForRecipient } from '@/lib/whatsapp-cloud/delivery/transitions';
+import { scheduleDeliveryRetry, cancelRetryJobsForRecipient } from '@/lib/whatsapp-cloud/delivery/retry-scheduler';
+import { transitionRecipientState, getDeliveryRecipient } from '@/lib/whatsapp-cloud/delivery/recipient-state';
+import { submitRecipientMessage } from '@/lib/whatsapp-cloud/delivery/submit';
 
 type RouteContext = { params: { id: string } };
 

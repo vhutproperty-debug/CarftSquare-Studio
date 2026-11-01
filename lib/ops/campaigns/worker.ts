@@ -1,7 +1,7 @@
 import type { Db } from 'mongodb';
-import { maskPhoneForLog } from '@/lib/interakt/phone';
-import { submitRecipientMessage } from '@/lib/interakt/delivery/submit';
-import { reconcileCampaign } from '@/lib/interakt/delivery/reconcile';
+import { maskPhoneForLog } from '@/lib/whatsapp-cloud/phone';
+import { submitRecipientMessage } from '@/lib/whatsapp-cloud/delivery/submit';
+import { reconcileCampaign } from '@/lib/whatsapp-cloud/delivery/reconcile';
 import {
   OPS_WA_CAMPAIGN_RECIPIENTS_COLLECTION,
   ensureCampaignIndexes,

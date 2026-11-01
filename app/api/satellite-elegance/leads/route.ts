@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       }
     }
 
+    const { notifyNewWebsiteLead } = await import('@/lib/leads/notify');
     const lead = await createSatelliteEleganceLead(db, {
       name: data.name?.trim() || '',
       mobile: normalizedMobile,
@@ -50,6 +51,14 @@ export async function POST(request: Request) {
       pagePath: data.pagePath || '/satellite-elegance',
       referrer: data.referrer || '',
       utm: data.utm || {},
+    });
+    notifyNewWebsiteLead({
+      id: lead.id,
+      source: 'satellite_elegance',
+      name: lead.name,
+      phone: lead.mobile,
+      project: lead.selectedIntent || 'Satellite Elegance',
+      collection: 'satellite_elegance_leads',
     });
 
     return NextResponse.json(

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatPhoneDisplay } from '@/lib/ops/phone';
-import type { InteraktConversation, InteraktLinkCandidate, InteraktMessage } from '@/lib/interakt/types';
+import type { WaConversation, WaLinkCandidate, WaMessage } from '@/lib/whatsapp-cloud/types';
 
 type Metrics = {
   total: number;
@@ -21,7 +21,7 @@ type TemplateOption = {
   bodyVariableCount: number;
 };
 
-function matchLabel(status: InteraktConversation['matchStatus']) {
+function matchLabel(status: WaConversation['matchStatus']) {
   switch (status) {
     case 'matched':
       return 'Matched';
@@ -37,19 +37,20 @@ function matchLabel(status: InteraktConversation['matchStatus']) {
 export default function WhatsAppInbox() {
   const [filter, setFilter] = useState<FilterId>('all');
   const [search, setSearch] = useState('');
-  const [conversations, setConversations] = useState<InteraktConversation[]>([]);
+  const [conversations, setConversations] = useState<WaConversation[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<InteraktMessage[]>([]);
-  const [selected, setSelected] = useState<InteraktConversation | null>(null);
+  const [messages, setMessages] = useState<WaMessage[]>([]);
+  const [selected, setSelected] = useState<WaConversation | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [templateName, setTemplateName] = useState('');
   const [bodyValues, setBodyValues] = useState('');
   const [sendStatus, setSendStatus] = useState('');
   const [followUpHours, setFollowUpHours] = useState('24');
+  const [sessionText, setSessionText] = useState('');
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -153,7 +154,7 @@ export default function WhatsAppInbox() {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        targetType: 'interakt_conversation',
+        targetType: 'wa_conversation',
         targetId: selected.id,
         phone: selected.normalizedPhone,
         conversationId: selected.id,
@@ -171,7 +172,7 @@ export default function WhatsAppInbox() {
     setSendStatus(`Follow-up scheduled for ${scheduledFor}`);
   }
 
-  async function linkCandidate(candidate: InteraktLinkCandidate) {
+  async function linkCandidate(candidate: WaLinkCandidate) {
     if (!selectedId) return;
     const res = await fetch(`/api/ops/whatsapp/conversations/${selectedId}/link`, {
       method: 'POST',
@@ -190,7 +191,22 @@ export default function WhatsAppInbox() {
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="mb-3 flex flex-wrap gap-2 text-xs">
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+          <button
+            type="button"
+            className="rounded-full bg-slate-100 px-3 py-1 text-slate-700"
+            onClick={async () => {
+              const res = await fetch('/api/ops/whatsapp/conversations/hide-tests', {
+                method: 'POST',
+                credentials: 'include',
+              });
+              const data = await res.json().catch(() => ({}));
+              setSendStatus(res.ok ? `Hid ${data.hidden || 0} unmatched threads.` : (data.error || 'Hide failed.'));
+              await loadQueue();
+            }}
+          >
+            Hide unmatched test threads
+          </button>
           {([
             ['all', 'All'],
             ['unread', 'Unread'],
@@ -313,8 +329,39 @@ export default function WhatsAppInbox() {
 
             <footer className="mt-4 border-t border-slate-100 pt-3">
               <p className="mb-2 text-xs text-slate-500">
-                Outbound uses Interakt approved templates (public API is Template-only). Free-form session replies remain in Interakt until a documented session API is available.
+                Free-form text and media send only inside the 24-hour customer-care window. Outside that window, choose an approved template.
               </p>
+              <textarea
+                value={sessionText}
+                onChange={(e) => setSessionText(e.target.value)}
+                placeholder="Session reply (only if the customer messaged in the last 24 hours)"
+                rows={2}
+                className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!selectedId || !sessionText.trim()) return;
+                  setSendStatus('Sending…');
+                  const res = await fetch(`/api/ops/whatsapp/conversations/${selectedId}/reply`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sessionText.trim() }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    setSendStatus(data.error || 'Send failed.');
+                    return;
+                  }
+                  setSessionText('');
+                  setSendStatus('Session message sent.');
+                  await loadThread(selectedId);
+                }}
+                className="mb-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800"
+              >
+                Send session text
+              </button>
               {templates.length > 0 ? (
                 <select
                   value={templateName}

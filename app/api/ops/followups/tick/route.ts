@@ -5,8 +5,9 @@ import { getFollowUpDatabase } from '@/lib/ops/followups/store';
 import { processDueFollowUpJobs } from '@/lib/ops/followups/worker';
 import { getCampaignDatabase, listCampaigns } from '@/lib/ops/campaigns/store';
 import { processCampaignBatch } from '@/lib/ops/campaigns/worker';
-import { runDeliveryEngineTick } from '@/lib/interakt/delivery/retry-worker';
-import { reconcileCampaign } from '@/lib/interakt/delivery/reconcile';
+import { runDeliveryEngineTick } from '@/lib/whatsapp-cloud/delivery/retry-worker';
+import { processLeadEnrichJobs } from '@/lib/meta-leads/ingest';
+import { reconcileCampaign } from '@/lib/whatsapp-cloud/delivery/reconcile';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -51,6 +52,7 @@ async function runTick(limit = 10) {
   }
 
   const delivery = await runDeliveryEngineTick(campaignDb);
+  const leadEnrich = await processLeadEnrichJobs(db, limit);
 
   // Reconcile active non-terminal campaigns
   for (const campaign of campaigns) {
@@ -69,6 +71,7 @@ async function runTick(limit = 10) {
       failed: campaignFailed,
     },
     delivery,
+    leadEnrich,
   };
   console.info('[ops-followups] tick', JSON.stringify(result));
   return result;

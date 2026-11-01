@@ -4,12 +4,15 @@ import {
   markFollowUpFailed,
   markFollowUpSucceeded,
 } from '@/lib/ops/followups/store';
-import { sendInteraktTemplate } from '@/lib/interakt/client';
-import { findConversationByPhone } from '@/lib/interakt/conversation-store';
-import { upsertInteraktMessage } from '@/lib/interakt/message-store';
-import { touchConversationMessageMeta } from '@/lib/interakt/conversation-store';
-import { getInteraktBusinessWaNumber } from '@/lib/interakt/phone';
-import { maskPhoneForLog } from '@/lib/interakt/phone';
+import { sendWaTemplate } from '@/lib/whatsapp-cloud/client';
+import { isWhatsAppSendingPaused } from '@/lib/whatsapp-cloud/send-policy';
+import { isOptedOut } from '@/lib/whatsapp-cloud/consent';
+import { toWhatsAppRecipient } from '@/lib/whatsapp-cloud/phone';
+import { findConversationByPhone } from '@/lib/whatsapp-cloud/conversation-store';
+import { upsertWaMessage } from '@/lib/whatsapp-cloud/message-store';
+import { touchConversationMessageMeta } from '@/lib/whatsapp-cloud/conversation-store';
+import { getWaBusinessWaNumber } from '@/lib/whatsapp-cloud/phone';
+import { maskPhoneForLog } from '@/lib/whatsapp-cloud/phone';
 
 export async function processDueFollowUpJobs(
   db: Db,
@@ -18,11 +21,17 @@ export async function processDueFollowUpJobs(
   const claimed = await claimDueFollowUpJobs(db, limit);
   let succeeded = 0;
   let failed = 0;
-  const businessWa = getInteraktBusinessWaNumber();
+  const businessWa = getWaBusinessWaNumber();
 
   for (const job of claimed) {
     try {
-      const result = await sendInteraktTemplate({
+      if (await isWhatsAppSendingPaused(db)) {
+        throw new Error('WhatsApp sending is paused.');
+      }
+      if (await isOptedOut(db, toWhatsAppRecipient(job.normalizedPhone))) {
+        throw new Error('Contact opted out.');
+      }
+      const result = await sendWaTemplate({
         countryCode: '+91',
         phoneNumber: job.normalizedPhone,
         callbackData: `followup:${job.id}`,
@@ -34,7 +43,7 @@ export async function processDueFollowUpJobs(
       });
 
       if (!result.id) {
-        throw new Error('Interakt follow-up send returned no message id.');
+        throw new Error('Wa follow-up send returned no message id.');
       }
 
       let conversationId = job.conversationId;
@@ -45,7 +54,7 @@ export async function processDueFollowUpJobs(
 
       if (conversationId) {
         const now = new Date().toISOString();
-        await upsertInteraktMessage(db, {
+        await upsertWaMessage(db, {
           conversationId,
           providerMessageId: result.id,
           providerCustomerId: null,

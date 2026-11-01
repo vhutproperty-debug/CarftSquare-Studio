@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
 import { logOpsActivity } from '@/lib/ops/activity/store';
-import { setConversationManualLink } from '@/lib/interakt/conversation-store';
-import { getInteraktDatabase } from '@/lib/interakt/webhook-store';
-import type { InteraktLinkCandidate } from '@/lib/interakt/types';
+import { setConversationManualLink } from '@/lib/whatsapp-cloud/conversation-store';
+import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
+import type { WaLinkCandidate } from '@/lib/whatsapp-cloud/types';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,10 +39,10 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const link: InteraktLinkCandidate = {
+    const link: WaLinkCandidate = {
       entityType: parsed.data.entityType,
       entityId: parsed.data.entityId,
-      source: parsed.data.source as InteraktLinkCandidate['source'],
+      source: parsed.data.source as WaLinkCandidate['source'],
       sourceCollection: parsed.data.sourceCollection,
       matchField: parsed.data.matchField,
       confidence: 'exact',
@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: Params) {
       personKey: parsed.data.personKey,
     };
 
-    const db = await getInteraktDatabase();
+    const db = await getWaDatabase();
     const conversation = await setConversationManualLink(db, id, link);
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: Params) {
       action: 'link_whatsapp_conversation',
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
-      resource: 'interakt_conversations',
+      resource: 'wa_conversations',
       resourceId: id,
       details: {
         entityType: link.entityType,
