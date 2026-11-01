@@ -11,7 +11,9 @@ export default function MetaBusinessPage() {
       workspace
       pipelineStage="demand"
     >
-      <MetaBusinessPanel />
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+        <MetaBusinessPanel />
+      </div>
     </OpsShell>
   );
 }

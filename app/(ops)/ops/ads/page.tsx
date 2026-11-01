@@ -76,9 +76,10 @@ function MetaAdsWorkspace() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [creativesLoaded, setCreativesLoaded] = useState(false);
+  const [campaignsLoaded, setCampaignsLoaded] = useState(false);
 
-  const load = useCallback(async () => {
-    setError('');
+  const load = useCallback(async (keepError?: string) => {
     const [sRes, cRes, campRes] = await Promise.all([
       fetch('/api/ops/ads/status', { credentials: 'include' }),
       fetch('/api/ops/ads/creatives', { credentials: 'include' }),
@@ -87,15 +88,28 @@ function MetaAdsWorkspace() {
     const sData = await sRes.json().catch(() => ({}));
     const cData = await cRes.json().catch(() => ({}));
     const campData = await campRes.json().catch(() => ({}));
+    const problems: string[] = [];
+    if (keepError) problems.push(keepError);
     if (!sRes.ok) {
-      setError(sData.error || 'Unable to load Meta Ads status.');
-      return;
+      problems.push(typeof sData.error === 'string' ? sData.error : 'Unable to load Meta Ads status.');
+    } else {
+      setReadiness(sData.readiness || null);
     }
-    setReadiness(sData.readiness || null);
-    setCreatives(cData.creatives || []);
-    setCampaigns(campData.campaigns || []);
-    const approved = (cData.creatives || []).find((c: Creative) => c.status === 'approved');
-    if (approved && !selectedCreativeId) setSelectedCreativeId(approved.id);
+    if (!cRes.ok || !Array.isArray(cData.creatives)) {
+      problems.push(typeof cData.error === 'string' ? cData.error : 'Unable to load creatives.');
+    } else {
+      setCreatives(cData.creatives);
+      setCreativesLoaded(true);
+      const approved = cData.creatives.find((c: Creative) => c.status === 'approved');
+      if (approved && !selectedCreativeId) setSelectedCreativeId(approved.id);
+    }
+    if (!campRes.ok || !Array.isArray(campData.campaigns)) {
+      problems.push(typeof campData.error === 'string' ? campData.error : 'Unable to load campaigns.');
+    } else {
+      setCampaigns(campData.campaigns);
+      setCampaignsLoaded(true);
+    }
+    setError(problems.join(' '));
   }, [selectedCreativeId]);
 
   useEffect(() => {
@@ -189,8 +203,9 @@ function MetaAdsWorkspace() {
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setError(data.error || 'Publish paused failed');
-      await load();
+      const publishError = typeof data.error === 'string' ? data.error : 'Publish paused failed';
+      setError(publishError);
+      await load(publishError);
       return;
     }
     setMessage(
@@ -321,7 +336,7 @@ function MetaAdsWorkspace() {
                 <p className="mt-2 text-xs text-slate-600">{c.primaryText}</p>
               </div>
             ))}
-            {!creatives.length && <p className="text-sm text-slate-500">No creatives yet.</p>}
+            {creativesLoaded && !creatives.length ? <p className="text-sm text-slate-500">No creatives yet.</p> : null}
           </div>
         </section>
 
@@ -383,7 +398,7 @@ function MetaAdsWorkspace() {
                 )}
               </div>
             ))}
-            {!campaigns.length && <p className="text-sm text-slate-500">No campaign records yet.</p>}
+            {campaignsLoaded && !campaigns.length ? <p className="text-sm text-slate-500">No campaign records yet.</p> : null}
           </div>
         </section>
       </div>
