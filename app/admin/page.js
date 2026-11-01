@@ -184,6 +184,8 @@ const AdminPage = () => {
     event.preventDefault();
     setLoading(true);
     setMessage('');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
     try {
       const endpoint = auth.hasAdmin ? '/api/auth/login' : '/api/auth/setup';
       const response = await fetch(endpoint, {
@@ -191,6 +193,7 @@ const AdminPage = () => {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
+        signal: controller.signal,
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Authentication failed');
@@ -202,8 +205,13 @@ const AdminPage = () => {
       }
       await loadAuth();
     } catch (error) {
-      setMessage(error.message);
+      if (error?.name === 'AbortError') {
+        setMessage('Authentication service temporarily unavailable.');
+      } else {
+        setMessage(error.message);
+      }
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   }

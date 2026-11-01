@@ -7,6 +7,7 @@ import {
   LOGIN_REDIRECT_CODES,
   type AuthStatusResponse,
 } from '@/lib/auth/auth-status-types';
+import { fetchAuthStatusWithRetry } from '@/lib/auth/fetch-auth-status';
 import { isSafeResearchReturnTo } from '@/lib/auth/safe-research-return-to';
 
 type Props = {
@@ -15,60 +16,11 @@ type Props = {
 
 type GateState = 'loading' | 'db_error';
 
-const RETRY_DELAYS_MS = [0, 500, 1500];
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchAuthStatusWithRetry(): Promise<AuthStatusResponse> {
-  let last: AuthStatusResponse = {
-    hasAdmin: false,
-    authenticated: false,
-    role: null,
-    isSuperAdmin: false,
-    user: null,
-    opsAccess: false,
-    researchAccess: false,
-    code: AUTH_STATUS_CODES.DB_TIMEOUT,
-    message: 'Authentication service temporarily unavailable.',
-  };
-
-  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt += 1) {
-    if (RETRY_DELAYS_MS[attempt] > 0) {
-      await sleep(RETRY_DELAYS_MS[attempt]);
-    }
-    try {
-      const response = await fetch('/api/auth/status', { credentials: 'include' });
-      const data: AuthStatusResponse = await response.json();
-      last = data;
-      if (data.code !== AUTH_STATUS_CODES.DB_TIMEOUT) {
-        return data;
-      }
-    } catch {
-      last = {
-        hasAdmin: false,
-        authenticated: false,
-        role: null,
-        isSuperAdmin: false,
-        user: null,
-        opsAccess: false,
-        researchAccess: false,
-        code: AUTH_STATUS_CODES.DB_TIMEOUT,
-        message: 'Authentication service temporarily unavailable.',
-      };
-    }
-  }
-
-  return last;
-}
-
 export default function ResearchAuthGate({ initialAuth }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [state, setState] = useState<GateState>(
-    initialAuth.code === AUTH_STATUS_CODES.DB_TIMEOUT ? 'db_error' : 'loading',
-  );
+  const [state, setState] = useState<GateState>('loading');
+  const [statusLine, setStatusLine] = useState('Checking access…');
   const [dbErrorMessage, setDbErrorMessage] = useState(
     initialAuth.message || 'Authentication service temporarily unavailable.',
   );
@@ -116,8 +68,14 @@ export default function ResearchAuthGate({ initialAuth }: Props) {
     const runId = verifyRunRef.current + 1;
     verifyRunRef.current = runId;
     setState('loading');
+    setStatusLine('Checking access…');
 
-    const data = await fetchAuthStatusWithRetry();
+    const data = await fetchAuthStatusWithRetry({
+      onAttempt: (attempt) => {
+        if (verifyRunRef.current !== runId) return;
+        if (attempt > 0) setStatusLine('Retrying access check…');
+      },
+    });
     if (verifyRunRef.current !== runId) return;
 
     handleAuthResult(data);
@@ -126,10 +84,6 @@ export default function ResearchAuthGate({ initialAuth }: Props) {
   useEffect(() => {
     if (initialAuth.authenticated && initialAuth.researchAccess) {
       router.refresh();
-      return;
-    }
-
-    if (initialAuth.code === AUTH_STATUS_CODES.DB_TIMEOUT) {
       return;
     }
 
@@ -158,7 +112,7 @@ export default function ResearchAuthGate({ initialAuth }: Props) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-      Checking access…
+      {statusLine}
     </div>
   );
 }

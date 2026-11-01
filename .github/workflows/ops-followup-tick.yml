@@ -1,6 +1,8 @@
 # Hobby Vercel accounts only allow a daily cron. This schedule calls the same
 # CRON_SECRET-protected tick every 10 minutes so due follow-ups, enrichment
 # retries, and template sync are not stuck until the next lead or 06:00 UTC.
+# The same run pings /api/health/db first so a serverless isolate keeps a
+# Mongo client warm for /ops auth.
 #
 # Repository secrets (Settings → Secrets and variables → Actions):
 #   SITE_URL     https://craftsquare.co.in   (no trailing path)
@@ -17,6 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Ping database health
+        continue-on-error: true
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "Add repository secret SITE_URL, then re-run."
+            exit 1
+          fi
+          base="${SITE_URL%/}"
+          curl --fail-with-body --silent --show-error --max-time 20 \
+            "${base}/api/health/db"
+          echo
+
       - name: Call follow-up tick
         env:
           SITE_URL: ${{ secrets.SITE_URL }}
