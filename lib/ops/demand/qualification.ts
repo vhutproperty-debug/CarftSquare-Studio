@@ -1,5 +1,7 @@
 import type { DemandQualification } from '@/lib/ops/demand/types';
 
+// Optional match fields (budgetMin, budgetMax, locality, preferredProject) stay off
+// this list so existing qualification percentages do not drop.
 const QUALIFICATION_FIELDS: Array<keyof DemandQualification> = [
   'rentBuy',
   'budget',

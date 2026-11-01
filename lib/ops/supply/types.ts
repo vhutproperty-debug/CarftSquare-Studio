@@ -7,6 +7,8 @@ export type OpsSupplyRecord = {
   propertyType?: string;
   listingType?: SupplyListingType;
   project?: string;
+  /** Area inside the city, when it differs from the project or building name. */
+  locality?: string;
   building?: string;
   wing?: string;
   flatNumber?: string;

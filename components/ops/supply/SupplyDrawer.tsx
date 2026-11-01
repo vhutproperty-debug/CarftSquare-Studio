@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import BrokerShareActions from '@/components/ops/market/BrokerShareActions';
 import AvailabilityCard from '@/components/ops/supply/AvailabilityCard';
 import OwnerCard from '@/components/ops/supply/OwnerCard';
 import SupplyPriorityBadge from '@/components/ops/supply/SupplyPriorityBadge';
@@ -27,6 +28,7 @@ import {
   SUPPLY_SOURCE_LABELS,
   SUPPLY_STATUS_LABELS,
 } from '@/lib/ops/supply/statuses';
+import { buildBrokerShareCard } from '@/lib/ops/market/share-card';
 import { buildTelLink, buildWhatsAppLink } from '@/lib/ops/phone';
 
 type SupplyDrawerProps = {
@@ -135,6 +137,7 @@ export default function SupplyDrawer({
       propertyType: form.propertyType,
       listingType: form.listingType,
       project: form.project,
+      locality: form.locality,
       building: form.building,
       wing: form.wing,
       flatNumber: form.flatNumber,
@@ -214,6 +217,7 @@ export default function SupplyDrawer({
               <Button size="lg" variant="outline" className="h-11" disabled={saving || detail.record.readyForMatching} onClick={() => patchRecord({ readyForMatching: true, status: 'AVAILABLE' })}>
                 Ready for Matching
               </Button>
+              <BrokerShareActions card={buildBrokerShareCard(detail.record)} />
             </div>
 
             <section className="mt-6 space-y-3">
@@ -265,6 +269,7 @@ export default function SupplyDrawer({
                 <Field label="Rent / Sale" value={form.listingType || ''} onChange={(v) => setForm((f) => ({ ...f, listingType: v as OpsSupplyRecord['listingType'] }))} options={['rent', 'sale']} />
                 <Field label="Property type" value={form.propertyType || ''} onChange={(v) => setForm((f) => ({ ...f, propertyType: v }))} />
                 <Field label="Project" value={form.project || ''} onChange={(v) => setForm((f) => ({ ...f, project: v }))} />
+                <Field label="Locality" value={form.locality || ''} onChange={(v) => setForm((f) => ({ ...f, locality: v }))} />
                 <Field label="Building" value={form.building || ''} onChange={(v) => setForm((f) => ({ ...f, building: v }))} />
                 <Field label="Wing" value={form.wing || ''} onChange={(v) => setForm((f) => ({ ...f, wing: v }))} />
                 <Field label="Flat no." value={form.flatNumber || ''} onChange={(v) => setForm((f) => ({ ...f, flatNumber: v }))} />

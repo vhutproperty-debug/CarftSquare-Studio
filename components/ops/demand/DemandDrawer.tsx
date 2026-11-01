@@ -225,8 +225,12 @@ export default function DemandDrawer({
               <div className="grid gap-2 sm:grid-cols-2">
                 <QualField label="Rent / Buy" value={qualification.rentBuy || ''} onChange={(v) => setQualification((q) => ({ ...q, rentBuy: v as DemandQualification['rentBuy'] }))} options={['rent', 'buy', 'unknown']} />
                 <QualInput label="Budget" value={qualification.budget || ''} onChange={(v) => setQualification((q) => ({ ...q, budget: v }))} />
+                <QualInput label="Budget min" value={qualification.budgetMin || ''} onChange={(v) => setQualification((q) => ({ ...q, budgetMin: v }))} />
+                <QualInput label="Budget max" value={qualification.budgetMax || ''} onChange={(v) => setQualification((q) => ({ ...q, budgetMax: v }))} />
                 <QualInput label="BHK" value={qualification.bhk || ''} onChange={(v) => setQualification((q) => ({ ...q, bhk: v }))} />
                 <QualInput label="Furnishing" value={qualification.furnishing || ''} onChange={(v) => setQualification((q) => ({ ...q, furnishing: v }))} />
+                <QualInput label="Locality" value={qualification.locality || ''} onChange={(v) => setQualification((q) => ({ ...q, locality: v }))} />
+                <QualInput label="Preferred project" value={qualification.preferredProject || ''} onChange={(v) => setQualification((q) => ({ ...q, preferredProject: v }))} />
                 <QualInput label="Preferred buildings" value={qualification.preferredBuildings || ''} onChange={(v) => setQualification((q) => ({ ...q, preferredBuildings: v }))} className="sm:col-span-2" />
                 <QualInput label="Possession timeline" value={qualification.possessionTimeline || ''} onChange={(v) => setQualification((q) => ({ ...q, possessionTimeline: v }))} />
                 <QualInput label="Family / Bachelor" value={qualification.familyOrBachelor || ''} onChange={(v) => setQualification((q) => ({ ...q, familyOrBachelor: v }))} />

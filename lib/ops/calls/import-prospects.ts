@@ -7,6 +7,7 @@ import {
   prospectTypeSchema,
 } from '@/lib/ops/calls/schemas';
 import type { OpsProspect, ProspectPriority, ProspectSource, ProspectType } from '@/lib/ops/calls/types';
+import type { SupplyListingType } from '@/lib/ops/supply/types';
 import { normalizeOutreachPhone } from '@/lib/ops/outreach-phone';
 
 export type ImportRowAction = 'create' | 'update' | 'skip';
@@ -44,6 +45,15 @@ type ImportDraft = {
   location?: string;
   requirement?: string;
   notes?: string;
+  bhk?: string;
+  budget?: string;
+  budgetMin?: string;
+  budgetMax?: string;
+  furnishing?: string;
+  floor?: string;
+  expectedRent?: string;
+  expectedSalePrice?: string;
+  listingType?: SupplyListingType;
   source: ProspectSource;
   priority?: ProspectPriority;
   wave?: number;
@@ -170,6 +180,14 @@ export function parseProspectImportDocument(text: string, filename?: string): un
   return parseCsv(trimmed);
 }
 
+function listingTypeFromRow(value: unknown): SupplyListingType | undefined {
+  const raw = cleanString(value, 20)?.toLowerCase();
+  if (!raw) return undefined;
+  if (raw === 'rent' || raw === 'lease' || raw === 'rental') return 'rent';
+  if (raw === 'sale' || raw === 'sell' || raw === 'resale' || raw === 'buy') return 'sale';
+  return undefined;
+}
+
 function draftFromRow(row: Record<string, unknown>): { draft?: ImportDraft; reason?: string } {
   const phoneRaw = cleanString(row.phone ?? row.mobile ?? row.Phone, 20);
   if (!phoneRaw) return { reason: 'missing_phone' };
@@ -239,6 +257,15 @@ function draftFromRow(row: Record<string, unknown>): { draft?: ImportDraft; reas
       location: cleanString(row.location, 200),
       requirement: cleanString(row.requirement, 2000),
       notes: cleanString(row.notes, 4000),
+      bhk: cleanString(row.bhk ?? row.configuration, 40),
+      budget: cleanString(row.budget, 120),
+      budgetMin: cleanString(row.budgetMin, 40),
+      budgetMax: cleanString(row.budgetMax, 40),
+      furnishing: cleanString(row.furnishing ?? row.furnishedStatus, 80),
+      floor: cleanString(row.floor, 40),
+      expectedRent: cleanString(row.expectedRent ?? row.rent, 40),
+      expectedSalePrice: cleanString(row.expectedSalePrice ?? row.salePrice, 40),
+      listingType: listingTypeFromRow(row.listingType),
       source: sourceParsed.data,
       priority,
       wave,
