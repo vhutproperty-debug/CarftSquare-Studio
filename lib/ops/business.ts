@@ -163,6 +163,7 @@ export type OpsNavItem = {
     | 'intelligence'
     | 'integrations'
     | 'brokers'
+    | 'contacts'
     | 'whatsapp'
     | 'automation'
     | 'campaigns';
@@ -280,6 +281,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'matching',
         status: 'active',
         icon: 'market',
+      },
+      {
+        href: '/ops/broker-crm',
+        label: 'Broker CRM',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'contacts',
       },
       {
         href: '/ops/deals',

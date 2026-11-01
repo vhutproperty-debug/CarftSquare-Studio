@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { RefreshCw, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import BrokerAnalyticsPanel from '@/components/ops/brokers/BrokerAnalyticsPanel';
@@ -156,6 +157,12 @@ export default function BrokersWorkspace() {
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-slate-600">
+        <Link href="/ops/broker-crm" className="font-medium text-slate-900 underline">
+          Broker CRM
+        </Link>
+        {' '}keeps the WhatsApp group directory, priority, and client requirements.
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1">
           {TABS.map((t) => (

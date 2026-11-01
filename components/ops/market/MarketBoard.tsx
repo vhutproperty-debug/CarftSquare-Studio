@@ -147,6 +147,11 @@ export default function MarketBoard({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-base font-semibold text-slate-900">{requirement.headline}</h3>
+                  {requirement.source === 'broker' ? (
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase text-violet-900">
+                      Broker CRM
+                    </span>
+                  ) : null}
                   {unmatched ? (
                     <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950">
                       No supply

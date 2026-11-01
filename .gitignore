@@ -15,3 +15,7 @@ tsconfig.tsbuildinfo
 
 # Local debug / smoke artifacts (do not commit)
 tmp/
+
+# Private WhatsApp broker extracts (phone numbers). Import at runtime only.
+Broker_Numbers*.xlsx
+data/private/
