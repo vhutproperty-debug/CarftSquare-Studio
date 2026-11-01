@@ -14,6 +14,8 @@ import {
   supplyToFlat,
 } from '@/lib/ops/market/adapt';
 import { buildMarketOverview } from '@/lib/ops/market/match';
+import { brokerRecordsToMarketRequirements } from '@/lib/ops/broker-crm/market';
+import { listBrokerCrmForMarket } from '@/lib/ops/broker-crm/store';
 import type { MarketFlat, MarketOverview, MarketRequirement } from '@/lib/ops/market/types';
 
 async function loadRecentLeads(db: Db): Promise<NormalizedOpsLead[]> {
@@ -73,8 +75,19 @@ export async function queryMarketOverview(db?: Db): Promise<MarketOverview> {
     const requirement = prospectToRequirement(prospect);
     if (requirement) requirements.push(requirement);
   }
+  requirements.push(...await loadBrokerDemand(database));
 
   return buildMarketOverview(flats, requirements);
+}
+
+async function loadBrokerDemand(db: Db): Promise<MarketRequirement[]> {
+  try {
+    const records = await listBrokerCrmForMarket(db);
+    return brokerRecordsToMarketRequirements(records);
+  } catch (error) {
+    console.error('[ops-market] broker_demand_failed', error instanceof Error ? error.message : error);
+    return [];
+  }
 }
 
 export { getDb as getDatabase };

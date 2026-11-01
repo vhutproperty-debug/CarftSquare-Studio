@@ -25,7 +25,7 @@ export type MarketFlat = {
 
 export type MarketRequirement = {
   id: string;
-  source: 'lead' | 'prospect';
+  source: 'lead' | 'prospect' | 'broker';
   headline: string;
   contactName: string;
   project: string;

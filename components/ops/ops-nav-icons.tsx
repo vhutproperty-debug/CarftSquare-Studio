@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Timer,
   Megaphone,
+  Users,
 } from 'lucide-react';
 import type { OpsNavItem } from '@/lib/ops/business';
 
@@ -28,6 +29,7 @@ const ICONS = {
   intelligence: BarChart3,
   integrations: Plug,
   brokers: MessagesSquare,
+  contacts: Users,
   whatsapp: MessageCircle,
   automation: Timer,
   campaigns: Megaphone,

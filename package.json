@@ -34,6 +34,7 @@
         "test:auth-db": "npx tsx scripts/auth-db-resilience.test.ts",
         "test:ops-cron-middleware": "npx tsx scripts/ops-cron-middleware.test.ts",
         "test:market-board": "npx tsx scripts/broker-share-card.test.ts",
+        "test:broker-crm": "npx tsx scripts/broker-crm.test.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },
