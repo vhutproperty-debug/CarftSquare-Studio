@@ -68,7 +68,7 @@ export default function BrokerShareActions({ card, compact = false }: BrokerShar
     const canvas = paintShareCard(card);
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
-    link.download = 'cobroke-card.png';
+    link.download = 'share-card.png';
     link.click();
   }
 
@@ -83,7 +83,7 @@ export default function BrokerShareActions({ card, compact = false }: BrokerShar
           <DialogHeader className="text-left">
             <DialogTitle>Broker share card</DialogTitle>
             <DialogDescription>
-              Safe to forward. Rent, price, exact floor, unit number, owner name, and owner phone stay off this card.
+              Safe to forward. Rent, price, exact floor, unit number, owner name, owner phone, and brokerage terms stay off this card.
             </DialogDescription>
           </DialogHeader>
           <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-950 px-4 py-4 text-sm leading-6 text-white">

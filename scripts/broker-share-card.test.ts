@@ -68,6 +68,22 @@ function lead(partial: Partial<NormalizedOpsLead> & Pick<NormalizedOpsLead, 'sou
   };
 }
 
+const COMMERCIAL_TERMS = [
+  'co-broking',
+  'cobroking',
+  'co broke',
+  'co-broke',
+  '50/50',
+  '50 / 50',
+  '50-50',
+  'brokerage',
+  'commission',
+  'split',
+  'payout',
+  '2%',
+  'percent',
+];
+
 function assertExcluded(blob: string, label: string) {
   const forbidden = [
     SECRET_RENT,
@@ -91,6 +107,7 @@ function assertExcluded(blob: string, label: string) {
     '+91',
     'owner',
     'flat no',
+    ...COMMERCIAL_TERMS,
   ];
   for (const token of forbidden) {
     assert.equal(
@@ -125,7 +142,6 @@ function main() {
   const card = buildBrokerShareCard(record);
   assert.deepEqual(Object.keys(card).sort(), [
     'bhkLabel',
-    'cobroking',
     'floorRange',
     'furnishingLabel',
     'lines',
@@ -137,15 +153,16 @@ function main() {
   assert.equal(card.floorRange, 'Mid floor 15-25');
   assert.equal(card.furnishingLabel, 'Furnished');
   assert.equal(card.place, 'Sheth 72 West, Andheri West');
-  assert.equal(card.cobroking, 'Co-broking 50/50');
   assert.equal(card.priceLine, 'Call for price');
   assert.equal(card.whatsAppText, card.lines.join('\n'));
+  assert.equal(card.lines.includes('Call for price'), true);
+  assert.equal(card.lines.some((line) => /brok|commission|split|50\s*\/\s*50|payout/i.test(line)), false);
   assert.match(card.whatsAppText, /3 BHK/);
   assert.match(card.whatsAppText, /Mid floor 15-25/);
   assert.match(card.whatsAppText, /Furnished/);
   assert.match(card.whatsAppText, /Sheth 72 West, Andheri West/);
-  assert.match(card.whatsAppText, /Co-broking 50\/50/);
   assert.match(card.whatsAppText, /Call for price/);
+  assert.doesNotMatch(card.whatsAppText, /co-?brok|50\s*\/\s*50|brokerage|commission|split|payout/i);
   assertExcluded(JSON.stringify(card), 'share card');
 
   const messyFloor = buildBrokerShareCard({

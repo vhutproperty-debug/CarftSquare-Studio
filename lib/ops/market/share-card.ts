@@ -1,7 +1,8 @@
 /**
  * Broker-facing inventory card.
  * The returned object is the only text that may be copied or drawn.
- * It never includes rent, price, deposit, unit number, exact floor, owner name, or owner phone.
+ * It never includes rent, price, deposit, unit number, exact floor, owner name, owner phone,
+ * or commercial terms (brokerage, commission, co-broking, or a split).
  */
 import {
   bhkLabel,
@@ -12,7 +13,6 @@ import {
   normalizeFurnishing,
 } from '@/lib/ops/market/normalize';
 
-export const COBROKING_LINE = 'Co-broking 50/50';
 export const PRICE_LINE = 'Call for price';
 
 export type ShareCardSource = {
@@ -50,7 +50,6 @@ export type BrokerShareCard = {
   floorRange: string;
   furnishingLabel: string;
   place: string;
-  cobroking: typeof COBROKING_LINE;
   priceLine: typeof PRICE_LINE;
   lines: string[];
   whatsAppText: string;
@@ -77,7 +76,6 @@ export function buildBrokerShareCard(source: ShareCardSource): BrokerShareCard {
     floorRange: floorRangeLabel(source.floor, true),
     furnishingLabel: furnishingLabel(normalizeFurnishing(source.furnishing || source.furnishedStatus)),
     place: publicPlace(source),
-    cobroking: COBROKING_LINE,
     priceLine: PRICE_LINE,
     lines: [],
     whatsAppText: '',
@@ -87,7 +85,6 @@ export function buildBrokerShareCard(source: ShareCardSource): BrokerShareCard {
     card.floorRange,
     card.furnishingLabel,
     card.place,
-    card.cobroking,
     card.priceLine,
   ];
   card.whatsAppText = card.lines.join('\n');
