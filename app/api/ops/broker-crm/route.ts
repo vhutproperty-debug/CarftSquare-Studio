@@ -6,6 +6,8 @@ import { getBrokerCrmDatabase, listBrokerCrm } from '@/lib/ops/broker-crm/store'
 import { isBrokerCrmStatus, type BrokerCrmListQuery } from '@/lib/ops/broker-crm/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function sortOf(value: string | null): BrokerCrmListQuery['sort'] {
   if (value === 'name' || value === 'groupCount' || value === 'lastContacted' || value === 'priority') return value;
@@ -14,9 +16,8 @@ function sortOf(value: string | null): BrokerCrmListQuery['sort'] {
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
-  if (!auth.ok) {
-    return authResultToResponse(auth) ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = authResultToResponse(auth);
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const statusParam = url.searchParams.get('status') || 'all';

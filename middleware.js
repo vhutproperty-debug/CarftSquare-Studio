@@ -65,6 +65,19 @@ function appPageHeaders(response) {
   return response;
 }
 
+/**
+ * Continue with the original request headers.
+ * NextResponse.next() with response header edits and no request copy can drop
+ * the Cookie header before the ops layout reads the admin session.
+ */
+function continueRequest(request) {
+  return NextResponse.next({
+    request: {
+      headers: new Headers(request.headers),
+    },
+  });
+}
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
@@ -103,11 +116,11 @@ export async function middleware(request) {
   }
 
   if (isOpsPage(pathname) || isResearchPage(pathname)) {
-    return appPageHeaders(NextResponse.next());
+    return appPageHeaders(continueRequest(request));
   }
 
   if (pathname.startsWith('/admin')) {
-    return appPageHeaders(NextResponse.next());
+    return appPageHeaders(continueRequest(request));
   }
 
   if (pathname.startsWith('/api/auth/') && !isPublicAuthPath(pathname)) {
@@ -117,10 +130,10 @@ export async function middleware(request) {
   }
 
   if (session && request.cookies.get(SESSION_COOKIE)?.value) {
-    return NextResponse.next();
+    return continueRequest(request);
   }
 
-  return NextResponse.next();
+  return continueRequest(request);
 }
 
 export const config = {

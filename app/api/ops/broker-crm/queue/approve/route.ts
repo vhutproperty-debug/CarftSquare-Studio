@@ -7,6 +7,8 @@ import { approveBrokerCrmWave, getBrokerCrmDatabase } from '@/lib/ops/broker-crm
 import { parseWaveId, WAVE_SENDS_WHATSAPP, type WaveTemplateInput } from '@/lib/ops/broker-crm/waves';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function POST(request: Request) {
   const auth = await requireOpsEditAccess(request);

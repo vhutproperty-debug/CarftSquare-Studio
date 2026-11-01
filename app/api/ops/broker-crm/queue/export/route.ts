@@ -12,6 +12,8 @@ import {
 } from '@/lib/ops/broker-crm/waves';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   const auth = await requireOpsEditAccess(request);

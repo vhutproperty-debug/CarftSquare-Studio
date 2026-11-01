@@ -5,6 +5,8 @@ import { requireOpsViewAccess } from '@/lib/ops/auth';
 import { getBrokerCrmDatabase, queueBrokerCrm } from '@/lib/ops/broker-crm/store';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);

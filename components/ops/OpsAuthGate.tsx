@@ -34,10 +34,32 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
     router.replace(`/admin?returnTo=${encodeURIComponent(returnTo)}`);
   }, [pathname, router]);
 
+  const openOpsPage = useCallback((path: string) => {
+    const target = isSafeOpsReturnTo(path) ? path : '/ops';
+    if (typeof window === 'undefined') {
+      router.refresh();
+      return;
+    }
+    const reloadKey = `ops-auth-document:${target}`;
+    try {
+      if (sessionStorage.getItem(reloadKey) !== '1') {
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.replace(`${target}${window.location.search}${window.location.hash}`);
+        return;
+      }
+    } catch {
+      // sessionStorage can be blocked; fall through to a router refresh.
+    }
+    router.refresh();
+  }, [router]);
+
   const handleAuthResult = useCallback(
     (data: AuthStatusResponse) => {
       if (data.authenticated && data.opsAccess) {
-        router.refresh();
+        // A client navigation can render this gate from a cookie-less RSC
+        // prefetch (new /ops routes such as /ops/broker-crm). The status call
+        // sees the session. Load the document again so the layout does too.
+        openOpsPage(pathname || '/ops');
         return;
       }
 
@@ -61,7 +83,7 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
         redirectToLogin();
       }
     },
-    [redirectToLogin, router],
+    [openOpsPage, pathname, redirectToLogin, router],
   );
 
   const verify = useCallback(async () => {
@@ -86,12 +108,17 @@ export default function OpsAuthGate({ initialAuth }: OpsAuthGateProps) {
     // Do not logout here — that destroyed valid sessions on server false-negatives.
     // DB_TIMEOUT is retried with backoff; a hung status call aborts instead of spinning.
     if (initialAuth.authenticated && initialAuth.opsAccess) {
+      try {
+        sessionStorage.removeItem(`ops-auth-document:${pathname || '/ops'}`);
+      } catch {
+        // ignore
+      }
       router.refresh();
       return;
     }
 
     void verify();
-  }, [initialAuth, router, verify]);
+  }, [initialAuth, pathname, router, verify]);
 
   if (state === 'db_error') {
     return (

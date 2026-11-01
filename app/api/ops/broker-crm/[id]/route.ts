@@ -8,6 +8,8 @@ import { BrokerCrmPrivacyError } from '@/lib/ops/broker-crm/privacy';
 import { getBrokerCrm, getBrokerCrmDatabase, updateBrokerCrm } from '@/lib/ops/broker-crm/store';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type RouteContext = { params: { id: string } };
 
