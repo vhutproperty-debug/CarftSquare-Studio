@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import OpsShell from '@/components/ops/OpsShell';
 
 export default function MetaReviewAdsPage() {
@@ -15,7 +16,9 @@ Permission: ads_read
 POST /1351127224742253/leadgen_forms
 Permission: pages_manage_ads
 Privacy URL: https://craftsquare.co.in/privacy-policy`}</pre>
-        <p>On /ops/ads, generate a creative, approve it, create the dry-run campaign, then Publish PAUSED. Insights sync is GET /api/ops/ads/insights/sync and does nothing until the feature flag is on.</p>
+        <p>
+          On <Link className="underline" href="/ops/ads#campaigns">/ops/ads</Link>, generate a creative, approve it, create the dry-run campaign, then Publish PAUSED. Use Pause and Resume on the campaigns list. Resume stays blocked until META_ADS_ENABLED and META_ADS_ALLOW_ACTIVE are true. Open <Link className="underline" href="/ops/ads#performance">Performance</Link> for spend, impressions, clicks, leads, and CPL.
+        </p>
       </div>
     </OpsShell>
   );
