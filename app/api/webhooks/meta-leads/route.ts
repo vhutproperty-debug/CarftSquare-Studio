@@ -4,6 +4,7 @@ import { getDb } from '@/lib/mongodb';
 import { verifyXHubSignature256 } from '@/lib/whatsapp-cloud/signature';
 import { ensureMetaAdsLeadIndexes } from '@/lib/ops/leads/adapters/meta-ads';
 import { processLeadgenPayload } from '@/lib/meta-leads/ingest';
+import { runOpsMaintenance } from '@/lib/ops/maintenance';
 import { sendMetaConversionEvent } from '@/lib/meta-capi/server';
 import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
 
@@ -79,6 +80,12 @@ export async function POST(request: Request) {
         );
       }
     }
+
+    waitUntil(
+      runOpsMaintenance({ limit: 5, syncTemplates: true }).catch((error) => {
+        console.warn('[meta-leads] maintenance_failed', error instanceof Error ? error.message : error);
+      }),
+    );
 
     return NextResponse.json({ ok: true, accepted: result.accepted });
   } catch (error) {

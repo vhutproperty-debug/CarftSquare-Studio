@@ -4,6 +4,7 @@ import { getWhatsAppVerifyToken } from '@/lib/whatsapp-cloud/config';
 import { verifyXHubSignature256 } from '@/lib/whatsapp-cloud/signature';
 import { acceptCloudWebhook, processCloudWebhookEvent } from '@/lib/whatsapp-cloud/process-event';
 import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
+import { runOpsMaintenance } from '@/lib/ops/maintenance';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -38,8 +39,15 @@ export async function POST(request: Request) {
     const db = await getWaDatabase();
     const accepted = await acceptCloudWebhook(db, rawBody, body);
     waitUntil(
-      Promise.all(accepted.eventIds.map((id) => processCloudWebhookEvent(db, id))).catch((error) => {
-        console.error('[whatsapp] async_process_failed', error instanceof Error ? error.message : error);
+      (async () => {
+        try {
+          await Promise.all(accepted.eventIds.map((id) => processCloudWebhookEvent(db, id)));
+        } catch (error) {
+          console.error('[whatsapp] async_process_failed', error instanceof Error ? error.message : error);
+        }
+        await runOpsMaintenance({ limit: 5, syncTemplates: true });
+      })().catch((error) => {
+        console.error('[whatsapp] maintenance_failed', error instanceof Error ? error.message : error);
       }),
     );
     return NextResponse.json({ ok: true, accepted: accepted.accepted, duplicate: accepted.duplicate });

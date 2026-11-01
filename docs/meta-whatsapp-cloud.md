@@ -52,7 +52,7 @@ Suggested `lead_welcome` body: `Hi {{1}}, thanks for your enquiry about {{2}} wi
 ## Lead flow
 
 1. Leadgen webhook stores `meta_ads_leads` with campaign and ad names.
-2. Failed Graph enrichment is queued in `meta_lead_enrich_jobs` and retried by `/api/ops/followups/tick`.
+2. Failed Graph enrichment is queued in `meta_lead_enrich_jobs`. The lead webhook, later website leads, and the daily tick retry it. A reply or new lead also drains due follow-ups and refreshes template status.
 3. `onNewLead` assigns a round-robin owner from `LEAD_ASSIGNEES`, sends `lead_welcome`, emails and WhatsApps `OWNER_ALERT_*`, and schedules day-1 and day-3 follow-ups.
 4. An inbound reply or a demand status of Contacted or Lost cancels queued follow-ups.
 5. `STOP` or `UNSUBSCRIBE` opts the contact out.
@@ -68,15 +68,26 @@ npm run migrate:wa-cloud -- --dry-run
 npm run migrate:wa-cloud
 ```
 
-## Crons
+## Schedule
+
+Vercel Hobby only allows cron jobs that run once a day or less. `vercel.json` keeps a single daily job:
 
 | Path | Schedule |
 |---|---|
-| `/api/ops/followups/tick` | every 10 minutes |
-| `/api/ops/whatsapp/templates/sync` | hourly |
-| `/api/ops/ads/insights/sync` | every 6 hours (no-op unless `META_ADS_ENABLED=true`) |
+| `/api/ops/followups/tick` | `0 6 * * *` (06:00 UTC, once a day) |
 
-Send `Authorization: Bearer $CRON_SECRET`.
+That request sends due follow-ups, retries lead enrichment, syncs WhatsApp templates, and syncs ad insights (insights no-op unless `META_ADS_ENABLED=true`). The same follow-up, enrichment, and template work also runs inline after a lead webhook, a website lead, and a WhatsApp webhook, so a new enquiry is not waiting until the next morning.
+
+`/api/ops/whatsapp/templates/sync` and `/api/ops/ads/insights/sync` stay available for a manual call with `Authorization: Bearer $CRON_SECRET`. They are not Vercel crons.
+
+For a 10-minute cadence on Hobby, add GitHub Actions secrets and leave `.github/workflows/ops-followup-tick.yml` enabled:
+
+| Secret | Value |
+|---|---|
+| `SITE_URL` | `https://craftsquare.co.in` |
+| `CRON_SECRET` | the same value as Vercel `CRON_SECRET` |
+
+The workflow POSTs that bearer token to `/api/ops/followups/tick` every 10 minutes. GitHub may delay scheduled runs.
 
 ## Env vars
 

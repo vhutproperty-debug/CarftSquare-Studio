@@ -1,19 +1,14 @@
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
-import { getFollowUpDatabase } from '@/lib/ops/followups/store';
-import { processDueFollowUpJobs } from '@/lib/ops/followups/worker';
-import { getCampaignDatabase, listCampaigns } from '@/lib/ops/campaigns/store';
-import { processCampaignBatch } from '@/lib/ops/campaigns/worker';
-import { runDeliveryEngineTick } from '@/lib/whatsapp-cloud/delivery/retry-worker';
-import { processLeadEnrichJobs } from '@/lib/meta-leads/ingest';
-import { reconcileCampaign } from '@/lib/whatsapp-cloud/delivery/reconcile';
+import { runOpsMaintenance } from '@/lib/ops/maintenance';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 /**
- * Cron/worker: follow-ups + campaign batches + delivery retries/reclaim.
+ * Daily Vercel cron (Hobby) plus optional external scheduler.
+ * Also drains due follow-ups, enrichment retries, template sync, and insights.
  */
 async function authorizeTick(request: Request): Promise<Response | null> {
   const cronSecret = process.env.OPS_FOLLOWUPS_CRON_SECRET?.trim();
@@ -31,50 +26,12 @@ async function authorizeTick(request: Request): Promise<Response | null> {
   return authResultToResponse(auth);
 }
 
-async function runTick(limit = 10) {
-  const db = await getFollowUpDatabase();
-  const followups = await processDueFollowUpJobs(db, limit);
-
-  const campaignDb = await getCampaignDatabase();
-  const campaigns = await listCampaigns(campaignDb, 20);
-  let campaignSent = 0;
-  let campaignFailed = 0;
-  let campaignsProcessed = 0;
-  for (const campaign of campaigns) {
-    if (!['running', 'scheduled', 'queued'].includes(campaign.status)) continue;
-    if (campaign.status === 'scheduled' && campaign.scheduledFor) {
-      if (new Date(campaign.scheduledFor).getTime() > Date.now()) continue;
-    }
-    const batch = await processCampaignBatch(campaignDb, campaign.id);
-    campaignSent += batch.sent;
-    campaignFailed += batch.failed;
-    campaignsProcessed += 1;
-  }
-
-  const delivery = await runDeliveryEngineTick(campaignDb);
-  const leadEnrich = await processLeadEnrichJobs(db, limit);
-
-  // Reconcile active non-terminal campaigns
-  for (const campaign of campaigns) {
-    if (
-      ['running', 'waiting_for_delivery', 'retrying', 'queued'].includes(campaign.status)
-    ) {
-      await reconcileCampaign(campaignDb, campaign.id);
-    }
-  }
-
-  const result = {
-    followups,
-    campaigns: {
-      processed: campaignsProcessed,
-      sent: campaignSent,
-      failed: campaignFailed,
-    },
-    delivery,
-    leadEnrich,
-  };
-  console.info('[ops-followups] tick', JSON.stringify(result));
-  return result;
+function runTick(limit = 10) {
+  return runOpsMaintenance({
+    limit,
+    syncTemplates: true,
+    syncInsights: true,
+  });
 }
 
 export async function GET(request: Request) {

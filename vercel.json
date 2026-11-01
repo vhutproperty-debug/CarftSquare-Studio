@@ -2,15 +2,7 @@
   "crons": [
     {
       "path": "/api/ops/followups/tick",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/ops/whatsapp/templates/sync",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/ops/ads/insights/sync",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
