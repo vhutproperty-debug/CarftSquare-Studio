@@ -7,13 +7,14 @@ import {
 } from '@/lib/whatsapp-cloud/conversation-store';
 import { upsertWaMessage } from '@/lib/whatsapp-cloud/message-store';
 import { runInboundMessageAutomations } from '@/lib/whatsapp-cloud/automation';
+import { extractInboundMessageContent } from '@/lib/whatsapp-cloud/inbound-content';
 import {
   getWaBusinessWaNumber,
   maskPhoneForLog,
   sha256Hex,
-  toNormalizedIndianPhone,
-  toWhatsAppRecipient,
 } from '@/lib/whatsapp-cloud/phone';
+import { phoneKeyFromWaId } from '@/lib/ops/outreach-phone';
+import { applyProspectWhatsAppReply } from '@/lib/ops/calls/prospect-replies';
 import { sendText } from '@/lib/whatsapp-cloud/client';
 import { classifyWhatsAppError } from '@/lib/whatsapp-cloud/errors';
 import { isStopKeyword, recordOptOut, touchInbound } from '@/lib/whatsapp-cloud/consent';
@@ -156,13 +157,15 @@ export async function acceptCloudWebhook(db: Db, rawBody: string, body: unknown)
 }
 
 function cloudMessageToProvider(message: Record<string, unknown>): WaProviderMessage {
-  const type = String(message.type || 'text');
-  const text = (message.text as { body?: string } | undefined)?.body;
-  const media = message[type] as { id?: string; caption?: string; mime_type?: string; filename?: string; link?: string } | undefined;
+  const content = extractInboundMessageContent(message);
+  const type = content.type;
+  const media = type === 'button' || type === 'interactive' || type === 'text'
+    ? undefined
+    : message[type] as { id?: string; caption?: string; mime_type?: string; filename?: string; link?: string } | undefined;
   return {
     id: String(message.id || ''),
     message_content_type: type,
-    message: text || media?.caption || null,
+    message: content.text || media?.caption || null,
     media_id: media?.id || null,
     media_url: media?.link || null,
     mime: media?.mime_type || null,
@@ -202,21 +205,20 @@ async function processInbound(db: Db, event: WaWebhookEvent) {
     await markWebhookEventStatus(db, event.id, 'ignored', 'missing_provider_message_id');
     return;
   }
-  const waId = toWhatsAppRecipient(String(message.from || event.providerCustomerId || ''));
-  const normalizedPhone = toNormalizedIndianPhone(waId);
-  const phoneKey = normalizedPhone || (waId ? `invalid:${waId}` : '');
+  const waId = String(message.from || event.providerCustomerId || '').replace(/\D/g, '');
+  const phoneKey = phoneKeyFromWaId(waId);
   if (!phoneKey) {
     await markWebhookEventStatus(db, event.id, 'ignored', 'missing_customer_phone');
     return;
   }
 
   const at = provider.received_at_utc || event.receivedAt;
-  if (normalizedPhone) await touchInbound(db, waId, at);
+  if (!phoneKey.startsWith('invalid:')) await touchInbound(db, `+${waId}`, at);
 
   const conversation = await ensureConversation(db, {
     waId: waId || phoneKey,
     normalizedPhone: phoneKey,
-    runMatch: Boolean(normalizedPhone),
+    runMatch: !phoneKey.startsWith('invalid:'),
   });
 
   const { created, message: saved } = await upsertWaMessage(db, {
@@ -243,7 +245,8 @@ async function processInbound(db: Db, event: WaWebhookEvent) {
   });
 
   if (isStopKeyword(provider.message)) {
-    await recordOptOut(db, waId);
+    await recordOptOut(db, `+${waId}`);
+    await applyProspectWhatsAppReply(db, waId, provider.message);
     await db.collection('wa_conversations').updateOne(
       { id: conversation.id },
       {
@@ -257,13 +260,15 @@ async function processInbound(db: Db, event: WaWebhookEvent) {
     );
     try {
       await sendText(
-        waId,
+        `+${waId}`,
         'You will not receive further WhatsApp messages from CraftSquare. Reply START if this was a mistake.',
         { ignoreOptOut: true },
       );
     } catch (error) {
       console.warn('[whatsapp] opt_out_ack_failed', error instanceof Error ? error.message : error);
     }
+  } else if (provider.message) {
+    await applyProspectWhatsAppReply(db, waId, provider.message);
   }
 
   try {
@@ -307,9 +312,8 @@ async function processStatus(db: Db, event: WaWebhookEvent) {
     : 'queued';
   const error = status.errors?.[0];
   const classified = error ? classifyWhatsAppError(error.code) : null;
-  const waId = toWhatsAppRecipient(status.recipient_id || '');
-  const normalizedPhone = toNormalizedIndianPhone(waId);
-  const phoneKey = normalizedPhone || (waId ? `invalid:${waId}` : 'unknown');
+  const waId = String(status.recipient_id || '').replace(/\D/g, '');
+  const phoneKey = phoneKeyFromWaId(waId) || 'unknown';
   const at = status.timestamp
     ? new Date(Number(status.timestamp) * 1000).toISOString()
     : event.receivedAt;

@@ -10,6 +10,13 @@ import {
   materializeManualRecipients,
   getCampaign,
 } from '@/lib/ops/campaigns/store';
+import {
+  materializeProspectAudience,
+  previewProspectAudience,
+  type ProspectAudienceFilter,
+} from '@/lib/ops/campaigns/prospect-audience';
+import type { ProspectVariableField } from '@/lib/ops/campaigns/prospect-variables';
+import { normalizeOutreachPhone } from '@/lib/ops/outreach-phone';
 import { startCampaign, processCampaignBatch } from '@/lib/ops/campaigns/worker';
 
 export async function GET(request: Request) {
@@ -32,10 +39,80 @@ const createSchema = z.object({
   templateName: z.string().trim().min(1).max(120),
   languageCode: z.string().trim().min(2).max(10).optional(),
   bodyValues: z.array(z.string().max(1000)).max(20).optional(),
-  phones: z.array(z.string().trim().min(8).max(20)).min(1).max(500),
+  phones: z.array(z.string().trim().min(8).max(20)).max(500).optional(),
+  audience: z.object({
+    source: z.enum(['manual_phones', 'ops_prospects']).optional(),
+    projectName: z.string().trim().max(200).optional(),
+    wave: z.number().int().min(1).max(99).optional(),
+    batch: z.string().trim().max(80).optional(),
+    priority: z.enum(['P1', 'P2', 'P3', 'P4', 'Intl']).optional(),
+    campaignTag: z.string().trim().max(120).optional(),
+    intent: z.enum(['sell', 'rent', 'interiors', 'not_now']).optional(),
+    variableFields: z.array(z.enum(['salutation', 'units'])).min(1).max(2).optional(),
+  }).optional(),
+  dryRun: z.boolean().optional(),
   scheduledFor: z.string().optional(),
   throttlePerMinute: z.number().int().min(1).max(60).optional(),
+}).superRefine((data, ctx) => {
+  const source = data.audience?.source || (data.phones?.length ? 'manual_phones' : undefined);
+  if (source === 'ops_prospects') {
+    if (!data.audience?.projectName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'projectName is required when targeting prospects.',
+        path: ['audience', 'projectName'],
+      });
+    }
+    return;
+  }
+  if (!data.phones?.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide phone numbers or a prospect audience.',
+      path: ['phones'],
+    });
+  }
 });
+
+function prospectFilterFrom(
+  audience: NonNullable<z.infer<typeof createSchema>['audience']>,
+): ProspectAudienceFilter {
+  return {
+    projectName: audience.projectName || '',
+    wave: audience.wave,
+    batch: audience.batch,
+    priority: audience.priority,
+    campaignTag: audience.campaignTag,
+    intent: audience.intent,
+    variableFields: audience.variableFields as ProspectVariableField[] | undefined,
+  };
+}
+
+function previewManualPhones(phones: string[], bodyValues: string[]) {
+  const seen = new Set<string>();
+  const recipients = phones.map((phone) => {
+    const outreach = normalizeOutreachPhone(phone);
+    if (!outreach) {
+      return { phone, status: 'skipped_invalid' as const, reason: 'invalid_phone', bodyValues };
+    }
+    if (seen.has(outreach.phone)) {
+      return {
+        phone: outreach.phone,
+        status: 'skipped_invalid' as const,
+        reason: 'duplicate_phone',
+        bodyValues,
+      };
+    }
+    seen.add(outreach.phone);
+    return { phone: outreach.phone, status: 'queued' as const, bodyValues };
+  });
+  return {
+    total: recipients.length,
+    queued: recipients.filter((row) => row.status === 'queued').length,
+    skipped: recipients.filter((row) => row.status !== 'queued').length,
+    recipients,
+  };
+}
 
 export async function POST(request: Request) {
   const auth = await requireOpsEditAccess(request);
@@ -49,30 +126,70 @@ export async function POST(request: Request) {
     }
 
     const db = await getCampaignDatabase();
+    const source = parsed.data.audience?.source
+      || (parsed.data.phones?.length ? 'manual_phones' : 'manual_phones');
+    const variableFields = parsed.data.audience?.variableFields;
+    const bodyValues = parsed.data.bodyValues || [];
+
+    if (parsed.data.dryRun) {
+      const preview = source === 'ops_prospects'
+        ? await previewProspectAudience(db, prospectFilterFrom(parsed.data.audience || {}))
+        : previewManualPhones(parsed.data.phones || [], bodyValues);
+      return NextResponse.json({
+        dryRun: true,
+        preview,
+        note: 'Preview only. Nothing was queued or sent.',
+      });
+    }
+
+    const audience = source === 'ops_prospects'
+      ? {
+        source: 'ops_prospects' as const,
+        projectName: parsed.data.audience?.projectName,
+        wave: parsed.data.audience?.wave,
+        batch: parsed.data.audience?.batch,
+        priority: parsed.data.audience?.priority,
+        campaignTag: parsed.data.audience?.campaignTag,
+        intent: parsed.data.audience?.intent,
+        variableFields,
+      }
+      : { source: 'manual_phones' as const, phones: parsed.data.phones || [] };
+
     const campaign = await createCampaign(db, {
       name: parsed.data.name,
       templateName: parsed.data.templateName,
       languageCode: parsed.data.languageCode,
-      bodyValues: parsed.data.bodyValues,
-      audience: { source: 'manual_phones', phones: parsed.data.phones },
+      bodyValues,
+      audience,
       scheduledFor: parsed.data.scheduledFor,
       throttlePerMinute: parsed.data.throttlePerMinute,
       createdBy: auth.admin.id,
     });
 
-    await materializeManualRecipients(db, campaign, parsed.data.phones);
+    if (source === 'ops_prospects') {
+      await materializeProspectAudience(db, campaign, prospectFilterFrom(parsed.data.audience || {}));
+    } else {
+      await materializeManualRecipients(db, campaign, parsed.data.phones || []);
+    }
 
+    const saved = await getCampaign(db, campaign.id);
     await logOpsActivity({
       action: 'create_whatsapp_campaign',
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
       resource: 'ops_wa_campaigns',
       resourceId: campaign.id,
-      details: { recipientCount: parsed.data.phones.length, templateName: campaign.templateName },
+      details: {
+        recipientCount: saved?.stats.total || 0,
+        queued: saved?.stats.queued || 0,
+        skipped: saved?.stats.skipped || 0,
+        templateName: campaign.templateName,
+        audience: audience.source,
+      },
       request,
     });
 
-    return NextResponse.json({ campaign: await getCampaign(db, campaign.id) }, { status: 201 });
+    return NextResponse.json({ campaign: saved }, { status: 201 });
   } catch (error) {
     console.error('[ops-campaigns] create_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to create campaign.' }, { status: 500 });

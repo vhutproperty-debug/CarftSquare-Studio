@@ -29,6 +29,7 @@ export type DeliveryRecipientDoc = {
   currentAttemptId?: string | null;
   doNotContact?: boolean;
   reviewRequired?: boolean;
+  bodyValues?: string[];
   lastProviderEventId?: string | null;
   idempotencyKey: string;
   createdAt: string;

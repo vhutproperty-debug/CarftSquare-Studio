@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
 import AddProspectDialog from '@/components/ops/calls/AddProspectDialog';
+import ImportProspectsDialog from '@/components/ops/calls/ImportProspectsDialog';
+import { canAccess } from '@/lib/auth/rbac/client';
 import ActionCenterPanel, { type ActionCenterHandle } from '@/components/ops/calls/ActionCenterPanel';
 import LeadWorkspacePanel, { type WorkspaceDetail } from '@/components/ops/calls/LeadWorkspacePanel';
 import QueuePanel, { QUEUE_SECTIONS, type QueueSectionId } from '@/components/ops/calls/QueuePanel';
@@ -34,6 +36,16 @@ export default function CallsWorkspace() {
 
   const [currentUser, setCurrentUser] = useState<{ id?: string; role?: string; isSuperAdmin?: boolean } | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [outreach, setOutreach] = useState({
+    project: '',
+    priority: '',
+    wave: '',
+    batch: '',
+    campaignTag: '',
+    intent: '',
+    hideOptOut: false,
+  });
   const [mobilePanel, setMobilePanel] = useState<'queue' | 'lead' | 'actions'>('queue');
 
   const callLinkRef = useRef<HTMLAnchorElement>(null);
@@ -52,6 +64,13 @@ export default function CallsWorkspace() {
       if (sectionConfig.callStatus) params.set('callStatus', sectionConfig.callStatus);
       if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       if (mineOnly) params.set('mineOnly', 'true');
+      if (outreach.project.trim()) params.set('project', outreach.project.trim());
+      if (outreach.priority) params.set('priority', outreach.priority);
+      if (outreach.wave.trim()) params.set('wave', outreach.wave.trim());
+      if (outreach.batch.trim()) params.set('batch', outreach.batch.trim());
+      if (outreach.campaignTag.trim()) params.set('campaignTag', outreach.campaignTag.trim());
+      if (outreach.intent) params.set('intent', outreach.intent);
+      if (outreach.hideOptOut) params.set('hideOptOut', 'true');
 
       const [queueRes, metricsRes] = await Promise.all([
         fetch(`/api/ops/calls/queue?${params.toString()}`, { credentials: 'include', signal: controller.signal }),
@@ -78,7 +97,7 @@ export default function CallsWorkspace() {
       window.clearTimeout(timer);
       setQueueLoading(false);
     }
-  }, [debouncedSearch, mineOnly, sectionConfig.apiSection, sectionConfig.callStatus]);
+  }, [debouncedSearch, mineOnly, outreach, sectionConfig.apiSection, sectionConfig.callStatus]);
 
   const loadDetail = useCallback(async (item: CallQueueItem) => {
     setDetailLoading(true);
@@ -119,6 +138,17 @@ export default function CallsWorkspace() {
       .then((data) => setCurrentUser(data.user || null))
       .catch(() => setCurrentUser(null));
   }, []);
+
+  const canImport = Boolean(
+    currentUser
+    && (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.isSuperAdmin)
+    && canAccess(currentUser, 'ops', 'edit'),
+  );
+
+  useEffect(() => {
+    if (!canImport) return;
+    if (window.location.hash === '#import') setImportOpen(true);
+  }, [canImport]);
 
   useEffect(() => {
     loadQueue();
@@ -307,11 +337,14 @@ export default function CallsWorkspace() {
             onSearchChange={setSearch}
             mineOnly={mineOnly}
             onMineOnlyChange={setMineOnly}
+            outreach={outreach}
+            onOutreachChange={setOutreach}
             loading={queueLoading}
             error={queueError}
             onRetry={loadQueue}
             onNextLead={goToNextLead}
             onAddProspect={() => setAddOpen(true)}
+            onImportProspects={canImport ? () => setImportOpen(true) : undefined}
           />
         </div>
 
@@ -341,6 +374,11 @@ export default function CallsWorkspace() {
         open={addOpen}
         onOpenChange={setAddOpen}
         onCreated={() => loadQueue()}
+      />
+      <ImportProspectsDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => loadQueue()}
       />
     </div>
   );

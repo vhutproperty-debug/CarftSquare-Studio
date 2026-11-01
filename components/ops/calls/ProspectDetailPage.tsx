@@ -113,7 +113,16 @@ export default function ProspectDetailPage() {
               <DetailItem label="Email" value={prospect.email} />
               <DetailItem label="Project" value={prospect.projectName} />
               <DetailItem label="Building" value={prospect.building} />
-              <DetailItem label="Unit" value={prospect.unit} />
+              <DetailItem label="Salutation" value={prospect.salutation} />
+              <DetailItem label="Units" value={prospect.unit} />
+              <DetailItem label="Unit count" value={prospect.unitCount != null ? String(prospect.unitCount) : undefined} />
+              <DetailItem label="Priority" value={prospect.priority} />
+              <DetailItem label="Wave" value={prospect.wave != null ? String(prospect.wave) : undefined} />
+              <DetailItem label="Batch" value={prospect.batch} />
+              <DetailItem label="Campaign" value={prospect.campaignTag} />
+              <DetailItem label="Intent" value={prospect.intent?.replace(/_/g, ' ')} />
+              <DetailItem label="Last button reply" value={prospect.lastButtonReply} />
+              <DetailItem label="Opt-out" value={prospect.optOut || prospect.doNotContact ? 'Do not contact' : undefined} />
               <DetailItem label="Location" value={prospect.location} />
               <DetailItem label="Requirement" value={prospect.requirement} />
               <DetailItem label="Source" value={prospect.source.replace(/_/g, ' ')} />

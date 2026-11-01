@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
+import { phoneLookupVariants } from '@/lib/ops/outreach-phone';
 import { getWhatsAppPhoneNumberId } from '@/lib/whatsapp-cloud/config';
 
 export function maskPhoneForLog(phone: string | null | undefined): string {
@@ -15,10 +16,15 @@ export function toNormalizedIndianPhone(raw: string | null | undefined): string 
   return isValidIndianMobile(normalized) ? normalized : '';
 }
 
-/** Digits-only E.164 without a leading plus. Indian mobiles become 91XXXXXXXXXX. */
+/**
+ * Digits-only E.164 without a leading plus. Indian mobiles become 91XXXXXXXXXX.
+ * A leading + means the value is already E.164 (do not treat +65… as an Indian mobile).
+ */
 export function toWhatsAppRecipient(raw: string | null | undefined): string {
-  const digits = String(raw || '').replace(/\D/g, '');
+  const trimmed = String(raw || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
   if (!digits) return '';
+  if (trimmed.startsWith('+')) return digits;
   if (digits.length === 10 && /^[6-9]/.test(digits)) return `91${digits}`;
   if (digits.length === 11 && digits.startsWith('0')) {
     const national = digits.slice(1);
@@ -33,6 +39,8 @@ export function toWaE164Digits(raw: string | null | undefined): string {
 }
 
 export function phoneStorageVariants(normalizedPhone: string): string[] {
+  const variants = phoneLookupVariants(normalizedPhone);
+  if (variants.length) return variants;
   const n = normalizeIndianMobile(normalizedPhone);
   if (!n) return [];
   return Array.from(new Set([n, `91${n}`, `+91${n}`, `0${n}`]));

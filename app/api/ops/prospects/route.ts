@@ -60,6 +60,14 @@ export async function POST(request: Request) {
       notes: data.notes?.trim() || undefined,
       source: data.source,
       assignedTo: data.assignedTo?.trim() || auth.admin.id,
+      priority: data.priority,
+      wave: data.wave,
+      batch: data.batch?.trim() || undefined,
+      campaignTag: data.campaignTag?.trim() || undefined,
+      unitCount: data.unitCount,
+      salutation: data.salutation?.trim() || undefined,
+      optOut: false,
+      doNotContact: false,
       createdBy: auth.admin.id,
     });
 

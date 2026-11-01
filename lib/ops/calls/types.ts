@@ -19,6 +19,11 @@ export type ProspectSource =
   | 'referral'
   | 'other';
 
+/** P1–P4 owner priority. Intl is the international-owner bucket from builder lists. */
+export type ProspectPriority = 'P1' | 'P2' | 'P3' | 'P4' | 'Intl';
+
+export type ProspectIntent = 'sell' | 'rent' | 'interiors' | 'not_now';
+
 export type OpsProspect = {
   id: string;
   name?: string;
@@ -37,6 +42,18 @@ export type OpsProspect = {
   callStatus: CallDisplayStatus;
   nextFollowUpAt?: string;
   phoneInvalid?: boolean;
+  priority?: ProspectPriority;
+  wave?: number;
+  batch?: string;
+  campaignTag?: string;
+  unitCount?: number;
+  salutation?: string;
+  /** WhatsApp STOP / Stop messages. Campaigns must skip these. */
+  optOut?: boolean;
+  /** Call or WhatsApp do-not-contact. Campaigns must skip these. */
+  doNotContact?: boolean;
+  lastButtonReply?: string;
+  intent?: ProspectIntent;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +94,13 @@ export type CallQueueItem = {
   building?: string | null;
   prospectType?: ProspectType | null;
   leadSource?: OpsLeadSource | null;
+  priority?: ProspectPriority | null;
+  wave?: number | null;
+  batch?: string | null;
+  campaignTag?: string | null;
+  intent?: ProspectIntent | null;
+  salutation?: string | null;
+  unit?: string | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
   callStatus: CallDisplayStatus;

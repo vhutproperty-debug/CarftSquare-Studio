@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import type { OpsLeadSource } from '@/lib/ops/leads/types';
 
@@ -54,6 +53,7 @@ export type OpsActivityAction =
   | 'link_whatsapp_conversation'
   | 'schedule_whatsapp_followup'
   | 'create_whatsapp_campaign'
+  | 'import_prospects'
   | 'meta_ads_generate_creatives'
   | 'meta_ads_creative_approve'
   | 'meta_ads_creative_reject'

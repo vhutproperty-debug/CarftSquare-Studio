@@ -102,7 +102,7 @@ export async function canSendFreeform(db: Db, rawWaId: string): Promise<boolean>
   return Date.now() - at < WINDOW_MS;
 }
 
-const STOP_PATTERN = /^\s*(stop|unsubscribe|stopall|cancel)\s*$/i;
+const STOP_PATTERN = /^\s*(stop(?:\s+messages?)?|unsubscribe|stopall|cancel)\s*$/i;
 
 export function isStopKeyword(text: string | null | undefined): boolean {
   return STOP_PATTERN.test(String(text || ''));

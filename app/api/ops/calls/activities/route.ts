@@ -92,7 +92,17 @@ export async function POST(request: Request) {
       data.targetSource,
     );
 
-    if (currentSummary.doNotCall && status !== 'DO_NOT_CALL') {
+    const prospectBlocked = data.targetType === 'ops_prospect'
+      ? await getProspectById(db, data.targetId)
+      : null;
+    const blocked = Boolean(
+      currentSummary.doNotCall
+      || prospectBlocked?.doNotContact
+      || prospectBlocked?.optOut
+      || prospectBlocked?.callStatus === 'DO_NOT_CALL',
+    );
+
+    if (blocked && status !== 'DO_NOT_CALL') {
       const canOverride = isSuperAdmin(auth.admin) && data.adminOverrideDoNotCall === true;
       if (!canOverride) {
         return NextResponse.json(
