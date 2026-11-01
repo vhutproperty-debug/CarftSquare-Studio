@@ -45,13 +45,21 @@ export type EnrichedLead = {
   error?: string;
 };
 
+/** Lead webhook Graph URL. Version comes from META_GRAPH_API_VERSION (default v22.0). */
+export function buildLeadDetailsUrl(leadgenId: string, token: string): string {
+  const version = getMetaGraphApiVersion();
+  const url = graphUrl(`/${leadgenId}?fields=${LEAD_FIELDS}`, token);
+  if (!url.includes(`/${version}/`)) {
+    throw new Error(`Lead fetch URL is missing Graph version ${version}.`);
+  }
+  return url;
+}
+
 export async function fetchLeadDetails(leadgenId: string): Promise<EnrichedLead> {
   const token = getLeadRetrievalToken();
   if (!token) return { ok: false, error: 'missing_lead_token' };
-  const version = getMetaGraphApiVersion();
-  void version;
   try {
-    const url = graphUrl(`/${leadgenId}?fields=${LEAD_FIELDS}`, token);
+    const url = buildLeadDetailsUrl(leadgenId, token);
     const response = await fetch(url);
     const data = (await response.json()) as {
       error?: { message?: string };

@@ -233,6 +233,22 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'campaigns',
       },
       {
+        href: '/ops/meta-business',
+        label: 'Meta Business',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'integrations',
+      },
+      {
+        href: '/ops/pages',
+        label: 'Pages',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'integrations',
+      },
+      {
         href: '/ops/supply',
         label: 'Supply',
         pillar: 'supply',

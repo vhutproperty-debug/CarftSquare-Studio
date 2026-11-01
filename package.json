@@ -29,6 +29,7 @@
         "test:listing-urls:prod": "npx tsx scripts/smoke-listing-urls-prod.ts",
         "test:wa-cloud": "npx tsx scripts/test-wa-cloud.ts",
         "test:meta-leads": "npx tsx scripts/test-meta-leads.ts",
+        "test:meta-review": "npx tsx scripts/test-meta-review.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },

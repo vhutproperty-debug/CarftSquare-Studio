@@ -4,6 +4,7 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { isSuperAdmin, ROLES } from '@/lib/auth/rbac/roles';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
 import { updateMetaDailyBudget, updateMetaObjectStatus } from '@/lib/meta-ads/controls';
+import { metaAdsErrorResponse } from '@/lib/meta-ads/http';
 import { getCampaignRecord, getMetaAdsDatabase, updateCampaignRecord } from '@/lib/meta-ads/store';
 
 export const runtime = 'nodejs';
@@ -44,9 +45,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, campaign: updated, metaStatus: status });
   } catch (error) {
-    const status = (error as { status?: number }).status || 500;
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unable to update campaign.',
-    }, { status });
+    return metaAdsErrorResponse(error);
   }
 }

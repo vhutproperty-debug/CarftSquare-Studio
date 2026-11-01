@@ -9,10 +9,16 @@ const STEPS = [
     detail: 'A test lead appears in the CRM and a WhatsApp welcome is sent.',
   },
   {
-    href: '/ops/meta-review/page-connect',
-    title: 'Page connect',
-    permission: 'pages_show_list + pages_manage_metadata',
-    detail: 'Subscribe this Page to the leadgen webhook.',
+    href: '/ops/pages',
+    title: 'Pages and lead webhook',
+    permission: 'pages_show_list + pages_read_engagement + pages_manage_metadata',
+    detail: 'List Pages from /me/accounts, then connect the Page to leadgen.',
+  },
+  {
+    href: '/ops/meta-business',
+    title: 'Meta Business',
+    permission: 'business_management',
+    detail: 'List the business owned ad accounts and Pages.',
   },
   {
     href: '/ops/meta-review/ads',

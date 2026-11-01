@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import AdsPerformancePanel from '@/components/ops/meta/AdsPerformancePanel';
+import LiveCampaignsPanel from '@/components/ops/meta/LiveCampaignsPanel';
+import PageLeadConnect from '@/components/ops/meta/PageLeadConnect';
 import OpsShell from '@/components/ops/OpsShell';
 
 type Readiness = {
@@ -246,7 +249,7 @@ function MetaAdsWorkspace() {
         </div>
       )}
 
-      {(message || error) && (
+      {(message || error) ? (
         <div
           className={`rounded-lg border px-4 py-3 text-sm ${
             error ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
@@ -254,7 +257,11 @@ function MetaAdsWorkspace() {
         >
           {error || message}
         </div>
-      )}
+      ) : null}
+
+      <LiveCampaignsPanel />
+      <AdsPerformancePanel />
+      <PageLeadConnect />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

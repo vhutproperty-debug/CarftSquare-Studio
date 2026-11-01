@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsEditAccess, requireOpsViewAccess } from '@/lib/ops/auth';
-import { getPageLeadSubscription, subscribePageToLeadgen } from '@/lib/meta-ads/page-subscription';
+import { metaAdsErrorResponse } from '@/lib/meta-ads/http';
+import { getMetaAdsPageId } from '@/lib/meta-ads/config';
+import {
+  getPageLeadSubscription,
+  subscribePageToLeadgen,
+  unsubscribePageFromLeadgen,
+} from '@/lib/meta-ads/page-subscription';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,12 +21,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       call: 'GET /{page-id}/subscribed_apps',
       permission: 'pages_manage_metadata',
-      subscription,
+      ...subscription,
     });
   } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unable to read page subscription.',
-    }, { status: 502 });
+    return metaAdsErrorResponse(error);
   }
 }
 
@@ -29,17 +33,36 @@ export async function POST(request: Request) {
   if (!auth.ok) return authResultToResponse(auth);
   try {
     const result = await subscribePageToLeadgen();
+    const subscription = await getPageLeadSubscription().catch(() => null);
     return NextResponse.json({
       ok: true,
       call: 'POST /{page-id}/subscribed_apps',
       permission: 'pages_manage_metadata',
       subscribedFields: ['leadgen'],
       result,
+      pageId: subscription?.pageId || getMetaAdsPageId(),
+      leadgenSubscribed: subscription?.leadgenSubscribed ?? true,
+      apps: subscription?.apps || [],
     });
   } catch (error) {
-    const status = (error as { status?: number }).status || 502;
+    return metaAdsErrorResponse(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireOpsEditAccess(request);
+  if (!auth.ok) return authResultToResponse(auth);
+  try {
+    const result = await unsubscribePageFromLeadgen();
+    const subscription = await getPageLeadSubscription().catch(() => null);
     return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unable to subscribe the Page to leadgen.',
-    }, { status });
+      ok: true,
+      call: 'DELETE /{page-id}/subscribed_apps',
+      permission: 'pages_manage_metadata',
+      result,
+      subscription,
+    });
+  } catch (error) {
+    return metaAdsErrorResponse(error);
   }
 }
