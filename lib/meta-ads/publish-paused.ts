@@ -54,7 +54,8 @@ export async function publishPausedLeadCampaign(input: {
         name: input.campaign.name,
         objective: 'OUTCOME_LEADS',
         status,
-        special_ad_categories: [],
+        special_ad_categories: ['HOUSING'],
+        special_ad_category_country: ['IN'],
         is_adset_budget_sharing_enabled: false,
       },
     });
@@ -89,8 +90,6 @@ export async function publishPausedLeadCampaign(input: {
           },
         ],
       },
-      age_min: 25,
-      age_max: 55,
     };
 
     // Keep geo simple if city key fails on some tokens — countries only fallback handled below.
@@ -133,8 +132,6 @@ export async function publishPausedLeadCampaign(input: {
       // Retry with India-only geo if Mumbai city key rejected.
       adSetBody.targeting = {
         geo_locations: { countries: ['IN'] },
-        age_min: 25,
-        age_max: 55,
       };
       try {
         adSetRes = await metaAdsGraph<{ id: string }>(`/${actId}/adsets`, {

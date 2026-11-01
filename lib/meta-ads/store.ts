@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-import { getDb } from '@/lib/mongodb';
+import { describeMongoDatabase, getDb } from '@/lib/mongodb';
 import type {
   MetaAdsCampaignRecord,
   MetaAdsCampaignRecordStatus,
@@ -31,18 +31,35 @@ export async function dedupeDryRunCampaigns(db: Db): Promise<number> {
     }
     return 0;
   }
-  const [keep, ...rest] = rows;
-  const patch: Partial<MetaAdsCampaignRecord> = {
-    idempotencyKey: `${keep.name}|${keep.objective}|dry_run`,
-  };
-  for (const row of rest) {
-    for (const key of ['metaCampaignId', 'metaAdSetId', 'metaCreativeId', 'metaAdId', 'metaLeadFormId'] as const) {
-      if (!keep[key] && row[key]) patch[key] = row[key];
-    }
+  const database = (db as { databaseName?: string }).databaseName || null;
+  console.warn('[meta-ads] dry_run_duplicates_kept', {
+    database,
+    collection: META_ADS_CAMPAIGNS_COLLECTION,
+    count: rows.length,
+    ids: rows.map((row) => row.id || null),
+    deleted: 0,
+  });
+  return 0;
+}
+
+async function logEmptyList(db: Db, collection: string, returned: number) {
+  if (returned > 0) return;
+  let storedCount: number | null = null;
+  try {
+    storedCount = await db.collection(collection).countDocuments();
+  } catch (error) {
+    console.warn('[meta-ads] list_count_failed', error instanceof Error ? error.message : error);
   }
-  await db.collection(META_ADS_CAMPAIGNS_COLLECTION).updateOne({ id: keep.id }, { $set: patch });
-  await db.collection(META_ADS_CAMPAIGNS_COLLECTION).deleteMany({ id: { $in: rest.map((row) => row.id) } });
-  return rest.length;
+  const configured = describeMongoDatabase();
+  console.warn('[meta-ads] list_empty', {
+    database: (db as { databaseName?: string }).databaseName || null,
+    configuredDatabase: configured.name,
+    databaseSource: configured.source,
+    collection,
+    returned,
+    storedCount,
+    mismatch: storedCount != null && storedCount > 0,
+  });
 }
 
 export async function ensureMetaAdsIndexes(db: Db): Promise<void> {
@@ -83,12 +100,14 @@ export async function insertCreatives(
 
 export async function listCreatives(db: Db, limit = 50): Promise<MetaAdsCreative[]> {
   await ensureMetaAdsIndexes(db);
-  return (await db
+  const rows = (await db
     .collection(META_ADS_CREATIVES_COLLECTION)
     .find({}, { projection: { _id: 0 } })
     .sort({ createdAt: -1 })
     .limit(limit)
     .toArray()) as unknown as MetaAdsCreative[];
+  await logEmptyList(db, META_ADS_CREATIVES_COLLECTION, rows.length);
+  return rows;
 }
 
 export async function getCreative(db: Db, id: string): Promise<MetaAdsCreative | null> {
@@ -154,12 +173,14 @@ export async function createCampaignRecord(
 
 export async function listCampaignRecords(db: Db, limit = 50): Promise<MetaAdsCampaignRecord[]> {
   await ensureMetaAdsIndexes(db);
-  return (await db
+  const rows = (await db
     .collection(META_ADS_CAMPAIGNS_COLLECTION)
     .find({}, { projection: { _id: 0 } })
     .sort({ createdAt: -1 })
     .limit(limit)
     .toArray()) as unknown as MetaAdsCampaignRecord[];
+  await logEmptyList(db, META_ADS_CAMPAIGNS_COLLECTION, rows.length);
+  return rows;
 }
 
 export async function getCampaignRecord(db: Db, id: string): Promise<MetaAdsCampaignRecord | null> {

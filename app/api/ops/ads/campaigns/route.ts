@@ -4,6 +4,7 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsEditAccess, requireOpsViewAccess } from '@/lib/ops/auth';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { getMetaAdsDefaultDailyBudgetInr } from '@/lib/meta-ads/config';
+import { describeMongoDatabase } from '@/lib/mongodb';
 import { publishPausedLeadCampaign } from '@/lib/meta-ads/publish-paused';
 import { getMetaAdsReadiness } from '@/lib/meta-ads/readiness';
 import {
@@ -29,7 +30,10 @@ export async function GET(request: Request) {
     const campaigns = await listCampaignRecords(db);
     return NextResponse.json({ campaigns });
   } catch (error) {
-    console.error('[ops-ads] campaigns_list_failed', error instanceof Error ? error.message : error);
+    console.error('[ops-ads] campaigns_list_failed', {
+      message: error instanceof Error ? error.message : error,
+      ...describeMongoDatabase(),
+    });
     return NextResponse.json({ error: 'Unable to list Meta campaigns.' }, { status: 500 });
   }
 }

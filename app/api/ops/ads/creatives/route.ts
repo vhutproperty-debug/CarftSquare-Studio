@@ -5,6 +5,7 @@ import { requireOpsEditAccess, requireOpsViewAccess } from '@/lib/ops/auth';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { generateCreativePack } from '@/lib/meta-ads/creative-generator';
 import { getMetaAdsDatabase, insertCreatives, listCreatives } from '@/lib/meta-ads/store';
+import { describeMongoDatabase } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,7 +20,10 @@ export async function GET(request: Request) {
     const creatives = await listCreatives(db);
     return NextResponse.json({ creatives });
   } catch (error) {
-    console.error('[ops-ads] creatives_list_failed', error instanceof Error ? error.message : error);
+    console.error('[ops-ads] creatives_list_failed', {
+      message: error instanceof Error ? error.message : error,
+      ...describeMongoDatabase(),
+    });
     return NextResponse.json({ error: 'Unable to list creatives.' }, { status: 500 });
   }
 }

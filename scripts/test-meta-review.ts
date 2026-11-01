@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { MetaAdsApiError } from '../lib/meta-ads/client';
 import { listAdAccountCampaigns } from '../lib/meta-ads/account-campaigns';
 import { readBusinessAssets } from '../lib/meta-ads/business-assets';
+import { publishPausedLeadCampaign } from '../lib/meta-ads/publish-paused';
+import { dedupeDryRunCampaigns, listCampaignRecords } from '../lib/meta-ads/store';
+import { createMemoryDb } from './lib/memory-db';
 import { updateMetaObjectStatus } from '../lib/meta-ads/controls';
 import { normalizeCampaignInsight, readCampaignInsights } from '../lib/meta-ads/insights';
 import {
@@ -226,16 +229,26 @@ async function main() {
     META_AD_ACCOUNT_ID: 'act_1947289589273795',
     META_PAGE_ID: '1351127224742253',
   }, async () => {
-    callsOf((call) => {
+    const calls = callsOf((call) => {
       if (call.url.includes('/owned_ad_accounts')) return permissionDenied();
       if (call.url.includes('/owned_pages')) {
         return jsonResponse({
-          data: [{ id: '1351127224742253', name: 'CraftSquare' }],
+          data: [{ id: '1351127224742253', name: 'CraftSquare', fan_count: 1280 }],
         });
       }
       return jsonResponse({});
     });
     const assets = await readBusinessAssets();
+    const accountCall = calls.find((call) => call.url.includes('/owned_ad_accounts'));
+    const pageCall = calls.find((call) => call.url.includes('/owned_pages'));
+    assert.ok(accountCall);
+    assert.ok(pageCall);
+    assert.match(accountCall.url, /\/1420297320045438\/owned_ad_accounts\?/);
+    assert.match(decodeURIComponent(accountCall.url), /fields=id,name,account_status,currency/);
+    assert.equal(accountCall.url.includes('fields=owned_ad_accounts'), false);
+    assert.match(decodeURIComponent(pageCall.url), /fields=id,name,fan_count/);
+    assert.equal(pageCall.url.includes('fields=owned_pages'), false);
+    assert.ok(calls.some((call) => call.url.includes('/1420297320045438/client_ad_accounts?')));
     assert.equal(assets.businessId, '1420297320045438');
     assert.equal(assets.adAccounts.ok, false);
     if (!assets.adAccounts.ok) {
@@ -246,7 +259,52 @@ async function main() {
     if (assets.pages.ok) {
       assert.equal(assets.pages.data[0].configured, true);
       assert.equal(assets.pages.data[0].name, 'CraftSquare');
+      assert.equal(assets.pages.data[0].fanCount, 1280);
+      assert.equal(assets.pages.data[0].source, 'owned');
     }
+  });
+
+  await withEnv({
+    META_SYSTEM_USER_TOKEN: 'system-user',
+    META_GRAPH_API_VERSION: 'v22.0',
+    META_BUSINESS_ID: '14202973',
+    META_AD_ACCOUNT_ID: 'act_1947289589273795',
+    META_PAGE_ID: '1351127224742253',
+  }, async () => {
+    const calls = callsOf((call) => {
+      if (call.url.includes('/owned_ad_accounts') || call.url.includes('/owned_pages')) {
+        return jsonResponse({
+          error: {
+            message: '(#100) Tried accessing nonexisting field (owned_ad_accounts)',
+            code: 100,
+            type: 'OAuthException',
+          },
+        }, 400);
+      }
+      if (call.url.includes('/client_ad_accounts')) {
+        return jsonResponse({
+          data: [{ id: 'act_1947289589273795', name: 'CraftSquare Ads', account_status: 1, currency: 'INR' }],
+        });
+      }
+      if (call.url.includes('/client_pages')) {
+        return jsonResponse({
+          data: [{ id: '1351127224742253', name: 'CraftSquare', fan_count: 90 }],
+        });
+      }
+      return jsonResponse({ data: [] });
+    });
+    const assets = await readBusinessAssets();
+    assert.equal(assets.businessId, '1420297320045438');
+    assert.equal(assets.businessId.length, 16);
+    assert.ok(calls.some((call) => call.url.includes('/1420297320045438/client_ad_accounts?')));
+    assert.ok(calls.some((call) => call.url.includes('/1420297320045438/client_pages?')));
+    assert.equal(assets.adAccounts.ok, true);
+    if (assets.adAccounts.ok) {
+      assert.equal(assets.adAccounts.data[0].source, 'client');
+      assert.equal(assets.adAccounts.data[0].configured, true);
+    }
+    assert.equal(assets.pages.ok, true);
+    if (assets.pages.ok) assert.equal(assets.pages.data[0].fanCount, 90);
   });
 
   await withEnv({
@@ -358,6 +416,86 @@ async function main() {
     assert.match(url, /\/v22\.0\/lead-100/);
     assert.equal(url.includes('v19.0'), false);
   });
+
+  await withEnv({
+    META_SYSTEM_USER_TOKEN: 'system-user',
+    META_ADS_ENABLED: 'true',
+    META_ADS_ALLOW_ACTIVE: undefined,
+    META_GRAPH_API_VERSION: 'v22.0',
+    META_AD_ACCOUNT_ID: 'act_1947289589273795',
+    META_PAGE_ID: '1351127224742253',
+  }, async () => {
+    const calls = callsOf((call) => {
+      if (call.url.includes('/me/permissions')) {
+        return jsonResponse({ data: [{ permission: 'ads_management', status: 'granted' }] });
+      }
+      if (call.method === 'POST' && /\/campaigns\?/.test(call.url)) return jsonResponse({ id: 'cmp-housing' });
+      if (call.method === 'POST') return jsonResponse({ id: 'obj-1' });
+      return jsonResponse({ id: 'node-1', name: 'CraftSquare', data: [] });
+    });
+    const result = await publishPausedLeadCampaign({
+      campaign: {
+        id: 'local-1',
+        name: 'Goregaon owners',
+        creativeId: 'creative-1',
+        objective: 'OUTCOME_LEADS',
+        destination: 'instant_form',
+        dailyBudgetInr: 500,
+        status: 'ready',
+        metaStatus: 'NONE',
+        dryRun: true,
+        areas: ['Mumbai'],
+        createdBy: 'admin',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+      creative: {
+        id: 'creative-1',
+        offer: 'Rent',
+        audienceHint: 'Owners',
+        areas: ['Mumbai'],
+        primaryText: 'Is your flat available?',
+        headline: 'Goregaon',
+        description: 'Rental enquiry',
+        cta: 'SIGN_UP',
+        angle: 'availability',
+        status: 'approved',
+        createdBy: 'admin',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+    });
+    assert.equal(result.ok, true, result.error);
+    const campaignPost = calls.find((call) => call.method === 'POST' && /\/campaigns\?/.test(call.url));
+    assert.ok(campaignPost);
+    const body = JSON.parse(campaignPost.body) as { special_ad_categories?: string[]; status?: string };
+    assert.deepEqual(body.special_ad_categories, ['HOUSING']);
+    assert.equal(body.status, 'PAUSED');
+    const adSetPost = calls.find((call) => call.method === 'POST' && call.url.includes('/adsets'));
+    assert.ok(adSetPost);
+    assert.equal(adSetPost.body.includes('age_min'), false);
+  });
+
+  const db = createMemoryDb();
+  const campaigns = db.collection('ops_meta_ad_campaigns');
+  await campaigns.insertOne({
+    id: 'dry-1',
+    name: 'CraftSquare Leads — Dry Run',
+    objective: 'OUTCOME_LEADS',
+    updatedAt: '2026-02-01T00:00:00.000Z',
+  });
+  await campaigns.insertOne({
+    id: 'dry-2',
+    name: 'CraftSquare Leads — Dry Run',
+    objective: 'OUTCOME_LEADS',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  });
+  const removed = await dedupeDryRunCampaigns(db as never);
+  assert.equal(removed, 0);
+  assert.equal(await campaigns.countDocuments(), 2);
+  const listed = await listCampaignRecords(db as never);
+  assert.equal(listed.length, 2);
+  assert.equal(await campaigns.countDocuments(), 2);
 
   console.log('test:meta-review ok');
 }
