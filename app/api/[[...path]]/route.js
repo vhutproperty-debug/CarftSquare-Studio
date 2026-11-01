@@ -22,6 +22,9 @@ import {
   signSession,
 } from '@/lib/auth/session';
 import { resolveAuthStatus } from '@/lib/auth/resolve-auth-status';
+import { unavailableAuthStatus } from '@/lib/auth/fetch-auth-status';
+import { AUTH_DB_TIMEOUT_MS, AUTH_ROUTE_TIMEOUT_MS, isTransientAuthDbError, withAuthDbRetry } from '@/lib/auth/auth-db-retry';
+import { withTimeout } from '@/lib/auth/async-timeout';
 import {
   applyCorsHeaders,
   getCorsHeaders,
@@ -812,14 +815,36 @@ async function dashboard(request) {
 }
 
 async function authStatus(request) {
-  const result = await resolveAuthStatus(request);
-  return json(result);
+  try {
+    const result = await withTimeout(
+      resolveAuthStatus(request),
+      AUTH_ROUTE_TIMEOUT_MS,
+      'auth_status',
+    );
+    return json(result);
+  } catch (error) {
+    console.error('[auth] auth_status_failed', error instanceof Error ? error.message : error);
+    return json(unavailableAuthStatus());
+  }
 }
 
 async function setupAdmin(request) {
-  const db = await getDb();
-  await migrateLegacyAdmins(db);
-  const existingAdmins = await countActiveAdmins(db);
+  let db;
+  try {
+    db = await withAuthDbRetry(async () => {
+      const database = await getDb();
+      await migrateLegacyAdmins(database);
+      return database;
+    }, 'auth_setup');
+  } catch (error) {
+    console.error('[auth] setup_db_failed', error instanceof Error ? error.message : error);
+    return json({ error: 'Authentication service temporarily unavailable.' }, 503, request);
+  }
+  const existingAdmins = await withTimeout(
+    countActiveAdmins(db),
+    AUTH_DB_TIMEOUT_MS,
+    'countActiveAdmins',
+  );
   if (existingAdmins > 0) {
     return json({ error: 'Admin already exists. Please login.' }, 409, request);
   }
@@ -861,13 +886,41 @@ async function setupAdmin(request) {
 }
 
 async function loginAdmin(request) {
-  const db = await getDb();
-  await migrateLegacyAdmins(db);
-  const rawBody = await request.json();
+  try {
+    return await withTimeout(performLogin(request), AUTH_ROUTE_TIMEOUT_MS, 'auth_login');
+  } catch (error) {
+    console.error('[auth] login_db_failed', error instanceof Error ? error.message : error);
+    if (!isTransientAuthDbError(error)) throw error;
+    return json({ error: 'Authentication service temporarily unavailable.' }, 503, request);
+  }
+}
+
+async function performLogin(request) {
+  let rawBody;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return json({ error: 'Invalid login request.' }, 400, request);
+  }
   const parsed = parseRequestBody(authLoginSchema, rawBody);
   if (parsed.error) return json({ error: parsed.error }, 400, request);
   const { email, password } = parsed.data;
-  const admin = await findAdminByEmail(db, email.toLowerCase());
+
+  let db;
+  let admin;
+  try {
+    const loaded = await withAuthDbRetry(async () => {
+      const database = await getDb();
+      await migrateLegacyAdmins(database);
+      const record = await findAdminByEmail(database, email.toLowerCase());
+      return { database, record };
+    }, 'auth_login');
+    db = loaded.database;
+    admin = loaded.record;
+  } catch (error) {
+    console.error('[auth] login_db_failed', error instanceof Error ? error.message : error);
+    return json({ error: 'Authentication service temporarily unavailable.' }, 503, request);
+  }
 
   if (!admin || !verifyPassword(password, admin.passwordHash)) {
     return json({ error: 'Invalid admin credentials.' }, 401);
@@ -878,14 +931,18 @@ async function loginAdmin(request) {
   }
 
   if (needsPasswordRehash(admin.passwordHash)) {
-    await db.collection('admins').updateOne(
-      { id: admin.id },
-      { $set: { passwordHash: hashPassword(password), updatedAt: new Date().toISOString() } },
+    await withTimeout(
+      db.collection('admins').updateOne(
+        { id: admin.id },
+        { $set: { passwordHash: hashPassword(password), updatedAt: new Date().toISOString() } },
+      ),
+      AUTH_DB_TIMEOUT_MS,
+      'auth_login_rehash',
     );
   }
 
-  await recordAdminLogin(db, admin.id);
-  const freshAdmin = (await findAdminById(db, admin.id)) || admin;
+  await withTimeout(recordAdminLogin(db, admin.id), AUTH_DB_TIMEOUT_MS, 'auth_login_record');
+  const freshAdmin = (await withTimeout(findAdminById(db, admin.id), AUTH_DB_TIMEOUT_MS, 'auth_login_reload')) || admin;
   if (process.env.NODE_ENV !== 'production') {
     console.info('[rbac] login_success', JSON.stringify({
       email: freshAdmin.email,
@@ -894,11 +951,11 @@ async function loginAdmin(request) {
       status: freshAdmin.status,
     }));
   }
-  await logAuditEvent(db, 'login', {
+  await withTimeout(logAuditEvent(db, 'login', {
     request,
     actorId: freshAdmin.id,
     actorEmail: freshAdmin.email,
-  }, 'auth', { module: 'auth', resourceId: freshAdmin.id });
+  }, 'auth', { module: 'auth', resourceId: freshAdmin.id }), AUTH_DB_TIMEOUT_MS, 'auth_login_audit');
 
   const response = NextResponse.json({ user: safeAdmin(freshAdmin), message: 'Admin logged in.' });
   applyCorsHeaders(response, request);
@@ -1117,6 +1174,14 @@ export async function GET(request, context) {
     }
     const path = getPathSegments(context);
     const route = path[0] || 'health';
+
+    // Auth must not wait on the unconditional connect + index build below.
+    // That path has hung /api/auth for more than 30s on a cold isolate.
+    if (route === 'auth') {
+      if (path[1] === 'status') return authStatus(request);
+      return json({ error: 'API route not found.' }, 404, request);
+    }
+
     const db = await getDb();
 
     if (route === 'health') {
@@ -1175,10 +1240,6 @@ export async function GET(request, context) {
 
     if (route === 'faqs') {
       return json({ faqs: DEFAULT_FAQS });
-    }
-
-    if (route === 'auth' && path[1] === 'status') {
-      return authStatus(request);
     }
 
     if (route === 'admin' && path[1] === 'about') {
@@ -1277,7 +1338,13 @@ export async function POST(request, context) {
     }
 
     if (route === 'auth' && path[1] === 'setup') {
-      return setupAdmin(request);
+      try {
+        return await withTimeout(setupAdmin(request), AUTH_ROUTE_TIMEOUT_MS, 'auth_setup');
+      } catch (error) {
+        console.error('[auth] setup_db_failed', error instanceof Error ? error.message : error);
+        if (!isTransientAuthDbError(error)) throw error;
+        return json({ error: 'Authentication service temporarily unavailable.' }, 503, request);
+      }
     }
 
     if (route === 'auth' && path[1] === 'login') {
@@ -1290,6 +1357,10 @@ export async function POST(request, context) {
 
     if (route === 'auth' && path[1] === 'reset-password') {
       return resetAdminPassword(request);
+    }
+
+    if (route === 'auth') {
+      return json({ error: 'API route not found.' }, 404, request);
     }
 
     if (route === 'admin' && path[1] === 'pricing' && path[2] === 'reset') {

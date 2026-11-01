@@ -6,12 +6,11 @@ import { authorizeAdmin, type AuthResult } from '@/lib/auth/rbac/guard';
 import { findAdminById, toPublicAdmin } from '@/lib/auth/rbac/store';
 import type { PublicAdminUser } from '@/lib/auth/rbac/types';
 import { AsyncTimeoutError, withTimeout } from '@/lib/auth/async-timeout';
+import { AUTH_DB_TIMEOUT_MS } from '@/lib/auth/auth-db-retry';
 import { inspectSessionToken } from '@/lib/auth/session';
 import { getSessionTokenFromRequest } from '@/lib/auth/session-constants';
 import { getDb, isMongoReady } from '@/lib/mongodb';
 import { resolveRegisteredRoutePermission } from '@/lib/auth/rbac/registry';
-
-const AUTH_DB_TIMEOUT_MS = 6000;
 
 type AuthTraceReason =
   | 'ok'

@@ -29,6 +29,9 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
   let auth: AuthStatusResponse;
   try {
     auth = await resolveAuthStatusFromCookies();
+    if (auth.code === AUTH_STATUS_CODES.DB_TIMEOUT) {
+      console.error('[ops] layout_auth_resolve_failed', auth.message || AUTH_STATUS_CODES.DB_TIMEOUT);
+    }
   } catch (error) {
     console.error('[ops] layout_auth_resolve_failed', error instanceof Error ? error.message : error);
     auth = dbTimeoutAuthStatus();
