@@ -3,13 +3,13 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import {
-  getInteraktConversationMetrics,
-  listInteraktConversations,
-} from '@/lib/interakt/conversation-query';
-import { getInteraktDatabase } from '@/lib/interakt/webhook-store';
-import type { InteraktMatchStatus } from '@/lib/interakt/types';
+  getWaConversationMetrics,
+  listWaConversations,
+} from '@/lib/whatsapp-cloud/conversation-query';
+import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
+import type { WaMatchStatus } from '@/lib/whatsapp-cloud/types';
 
-const MATCH_STATUSES: InteraktMatchStatus[] = [
+const MATCH_STATUSES: WaMatchStatus[] = [
   'unmatched',
   'matched',
   'ambiguous',
@@ -23,27 +23,27 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const matchStatusRaw = searchParams.get('matchStatus') || undefined;
-  const matchStatus = matchStatusRaw && MATCH_STATUSES.includes(matchStatusRaw as InteraktMatchStatus)
-    ? (matchStatusRaw as InteraktMatchStatus)
+  const matchStatus = matchStatusRaw && MATCH_STATUSES.includes(matchStatusRaw as WaMatchStatus)
+    ? (matchStatusRaw as WaMatchStatus)
     : undefined;
 
   try {
-    const db = await getInteraktDatabase();
+    const db = await getWaDatabase();
     const [conversations, metrics] = await Promise.all([
-      listInteraktConversations(db, {
+      listWaConversations(db, {
         matchStatus,
         unreadOnly: searchParams.get('unreadOnly') === 'true',
         search: searchParams.get('search') || undefined,
         limit: Number(searchParams.get('limit') || 200),
       }),
-      getInteraktConversationMetrics(db),
+      getWaConversationMetrics(db),
     ]);
 
     await logOpsActivity({
       action: 'view_whatsapp_inbox',
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
-      resource: 'interakt_conversations',
+      resource: 'wa_conversations',
       details: { count: conversations.length, matchStatus: matchStatus || null },
       request,
     });

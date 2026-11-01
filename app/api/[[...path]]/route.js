@@ -560,6 +560,20 @@ async function createLead(request) {
   };
 
   await db.collection('leads').insertOne(lead);
+  try {
+    const { notifyNewWebsiteLead } = await import('@/lib/leads/notify');
+    notifyNewWebsiteLead({
+      id: lead.id,
+      source: 'homepage',
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      project: lead.service,
+      collection: 'leads',
+    });
+  } catch (pipelineError) {
+    console.warn('[leads] pipeline_notify_failed', pipelineError instanceof Error ? pipelineError.message : pipelineError);
+  }
   const emailResult = await queueAndSendEmail(db, {
     type: 'lead',
     relatedId: lead.id,
@@ -1041,7 +1055,7 @@ async function sendWhatsAppQuote(request) {
   const auth = await requireAdmin(request, PERMISSIONS.MARKETING);
   if (!auth.ok) return denyAdminAuth(request, auth);
 
-  if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
+  if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !(process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN)) {
     return json({
       error: 'WhatsApp Business API is not configured. Add WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN to enable automation.',
       integrationConfigured: false,
@@ -1055,21 +1069,18 @@ async function sendWhatsAppQuote(request) {
 
   const to = normalizePhone(lead.phone);
   const message = `Hi ${lead.name}, your ${BRAND.name} ${lead.service} estimate for ${lead.location || 'Mumbai'} is ${lead.estimate?.formattedRange || 'ready'}. Reply YES to schedule your free design consultation.`;
-  const response = await fetch(`https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to,
-      type: 'text',
-      text: { preview_url: false, body: message },
-    }),
-  });
-  const result = await response.json();
+  const { sendText, messageIdFromSend, WhatsAppApiError } = await import('@/lib/whatsapp-cloud/client');
+  let result;
+  let ok = false;
+  try {
+    result = await sendText(to, message);
+    ok = Boolean(messageIdFromSend(result));
+  } catch (error) {
+    result = {
+      error: error instanceof WhatsAppApiError ? error.message : 'WhatsApp API rejected the message.',
+    };
+  }
+  const response = { ok };
   await db.collection('whatsapp_messages').insertOne({ id: uuidv4(), leadId: lead.id, to, message, result, ok: response.ok, createdAt: new Date().toISOString() });
   if (!response.ok) return json({ error: 'WhatsApp API rejected the message.', details: result }, 502);
   return json({ sent: true, result });

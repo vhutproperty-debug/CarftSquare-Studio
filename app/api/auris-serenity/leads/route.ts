@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       }
     }
 
+    const { notifyNewWebsiteLead } = await import('@/lib/leads/notify');
     const lead = await createAurisSerenityLead(db, {
       name: data.name?.trim() || '',
       mobile: normalizedMobile,
@@ -50,6 +51,14 @@ export async function POST(request: Request) {
       pagePath: data.pagePath || '/auris-serenity',
       referrer: data.referrer || '',
       utm: data.utm || {},
+    });
+    notifyNewWebsiteLead({
+      id: lead.id,
+      source: 'auris_serenity',
+      name: lead.name,
+      phone: lead.mobile,
+      project: lead.selectedIntent || 'Auris Serenity',
+      collection: 'auris_serenity_leads',
     });
 
     return NextResponse.json(

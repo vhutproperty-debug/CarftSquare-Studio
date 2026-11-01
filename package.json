@@ -27,9 +27,10 @@
         "test:research-smoke-prod": "npx tsx scripts/smoke-research-production.ts",
         "test:listing-urls": "npx tsx scripts/test-listing-url-filter.ts",
         "test:listing-urls:prod": "npx tsx scripts/smoke-listing-urls-prod.ts",
-        "test:interakt-phase1": "npx tsx scripts/test-interakt-phase1.ts",
-        "test:interakt-platform": "npx tsx scripts/test-interakt-platform.ts",
-        "test:interakt-delivery": "npx tsx scripts/test-interakt-delivery-engine.ts"
+        "test:wa-cloud": "npx tsx scripts/test-wa-cloud.ts",
+        "test:meta-leads": "npx tsx scripts/test-meta-leads.ts",
+        "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
+        "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",

@@ -49,6 +49,7 @@ export type MetaAdsCampaignRecord = {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  idempotencyKey?: string;
 };
 
 export type MetaAdsReadiness = {
@@ -64,6 +65,9 @@ export type MetaAdsReadiness = {
   hasAdsManagement: boolean;
   hasAdsRead: boolean;
   canPublishPaused: boolean;
+  adsEnabled: boolean;
+  requiredPermissions: string[];
+  missingPermissions: string[];
   blockers: string[];
   warnings: string[];
 };

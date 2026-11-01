@@ -65,8 +65,8 @@ export async function queryUnifiedLeads(
     dateTo: params.dateTo,
   };
 
-  const [fetchResults, countResults] = await Promise.all([
-    Promise.all(
+  const [fetchSettled, countSettled] = await Promise.all([
+    Promise.allSettled(
       adapters.map(async (adapter) => {
         const result = await runAdapterSafely(
           adapter.source,
@@ -83,8 +83,8 @@ export async function queryUnifiedLeads(
       }),
     ),
     params.skipCounts
-      ? Promise.resolve([] as number[])
-      : Promise.all(
+      ? Promise.resolve([] as PromiseSettledResult<number>[])
+      : Promise.allSettled(
         adapters.map(async (adapter) => {
           const result = await runAdapterSafely(
             adapter.source,
@@ -100,6 +100,9 @@ export async function queryUnifiedLeads(
         }),
       ),
   ]);
+
+  const fetchResults = fetchSettled.map((entry) => (entry.status === 'fulfilled' ? entry.value : []));
+  const countResults = countSettled.map((entry) => (entry.status === 'fulfilled' ? entry.value : 0));
 
   const merged = filterByCategory(fetchResults.flat(), params.category);
   const sorted = sortLeadsNewestFirst(merged);

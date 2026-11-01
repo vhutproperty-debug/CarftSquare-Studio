@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const partner = await getPartnerById(db, session.id);
     if (!partner) return NextResponse.json({ error: 'Partner not found' }, { status: 404 });
 
+    const { notifyNewWebsiteLead } = await import('@/lib/leads/notify');
     const lead = await createPartnerLead(db, partner, {
       ...parsed.data,
       society: parsed.data.society || '',
@@ -32,6 +33,14 @@ export async function POST(request: Request) {
       remarks: parsed.data.remarks || '',
     });
 
+    notifyNewWebsiteLead({
+      id: lead.id,
+      source: 'partner_network',
+      name: lead.clientName,
+      phone: lead.mobile,
+      project: lead.project || lead.society || 'Partner lead',
+      collection: 'partner_network_leads',
+    });
     return NextResponse.json({ ok: true, lead });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to submit lead' }, { status: 400 });

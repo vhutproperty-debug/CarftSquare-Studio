@@ -87,7 +87,7 @@ async function sendOtpEmail(to: string, otp: string, fullName: string) {
 
 async function sendOtpWhatsApp(toMobile: string, otp: string, fullName: string) {
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN;
   if (!phoneId || !token) {
     return { delivered: false, reason: 'whatsapp_not_configured' };
   }
@@ -95,24 +95,11 @@ async function sendOtpWhatsApp(toMobile: string, otp: string, fullName: string) 
   const to = normalizeWhatsAppRecipient(toMobile);
   const message = `Hi ${fullName || 'Partner'}, your ${BRAND.name} partner login OTP is ${otp}. Valid for 5 minutes. Do not share this code.`;
 
-  const response = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to,
-      type: 'text',
-      text: { preview_url: false, body: message },
-    }),
-  });
-
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error((result as { error?: { message?: string } })?.error?.message || `WhatsApp API failed (${response.status})`);
+  const { sendText, WhatsAppApiError } = await import('@/lib/whatsapp-cloud/client');
+  try {
+    await sendText(to, message);
+  } catch (error) {
+    throw new Error(error instanceof WhatsAppApiError ? error.message : 'WhatsApp API failed');
   }
 
   console.info('[partner-otp] whatsapp sent', { to: maskMobile(toMobile) });

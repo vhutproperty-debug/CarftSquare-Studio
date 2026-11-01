@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       });
     }
 
+    const { notifyNewWebsiteLead } = await import('@/lib/leads/notify');
     const lead = await createPaintingLead(db, {
       name: data.name,
       mobile: normalizedMobile,
@@ -50,6 +51,15 @@ export async function POST(request: Request) {
       budget: data.budget || '',
       message: data.message || '',
       leadSource: PAINTING_LEAD_SOURCE,
+    });
+    notifyNewWebsiteLead({
+      id: lead.id,
+      source: 'painting',
+      name: lead.name,
+      phone: lead.mobile,
+      email: lead.email,
+      project: lead.requirement || 'Painting',
+      collection: 'painting_leads',
     });
 
     return NextResponse.json(

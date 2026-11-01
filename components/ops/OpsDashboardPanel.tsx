@@ -32,9 +32,11 @@ export default function OpsDashboardPanel() {
   const [callMetrics, setCallMetrics] = useState<CallWorkspaceMetrics | null>(null);
   const [waStatus, setWaStatus] = useState<{
     businessWaNumber?: string | null;
-    businessWaMatchesProduction?: boolean;
-    apiKeyConfigured?: boolean;
-    webhookSecretConfigured?: boolean;
+    tokenConfigured?: boolean;
+    qualityRating?: string | null;
+    lastWebhookAt?: string | null;
+    sendingPaused?: boolean;
+    followUpQueued?: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -114,7 +116,7 @@ export default function OpsDashboardPanel() {
       {waStatus && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">WhatsApp / Interakt</CardTitle>
+            <CardTitle className="text-lg">WhatsApp</CardTitle>
             <div className="flex gap-2">
               <Button asChild size="sm" variant="outline">
                 <Link href="/ops/whatsapp">Inbox</Link>
@@ -133,16 +135,16 @@ export default function OpsDashboardPanel() {
               <p className="font-medium">{waStatus.businessWaNumber || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Production lock</p>
-              <p className="font-medium">{waStatus.businessWaMatchesProduction ? 'OK' : 'Mismatch'}</p>
+              <p className="text-xs text-slate-500">Quality</p>
+              <p className="font-medium">{waStatus.qualityRating || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">API key</p>
-              <p className="font-medium">{waStatus.apiKeyConfigured ? 'Configured' : 'Missing'}</p>
+              <p className="text-xs text-slate-500">Token</p>
+              <p className="font-medium">{waStatus.tokenConfigured ? 'Configured' : 'Missing'}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Webhook secret</p>
-              <p className="font-medium">{waStatus.webhookSecretConfigured ? 'Configured' : 'Missing'}</p>
+              <p className="text-xs text-slate-500">Last webhook</p>
+              <p className="font-medium">{waStatus.lastWebhookAt ? formatReceivedAt(waStatus.lastWebhookAt) : '—'}</p>
             </div>
           </CardContent>
         </Card>

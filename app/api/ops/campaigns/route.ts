@@ -98,7 +98,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: true, ...result, campaign: await getCampaign(db, id) });
     }
     if (body.action === 'reconcile') {
-      const { reconcileCampaign } = await import('@/lib/interakt/delivery/reconcile');
+      const { reconcileCampaign } = await import('@/lib/whatsapp-cloud/delivery/reconcile');
       const result = await reconcileCampaign(db, id);
       return NextResponse.json({ ok: true, ...result, campaign: await getCampaign(db, id) });
     }

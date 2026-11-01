@@ -73,7 +73,10 @@ export default function HousingIntegrationPanel() {
       const statusData = await statusRes.json().catch(() => ({}));
       const logsData = await logsRes.json().catch(() => ({}));
       if (!statusRes.ok) {
-        setError(statusData.error || 'Unable to load connector status.');
+        const raw = String(statusData.error || 'Unable to load connector status.');
+        setError(/authentication service temporarily unavailable/i.test(raw)
+          ? 'Ops sign-in check timed out talking to the database. This is not a Housing.com API failure. Retry. The connector’s own last error is shown once status loads.'
+          : raw);
         return;
       }
       setStatus(statusData);
@@ -192,6 +195,9 @@ export default function HousingIntegrationPanel() {
           </p>
           {status?.message ? (
             <p className="mt-2 text-sm text-amber-700">{status.message}</p>
+          ) : null}
+          {status?.lastErrorMessage ? (
+            <p className="mt-2 text-sm text-rose-700">Housing API: {status.lastErrorMessage}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
