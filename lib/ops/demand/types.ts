@@ -6,8 +6,13 @@ export type DemandRentBuy = 'rent' | 'buy' | 'unknown';
 export type DemandQualification = {
   rentBuy?: DemandRentBuy;
   budget?: string;
+  /** Optional explicit band. When set, matching uses these instead of parsing `budget`. */
+  budgetMin?: string;
+  budgetMax?: string;
   bhk?: string;
   furnishing?: string;
+  locality?: string;
+  preferredProject?: string;
   preferredBuildings?: string;
   possessionTimeline?: string;
   familyOrBachelor?: string;

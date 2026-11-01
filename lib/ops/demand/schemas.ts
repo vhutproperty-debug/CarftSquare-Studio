@@ -5,8 +5,12 @@ import { OPS_LEAD_SOURCES } from '@/lib/ops/leads/types';
 export const demandQualificationSchema = z.object({
   rentBuy: z.enum(['rent', 'buy', 'unknown']).optional(),
   budget: z.string().trim().max(120).optional(),
+  budgetMin: z.string().trim().max(40).optional(),
+  budgetMax: z.string().trim().max(40).optional(),
   bhk: z.string().trim().max(40).optional(),
   furnishing: z.string().trim().max(80).optional(),
+  locality: z.string().trim().max(200).optional(),
+  preferredProject: z.string().trim().max(200).optional(),
   preferredBuildings: z.string().trim().max(500).optional(),
   possessionTimeline: z.string().trim().max(120).optional(),
   familyOrBachelor: z.string().trim().max(80).optional(),

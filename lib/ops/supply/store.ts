@@ -43,6 +43,7 @@ export function defaultSupplyRecord(
     propertyType: payload.propertyType,
     listingType: payload.listingType,
     project: payload.project,
+    locality: payload.locality,
     building: payload.building,
     wing: payload.wing,
     flatNumber: payload.flatNumber,
@@ -125,6 +126,7 @@ export async function updateSupplyRecord(
     propertyType: string;
     listingType: 'rent' | 'sale';
     project: string;
+    locality: string;
     building: string;
     wing: string;
     flatNumber: string;

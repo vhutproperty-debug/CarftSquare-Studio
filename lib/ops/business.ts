@@ -156,6 +156,7 @@ export type OpsNavItem = {
     | 'demand'
     | 'supply'
     | 'matching'
+    | 'market'
     | 'deal'
     | 'revenue'
     | 'agreement'
@@ -271,6 +272,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'matching',
         status: 'active',
         icon: 'matching',
+      },
+      {
+        href: '/ops/market',
+        label: 'Market',
+        pillar: 'revenue',
+        pipelineStage: 'matching',
+        status: 'active',
+        icon: 'market',
       },
       {
         href: '/ops/deals',

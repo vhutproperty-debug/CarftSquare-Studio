@@ -37,6 +37,16 @@ export type OpsProspect = {
   location?: string;
   requirement?: string;
   notes?: string;
+  /** Optional structured listing fields. Older prospects omit these and are parsed from requirement text. */
+  bhk?: string;
+  budget?: string;
+  budgetMin?: string;
+  budgetMax?: string;
+  furnishing?: string;
+  floor?: string;
+  expectedRent?: string;
+  expectedSalePrice?: string;
+  listingType?: 'rent' | 'sale';
   source: ProspectSource;
   assignedTo?: string;
   callStatus: CallDisplayStatus;

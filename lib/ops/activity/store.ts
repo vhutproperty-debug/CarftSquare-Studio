@@ -16,6 +16,7 @@ export type OpsActivityAction =
   | 'create_supply_record'
   | 'update_supply_record'
   | 'view_matching_workspace'
+  | 'view_market_board'
   | 'view_match_record'
   | 'generate_matches'
   | 'update_match_record'

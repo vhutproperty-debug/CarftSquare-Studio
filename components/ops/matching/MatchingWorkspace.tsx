@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MatchingDrawer from '@/components/ops/matching/MatchingDrawer';
@@ -132,6 +133,12 @@ export default function MatchingWorkspace() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-600">
           Deterministic matching between demand ready for matching and available supply inventory.
+          {' '}
+          <Link href="/ops/market" className="font-medium text-slate-900 underline">
+            Open the market board
+          </Link>
+          {' '}
+          for every available flat, unmatched requirements, and the supply–demand gap.
         </p>
         <Button onClick={generateMatches} disabled={generating}>
           <RefreshCw className={`mr-2 h-4 w-4 ${generating ? 'animate-spin' : ''}`} />

@@ -5,6 +5,7 @@ const supplyFieldsSchema = z.object({
   propertyType: z.string().trim().max(80).optional(),
   listingType: z.enum(['rent', 'sale']).optional(),
   project: z.string().trim().max(200).optional(),
+  locality: z.string().trim().max(200).optional(),
   building: z.string().trim().max(200).optional(),
   wing: z.string().trim().max(40).optional(),
   flatNumber: z.string().trim().max(40).optional(),

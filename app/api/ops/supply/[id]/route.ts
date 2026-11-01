@@ -80,7 +80,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     };
 
     const scalarFields = [
-      'propertyType', 'listingType', 'project', 'building', 'wing', 'flatNumber',
+      'propertyType', 'listingType', 'project', 'locality', 'building', 'wing', 'flatNumber',
       'configuration', 'carpetArea', 'floor', 'facing', 'parking', 'ownerName',
       'ownerMobile', 'ownerEmail', 'source', 'exclusive', 'expectedRent',
       'expectedDeposit', 'expectedSalePrice', 'brokeragePercent', 'furnishedStatus',
