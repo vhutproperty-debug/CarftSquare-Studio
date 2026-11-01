@@ -10,6 +10,26 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/logout',
 ]);
 
+/**
+ * Headless cron entry points. Middleware must not 401 these before the route
+ * runs: Vercel Cron and GitHub Actions send Authorization: Bearer CRON_SECRET
+ * (or a route-specific secret header) and have no admin session cookie.
+ * The route still checks that secret, then falls back to requireOpsEditAccess
+ * (research tick uses requireResearchEditAccess).
+ */
+const CRON_AUTH_PATHS = new Set([
+  '/api/ops/followups/tick',
+  '/api/ops/whatsapp/templates/sync',
+  '/api/ops/ads/insights/sync',
+  '/api/research/scheduler/tick',
+]);
+
+export function isCronAuthPath(pathname) {
+  const path = String(pathname || '');
+  const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  return CRON_AUTH_PATHS.has(normalized);
+}
+
 function isPublicAuthPath(pathname) {
   return PUBLIC_AUTH_PATHS.has(pathname);
 }
@@ -69,10 +89,13 @@ export async function middleware(request) {
   }
 
   if (
-    isProtectedAdminApi(pathname)
-    || isProtectedDataApi(pathname)
-    || isProtectedOpsApi(pathname)
-    || isProtectedResearchApi(pathname)
+    !isCronAuthPath(pathname)
+    && (
+      isProtectedAdminApi(pathname)
+      || isProtectedDataApi(pathname)
+      || isProtectedOpsApi(pathname)
+      || isProtectedResearchApi(pathname)
+    )
   ) {
     if (!session) {
       return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
