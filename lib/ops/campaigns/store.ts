@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import type { OpsWaCampaign, OpsWaCampaignRecipient, WaCampaignStatus } from '@/lib/ops/campaigns/types';
-import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
+import { normalizeOutreachPhone } from '@/lib/ops/outreach-phone';
 
 export const OPS_WA_CAMPAIGNS_COLLECTION = 'ops_wa_campaigns';
 export const OPS_WA_CAMPAIGN_RECIPIENTS_COLLECTION = 'ops_wa_campaign_recipients';
@@ -104,8 +104,9 @@ export async function materializeManualRecipients(
   const now = new Date().toISOString();
   let queued = 0;
   for (const phone of phones) {
-    const normalizedPhone = normalizeIndianMobile(phone);
-    if (!isValidIndianMobile(normalizedPhone)) {
+    const outreach = normalizeOutreachPhone(phone);
+    const normalizedPhone = outreach?.phone || '';
+    if (!outreach) {
       const skipped: OpsWaCampaignRecipient = {
         id: uuidv4(),
         campaignId: campaign.id,

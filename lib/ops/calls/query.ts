@@ -120,12 +120,19 @@ function prospectToQueueItem(
     building: prospect.building,
     prospectType: prospect.prospectType,
     leadSource: null,
+    priority: prospect.priority || null,
+    wave: prospect.wave ?? null,
+    batch: prospect.batch || null,
+    campaignTag: prospect.campaignTag || null,
+    intent: prospect.intent || null,
+    salutation: prospect.salutation || null,
+    unit: prospect.unit || null,
     assignedTo: prospect.assignedTo || null,
     assignedToName: prospect.assignedTo ? adminNames?.get(prospect.assignedTo) || null : null,
     callStatus: prospect.callStatus,
     lastCalledAt: prospect.updatedAt !== prospect.createdAt ? prospect.updatedAt : null,
     nextFollowUpAt: prospect.nextFollowUpAt || null,
-    doNotCall: prospect.callStatus === 'DO_NOT_CALL',
+    doNotCall: prospect.callStatus === 'DO_NOT_CALL' || Boolean(prospect.doNotContact || prospect.optOut),
     wrongNumber: Boolean(prospect.phoneInvalid) || prospect.callStatus === 'WRONG_NUMBER',
     href: `/ops/calls/${prospect.id}`,
     queueRank: computeQueueRank({
@@ -162,12 +169,26 @@ export async function buildCallQueueItems(
     callStatus?: CallDisplayStatus;
     search?: string;
     mineOnly?: boolean;
+    priority?: OpsProspect['priority'];
+    wave?: number;
+    batch?: string;
+    campaignTag?: string;
+    intent?: OpsProspect['intent'];
+    hideOptOut?: boolean;
   } = {},
 ): Promise<CallQueueItem[]> {
   const viewAll = canViewAllCallRecords(admin);
+  const outreachScoped = Boolean(
+    filters.priority
+    || filters.wave != null
+    || filters.batch
+    || filters.campaignTag
+    || filters.intent
+    || filters.hideOptOut,
+  );
 
   const [leads, prospects] = await Promise.all([
-    fetchRecentUnifiedLeads(db),
+    outreachScoped ? Promise.resolve([]) : fetchRecentUnifiedLeads(db),
     listProspects(db, {
       assignedTo: filters.assignedTo,
       mineOnly: filters.mineOnly,
@@ -177,6 +198,12 @@ export async function buildCallQueueItems(
       prospectType: filters.prospectType,
       callStatus: filters.callStatus,
       search: filters.search,
+      priority: filters.priority,
+      wave: filters.wave,
+      batch: filters.batch,
+      campaignTag: filters.campaignTag,
+      intent: filters.intent,
+      hideOptOut: filters.hideOptOut,
       limit: 1000,
     }),
   ]);
@@ -209,12 +236,24 @@ export async function buildCallQueueItems(
     ...prospects.map((prospect) => {
       const latest = latestMap.get(buildTargetKey('ops_prospect', prospect.id));
       const item = prospectToQueueItem(prospect, adminNames);
-      if (latest) {
+      const optedOut = Boolean(prospect.optOut || prospect.doNotContact || prospect.callStatus === 'DO_NOT_CALL');
+      if (latest && !optedOut) {
         item.callStatus = latest.status as CallDisplayStatus;
         item.lastCalledAt = latest.createdAt;
         item.nextFollowUpAt = latest.nextFollowUpAt || item.nextFollowUpAt;
         item.doNotCall = latest.status === 'DO_NOT_CALL';
         item.wrongNumber = latest.status === 'WRONG_NUMBER' || item.wrongNumber;
+        item.queueRank = computeQueueRank({
+          callStatus: item.callStatus,
+          nextFollowUpAt: item.nextFollowUpAt,
+        });
+      } else if (latest) {
+        item.lastCalledAt = latest.createdAt;
+        item.nextFollowUpAt = latest.nextFollowUpAt || item.nextFollowUpAt;
+      }
+      if (optedOut) {
+        item.callStatus = 'DO_NOT_CALL';
+        item.doNotCall = true;
         item.queueRank = computeQueueRank({
           callStatus: item.callStatus,
           nextFollowUpAt: item.nextFollowUpAt,
@@ -336,5 +375,5 @@ export async function listOpsTeamMembers(db?: Db): Promise<Array<{ id: string; n
     .sort({ name: 1 })
     .limit(50)
     .toArray();
-  return admins as Array<{ id: string; name: string; email: string }>;
+  return admins as unknown as Array<{ id: string; name: string; email: string }>;
 }

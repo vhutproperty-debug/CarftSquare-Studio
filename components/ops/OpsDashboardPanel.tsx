@@ -125,6 +125,9 @@ export default function OpsDashboardPanel() {
                 <Link href="/ops/automation">Automation</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
+                <Link href="/ops/calls#import">Import owners</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
                 <Link href="/ops/campaigns">Campaigns</Link>
               </Button>
             </div>

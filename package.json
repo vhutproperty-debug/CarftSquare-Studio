@@ -28,6 +28,7 @@
         "test:listing-urls": "npx tsx scripts/test-listing-url-filter.ts",
         "test:listing-urls:prod": "npx tsx scripts/smoke-listing-urls-prod.ts",
         "test:wa-cloud": "npx tsx scripts/test-wa-cloud.ts",
+        "test:owner-outreach": "npx tsx scripts/test-owner-outreach.ts",
         "test:meta-leads": "npx tsx scripts/test-meta-leads.ts",
         "test:meta-review": "npx tsx scripts/test-meta-review.ts",
         "test:auth-db": "npx tsx scripts/auth-db-resilience.test.ts",

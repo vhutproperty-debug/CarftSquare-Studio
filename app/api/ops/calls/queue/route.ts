@@ -24,6 +24,12 @@ export async function GET(request: Request) {
     callStatus: searchParams.get('callStatus') || undefined,
     search: searchParams.get('search') || undefined,
     mineOnly: searchParams.get('mineOnly') || undefined,
+    priority: searchParams.get('priority') || undefined,
+    wave: searchParams.get('wave') || undefined,
+    batch: searchParams.get('batch') || undefined,
+    campaignTag: searchParams.get('campaignTag') || undefined,
+    intent: searchParams.get('intent') || undefined,
+    hideOptOut: searchParams.get('hideOptOut') || undefined,
   });
 
   if (!parsed.success) {
@@ -44,6 +50,12 @@ export async function GET(request: Request) {
       callStatus,
       search: filters.search,
       mineOnly: filters.mineOnly,
+      priority: filters.priority,
+      wave: filters.wave,
+      batch: filters.batch,
+      campaignTag: filters.campaignTag,
+      intent: filters.intent,
+      hideOptOut: filters.hideOptOut,
     });
 
     const sections = sectionizeCallQueue(items, auth.admin.id);

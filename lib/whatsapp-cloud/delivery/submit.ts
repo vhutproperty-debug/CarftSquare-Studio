@@ -19,6 +19,15 @@ import { getWaBusinessWaNumber, maskPhoneForLog, toWhatsAppRecipient } from '@/l
 import { getCampaign } from '@/lib/ops/campaigns/store';
 import type { OpsWaCampaign } from '@/lib/ops/campaigns/types';
 
+/** Prefer the recipient snapshot so each owner gets their own salutation and units. */
+export function recipientTemplateBodyValues(
+  recipient: { bodyValues?: string[] | null },
+  campaign: { bodyValues?: string[] | null },
+): string[] {
+  if (recipient.bodyValues?.length) return recipient.bodyValues;
+  return campaign.bodyValues || [];
+}
+
 /**
  * Submit one campaign recipient template send with attempt ledger + crash-safe claiming.
  */
@@ -42,7 +51,7 @@ export async function submitRecipientMessage(
   if (!recipient) return { ok: false, reason: 'recipient_not_found' };
 
   const currentState = recipient.deliveryState;
-  if (recipient.doNotContact || await isOptedOut(db, toWhatsAppRecipient(recipient.normalizedPhone))) {
+  if (recipient.doNotContact || await isOptedOut(db, recipient.normalizedPhone)) {
     await transitionRecipientState(db, {
       recipientId: recipient.id,
       to: 'CANCELLED',
@@ -125,7 +134,7 @@ export async function submitRecipientMessage(
     normalizedPhone: recipient.normalizedPhone,
     templateName: campaign.templateName,
     languageCode: campaign.languageCode,
-    bodyValues: campaign.bodyValues,
+    bodyValues: recipientTemplateBodyValues(recipient, campaign),
     submitIdempotencyKey,
     callbackData,
     deliveryState: 'SUBMITTING',
@@ -163,7 +172,7 @@ export async function submitRecipientMessage(
       template: {
         name: campaign.templateName,
         languageCode: campaign.languageCode,
-        bodyValues: campaign.bodyValues,
+        bodyValues: recipientTemplateBodyValues(recipient, campaign),
       },
     });
 
@@ -196,7 +205,7 @@ export async function submitRecipientMessage(
           conversation = await upsertConversationIdentity(db, {
             businessWaNumber: businessWa,
             normalizedPhone: recipient.normalizedPhone,
-            customerWaE164: `91${recipient.normalizedPhone}`,
+            customerWaE164: toWhatsAppRecipient(recipient.normalizedPhone),
             providerCustomerId: null,
           });
         }

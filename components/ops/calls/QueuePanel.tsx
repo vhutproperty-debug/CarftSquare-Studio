@@ -50,6 +50,16 @@ function priorityBorder(item: CallQueueItem): string {
   return 'border-l-slate-300';
 }
 
+export type OutreachQueueFilters = {
+  project: string;
+  priority: string;
+  wave: string;
+  batch: string;
+  campaignTag: string;
+  intent: string;
+  hideOptOut: boolean;
+};
+
 type QueuePanelProps = {
   section: QueueSectionId;
   onSectionChange: (section: QueueSectionId) => void;
@@ -61,11 +71,14 @@ type QueuePanelProps = {
   onSearchChange: (value: string) => void;
   mineOnly: boolean;
   onMineOnlyChange: (value: boolean) => void;
+  outreach: OutreachQueueFilters;
+  onOutreachChange: (next: OutreachQueueFilters) => void;
   loading: boolean;
   error?: string;
   onRetry?: () => void;
   onNextLead: () => void;
   onAddProspect: () => void;
+  onImportProspects?: () => void;
 };
 
 export default function QueuePanel({
@@ -79,11 +92,14 @@ export default function QueuePanel({
   onSearchChange,
   mineOnly,
   onMineOnlyChange,
+  outreach,
+  onOutreachChange,
   loading,
   error,
   onRetry,
   onNextLead,
   onAddProspect,
+  onImportProspects,
 }: QueuePanelProps) {
   const sectionCounts = new Map(sections.map((s) => [s.id, s.count]));
 
@@ -92,10 +108,17 @@ export default function QueuePanel({
       <div className="shrink-0 space-y-3 border-b border-slate-100 p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold tracking-tight text-slate-900">Outreach Queue</h2>
-          <Button type="button" size="sm" variant="outline" onClick={onAddProspect} className="h-8 gap-1 text-xs">
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            Add
-          </Button>
+          <div className="flex gap-1">
+            {onImportProspects ? (
+              <Button type="button" size="sm" variant="outline" onClick={onImportProspects} className="h-8 text-xs">
+                Import
+              </Button>
+            ) : null}
+            <Button type="button" size="sm" variant="outline" onClick={onAddProspect} className="h-8 gap-1 text-xs">
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              Add
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -118,6 +141,74 @@ export default function QueuePanel({
           <UserCheck className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
           Assigned to me only
         </label>
+
+        <details className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+          <summary className="cursor-pointer text-xs font-semibold text-slate-700">Owner filters</summary>
+          <div className="mt-2 space-y-2 pb-1">
+            <Input
+              value={outreach.project}
+              onChange={(event) => onOutreachChange({ ...outreach, project: event.target.value })}
+              placeholder="Project"
+              aria-label="Filter by project"
+              className="h-8 bg-white text-xs"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                aria-label="Filter by priority"
+                className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs"
+                value={outreach.priority}
+                onChange={(event) => onOutreachChange({ ...outreach, priority: event.target.value })}
+              >
+                <option value="">Priority</option>
+                {['P1', 'P2', 'P3', 'P4', 'Intl'].map((priority) => (
+                  <option key={priority} value={priority}>{priority}</option>
+                ))}
+              </select>
+              <Input
+                value={outreach.wave}
+                onChange={(event) => onOutreachChange({ ...outreach, wave: event.target.value })}
+                placeholder="Wave"
+                aria-label="Filter by wave"
+                inputMode="numeric"
+                className="h-8 bg-white text-xs"
+              />
+            </div>
+            <Input
+              value={outreach.batch}
+              onChange={(event) => onOutreachChange({ ...outreach, batch: event.target.value })}
+              placeholder="Batch"
+              aria-label="Filter by batch"
+              className="h-8 bg-white text-xs"
+            />
+            <Input
+              value={outreach.campaignTag}
+              onChange={(event) => onOutreachChange({ ...outreach, campaignTag: event.target.value })}
+              placeholder="Campaign tag"
+              aria-label="Filter by campaign tag"
+              className="h-8 bg-white text-xs"
+            />
+            <select
+              aria-label="Filter by intent"
+              className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs"
+              value={outreach.intent}
+              onChange={(event) => onOutreachChange({ ...outreach, intent: event.target.value })}
+            >
+              <option value="">Intent</option>
+              <option value="sell">Sell</option>
+              <option value="rent">Rent out</option>
+              <option value="interiors">Interiors</option>
+              <option value="not_now">Not now</option>
+            </select>
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={outreach.hideOptOut}
+                onChange={(event) => onOutreachChange({ ...outreach, hideOptOut: event.target.checked })}
+              />
+              Hide opted-out owners
+            </label>
+          </div>
+        </details>
       </div>
 
       <nav className="shrink-0 border-b border-slate-100 px-2 py-2" aria-label="Queue sections">
@@ -216,7 +307,18 @@ export default function QueuePanel({
                     <p className={`mt-1 truncate text-xs ${
                       selectedId === item.id ? 'text-slate-300' : 'text-slate-500'
                     }`}>
-                      {[item.projectName, item.building].filter(Boolean).join(' · ')}
+                      {[item.projectName, item.building, item.unit].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : null}
+                  {(item.priority || item.wave || item.intent) ? (
+                    <p className={`mt-1 text-[11px] font-semibold ${
+                      selectedId === item.id ? 'text-orange-200' : 'text-slate-500'
+                    }`}>
+                      {[
+                        item.priority,
+                        item.wave ? `W${item.wave}` : null,
+                        item.intent?.replace('_', ' '),
+                      ].filter(Boolean).join(' · ')}
                     </p>
                   ) : null}
                   <div className={`mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] ${

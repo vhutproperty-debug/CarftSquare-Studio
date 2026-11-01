@@ -12,7 +12,7 @@ import type { CallTargetSummary, OpsCallActivity, OpsProspect } from '@/lib/ops/
 import type { NormalizedOpsLead } from '@/lib/ops/leads/types';
 import { OPS_LEAD_SOURCE_LABELS } from '@/lib/ops/leads/types';
 import { getRecordBusinessType } from '@/lib/ops/business';
-import { formatPhoneDisplay } from '@/lib/ops/phone';
+import { buildTelLink, formatPhoneDisplay } from '@/lib/ops/phone';
 
 function formatWhen(value?: string | null) {
   if (!value) return '—';
@@ -121,6 +121,21 @@ export default function LeadWorkspacePanel({ detail, loading, onNotesSaved }: Le
               {prospect.prospectType.replace(/_/g, ' ')}
             </span>
           ) : null}
+          {prospect?.priority ? (
+            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-900">
+              {prospect.priority}{prospect.wave ? ` · W${prospect.wave}` : ''}
+            </span>
+          ) : null}
+          {prospect?.intent ? (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold capitalize text-emerald-900">
+              {prospect.intent.replace('_', ' ')}
+            </span>
+          ) : null}
+          {prospect?.optOut || prospect?.doNotContact ? (
+            <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold uppercase text-red-800">
+              Opted out
+            </span>
+          ) : null}
           {summary.doNotCall ? (
             <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold uppercase text-red-800">DNC</span>
           ) : null}
@@ -133,7 +148,7 @@ export default function LeadWorkspacePanel({ detail, loading, onNotesSaved }: Le
 
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <a
-            href={phone ? `tel:+91${phone.replace(/\D/g, '').slice(-10)}` : undefined}
+            href={buildTelLink(phone) || undefined}
             className="flex items-center gap-2 text-xl font-bold text-slate-800 hover:text-orange-600"
           >
             <Phone className="h-5 w-5 text-slate-400" aria-hidden="true" />
@@ -184,7 +199,15 @@ export default function LeadWorkspacePanel({ detail, loading, onNotesSaved }: Le
               <PanelCard title="Owner / inventory profile">
                 <dl className="grid gap-2 sm:grid-cols-2">
                   <SummaryItem label="Alternate phone" value={formatPhoneDisplay(prospect.alternatePhone)} />
-                  <SummaryItem label="Unit" value={prospect.unit} />
+                  <SummaryItem label="Salutation" value={prospect.salutation} />
+                  <SummaryItem label="Units" value={prospect.unit} />
+                  <SummaryItem label="Unit count" value={prospect.unitCount != null ? String(prospect.unitCount) : null} />
+                  <SummaryItem label="Priority" value={prospect.priority} />
+                  <SummaryItem label="Wave" value={prospect.wave != null ? String(prospect.wave) : null} />
+                  <SummaryItem label="Batch" value={prospect.batch} />
+                  <SummaryItem label="Campaign" value={prospect.campaignTag} />
+                  <SummaryItem label="Intent" value={prospect.intent?.replace('_', ' ')} />
+                  <SummaryItem label="Last reply" value={prospect.lastButtonReply} />
                   <SummaryItem label="Source" value={prospect.source.replace(/_/g, ' ')} />
                   <SummaryItem label="Assigned" value={prospect.assignedTo ? 'Assigned' : 'Unassigned'} />
                 </dl>

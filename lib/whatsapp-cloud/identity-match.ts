@@ -1,6 +1,6 @@
 import type { Db } from 'mongodb';
 import type { OpsLeadSource } from '@/lib/ops/leads/types';
-import { normalizeIndianMobile } from '@/lib/phone/indian-mobile';
+import { outreachPhonesEqual } from '@/lib/ops/outreach-phone';
 import { phoneStorageVariants } from '@/lib/whatsapp-cloud/phone';
 import type {
   IdentityMatchResult,
@@ -67,8 +67,7 @@ function getNested(doc: Record<string, unknown>, path: string): unknown {
 }
 
 function phonesEqual(stored: unknown, normalizedPhone: string): boolean {
-  const value = normalizeIndianMobile(stored);
-  return Boolean(value) && value === normalizedPhone;
+  return outreachPhonesEqual(stored, normalizedPhone);
 }
 
 /**

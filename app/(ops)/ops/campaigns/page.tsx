@@ -33,7 +33,9 @@ type Campaign = {
 
 type Recipient = {
   id: string;
+  name?: string;
   normalizedPhone: string;
+  bodyValues?: string[];
   deliveryState?: string;
   status: string;
   providerMessageId?: string;
@@ -69,6 +71,14 @@ function CampaignsWorkspace() {
   const [name, setName] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [phones, setPhones] = useState('');
+  const [audienceMode, setAudienceMode] = useState<'phones' | 'prospects'>('phones');
+  const [projectName, setProjectName] = useState('');
+  const [wave, setWave] = useState('');
+  const [batch, setBatch] = useState('');
+  const [priority, setPriority] = useState('');
+  const [campaignTag, setCampaignTag] = useState('');
+  const [variableMode, setVariableMode] = useState<'both' | 'salutation'>('both');
+  const [previewText, setPreviewText] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -108,31 +118,85 @@ function CampaignsWorkspace() {
     if (selectedId) loadDetail(selectedId);
   }, [selectedId, loadDetail]);
 
-  async function createCampaign() {
-    setMessage('');
+  function campaignBody(dryRun: boolean) {
     const phoneList = phones
       .split(/[\n,]/)
       .map((p) => p.trim())
       .filter(Boolean);
+    const variableFields = variableMode === 'both' ? ['salutation', 'units'] : ['salutation'];
+    if (audienceMode === 'prospects') {
+      return {
+        name,
+        templateName,
+        dryRun,
+        throttlePerMinute: 20,
+        audience: {
+          source: 'ops_prospects',
+          projectName,
+          wave: wave.trim() ? Number(wave) : undefined,
+          batch: batch.trim() || undefined,
+          priority: priority || undefined,
+          campaignTag: campaignTag.trim() || undefined,
+          variableFields,
+        },
+      };
+    }
+    return {
+      name,
+      templateName,
+      dryRun,
+      phones: phoneList,
+      throttlePerMinute: 20,
+    };
+  }
+
+  async function previewCampaign() {
+    setMessage('');
+    setPreviewText('');
     const res = await fetch('/api/ops/campaigns', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        templateName,
-        phones: phoneList,
-        throttlePerMinute: 20,
-      }),
+      body: JSON.stringify(campaignBody(true)),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage(data.error || 'Create failed');
+      setMessage(typeof data.error === 'string' ? data.error : 'Preview failed');
+      return;
+    }
+    const preview = data.preview || {};
+    const sample = (preview.recipients || []).slice(0, 8).map((row: {
+      name?: string;
+      phone?: string;
+      status?: string;
+      bodyValues?: string[];
+      reason?: string;
+    }) => {
+      const tail = row.phone ? row.phone.slice(-4) : '';
+      return `${row.status} ****${tail} ${row.name || ''} [${(row.bodyValues || []).join(' | ')}]${row.reason ? ` (${row.reason})` : ''}`;
+    });
+    setPreviewText(
+      `Preview: ${preview.queued || 0} queued, ${preview.skipped || 0} skipped of ${preview.total || 0}. Nothing was sent.\n${sample.join('\n')}`,
+    );
+  }
+
+  async function createCampaign() {
+    setMessage('');
+    const res = await fetch('/api/ops/campaigns', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(campaignBody(false)),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessage(typeof data.error === 'string' ? data.error : 'Create failed');
       return;
     }
     setName('');
     setPhones('');
-    setMessage('Campaign created.');
+    setPreviewText('');
+    setMessage('Draft campaign created. Start still uses the existing WhatsApp send guards.');
     await load();
   }
 
@@ -199,8 +263,24 @@ function CampaignsWorkspace() {
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <h2 className="text-sm font-semibold">Create campaign</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Templates only. Delivery webhooks drive retries until every recipient is reconciled.
+            Templates only. Preview does not send. Starting a batch still uses the existing WhatsApp send guards.
           </p>
+          <div className="mt-3 flex gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setAudienceMode('phones')}
+              className={`rounded-md px-2 py-1 ${audienceMode === 'phones' ? 'bg-slate-900 text-white' : 'bg-slate-100'}`}
+            >
+              Phone list
+            </button>
+            <button
+              type="button"
+              onClick={() => setAudienceMode('prospects')}
+              className={`rounded-md px-2 py-1 ${audienceMode === 'prospects' ? 'bg-slate-900 text-white' : 'bg-slate-100'}`}
+            >
+              Prospects
+            </button>
+          </div>
           <input
             className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Campaign name"
@@ -218,20 +298,90 @@ function CampaignsWorkspace() {
               </option>
             ))}
           </select>
-          <textarea
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            rows={8}
-            placeholder="Phone numbers (one per line)"
-            value={phones}
-            onChange={(e) => setPhones(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={createCampaign}
-            className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-          >
-            Create draft campaign
-          </button>
+          {audienceMode === 'phones' ? (
+            <textarea
+              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              rows={8}
+              placeholder="Phone numbers, one per line. Indian mobiles or E.164."
+              value={phones}
+              onChange={(e) => setPhones(e.target.value)}
+            />
+          ) : (
+            <div className="mt-2 space-y-2">
+              <input
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Project name (72 West)"
+                aria-label="Project name"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="Wave"
+                  aria-label="Wave"
+                  value={wave}
+                  onChange={(e) => setWave(e.target.value)}
+                />
+                <select
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  aria-label="Priority"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                >
+                  <option value="">Any priority</option>
+                  {['P1', 'P2', 'P3', 'P4', 'Intl'].map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+              <input
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Batch"
+                aria-label="Batch"
+                value={batch}
+                onChange={(e) => setBatch(e.target.value)}
+              />
+              <input
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Campaign tag"
+                aria-label="Campaign tag"
+                value={campaignTag}
+                onChange={(e) => setCampaignTag(e.target.value)}
+              />
+              <select
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                aria-label="Template variables"
+                value={variableMode}
+                onChange={(e) => setVariableMode(e.target.value as 'both' | 'salutation')}
+              >
+                <option value="both">{'{{1}} salutation, {{2}} units'}</option>
+                <option value="salutation">{'{{1}} salutation only'}</option>
+              </select>
+              <p className="text-xs text-slate-500">
+                Opted-out owners are excluded. Each recipient gets salutation and unit values from their prospect.
+              </p>
+            </div>
+          )}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={previewCampaign}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+            >
+              Dry-run preview
+            </button>
+            <button
+              type="button"
+              onClick={createCampaign}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            >
+              Create draft campaign
+            </button>
+          </div>
+          {previewText ? (
+            <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-xs text-slate-700">{previewText}</pre>
+          ) : null}
           {message && <p className="mt-2 text-xs text-slate-600">{message}</p>}
           {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
         </div>
@@ -335,6 +485,7 @@ function CampaignsWorkspace() {
                 <thead className="text-xs uppercase text-slate-500">
                   <tr>
                     <th className="py-2 pr-3">Phone</th>
+                    <th className="py-2 pr-3">Variables</th>
                     <th className="py-2 pr-3">State</th>
                     <th className="py-2 pr-3">Attempts</th>
                     <th className="py-2 pr-3">Failure</th>
@@ -345,7 +496,10 @@ function CampaignsWorkspace() {
                 <tbody>
                   {detail.recipients.map((r) => (
                     <tr key={r.id} className="border-t border-slate-100 align-top">
-                      <td className="py-2 pr-3">****{r.normalizedPhone.slice(-4)}</td>
+                      <td className="py-2 pr-3">
+                        {r.name ? `${r.name} · ` : ''}****{r.normalizedPhone.slice(-4)}
+                      </td>
+                      <td className="py-2 pr-3 text-xs text-slate-600">{(r.bodyValues || []).join(' | ') || '—'}</td>
                       <td className="py-2 pr-3">
                         {r.deliveryState || r.status}
                         {r.reviewRequired ? ' · review' : ''}

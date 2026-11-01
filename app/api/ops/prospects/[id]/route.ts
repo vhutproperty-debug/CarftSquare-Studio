@@ -48,10 +48,16 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'You do not have access to this prospect.' }, { status: 403 });
     }
 
-    const [activities, summary] = await Promise.all([
+    const [activities, callSummary] = await Promise.all([
       listCallActivitiesForTarget(db, 'ops_prospect', id, undefined, 100),
       getCallTargetSummary(db, 'ops_prospect', id),
     ]);
+    const optedOut = Boolean(
+      prospect.optOut || prospect.doNotContact || prospect.callStatus === 'DO_NOT_CALL',
+    );
+    const summary = optedOut
+      ? { ...callSummary, doNotCall: true, currentStatus: 'DO_NOT_CALL' as const }
+      : callSummary;
 
     return NextResponse.json({ prospect, activities, summary });
   } catch (error) {

@@ -32,6 +32,13 @@ export type OpsWaCampaign = {
     phones?: string[];
     prospectType?: string;
     leadSource?: string;
+    projectName?: string;
+    wave?: number;
+    batch?: string;
+    priority?: string;
+    campaignTag?: string;
+    intent?: string;
+    variableFields?: Array<'salutation' | 'units'>;
   };
   status: WaCampaignStatus;
   scheduledFor?: string;
@@ -59,8 +66,12 @@ export type OpsWaCampaign = {
 export type OpsWaCampaignRecipient = {
   id: string;
   campaignId: string;
+  prospectId?: string;
+  name?: string;
   phone: string;
   normalizedPhone: string;
+  /** Per-recipient template parameters. Falls back to the campaign bodyValues. */
+  bodyValues?: string[];
   status: WaCampaignRecipientStatus;
   /** Explicit delivery state machine — source of truth when present */
   deliveryState?: string;
