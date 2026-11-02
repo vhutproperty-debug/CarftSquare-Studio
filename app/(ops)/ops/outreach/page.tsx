@@ -10,7 +10,7 @@ export default function OpsOutreachPage() {
   return (
     <OpsShell
       title="Owner & tenant outreach"
-      subtitle="Manual WhatsApp only. Approving a wave records the decision and does not send messages."
+      subtitle="Manual WhatsApp and calls only. Re-rent calls are the lease-expiry list. Approving a wave does not send messages."
       pipelineStage="demand"
     >
       <OutreachWorkspace />

@@ -83,7 +83,9 @@ export type OpsActivityAction =
   | 'view_rerent'
   | 'upsert_rerent'
   | 'view_portfolio_owners'
-  | 'upsert_portfolio_owner';
+  | 'upsert_portfolio_owner'
+  | 'view_lease_expiries'
+  | 'upsert_lease_expiry';
 
 export type OpsActivityLog = {
   id: string;

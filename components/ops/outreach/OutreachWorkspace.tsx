@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import RerentCallsTab from '@/components/ops/outreach/RerentCallsTab';
 import { buildWhatsAppLink } from '@/lib/ops/phone';
 import { outreachMessage } from '@/lib/ops/outreach/template';
 import {
@@ -29,6 +30,7 @@ type Payload = {
 const selectClass = 'h-9 rounded-md border border-slate-200 bg-white px-2 text-sm';
 
 export default function OutreachWorkspace() {
+  const [section, setSection] = useState<'audiences' | 'rerent'>('audiences');
   const [audience, setAudience] = useState<OutreachAudience>('owner_sell');
   const [wave, setWave] = useState('');
   const [project, setProject] = useState('');
@@ -41,6 +43,7 @@ export default function OutreachWorkspace() {
   const [editingTemplate, setEditingTemplate] = useState(false);
 
   const load = useCallback(async () => {
+    if (section !== 'audiences') return;
     const params = new URLSearchParams({ audience });
     if (wave) params.set('wave', wave);
     if (project) params.set('project', project);
@@ -56,7 +59,7 @@ export default function OutreachWorkspace() {
     const current = (body.templates || []).find((item: OutreachTemplate) => item.audience === audience);
     setTemplateBody(current?.body || 'Hi {first_name}, this is CraftSquare about {project} {tower}.');
     setError('');
-  }, [audience, project, status, tower, wave]);
+  }, [audience, project, section, status, tower, wave]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -83,18 +86,26 @@ export default function OutreachWorkspace() {
         The team sends every WhatsApp message by hand. Nothing on this screen sends automatically. Names and phones stay inside ops.
       </p>
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-200/70 p-1">
+        <button
+          type="button"
+          onClick={() => setSection('rerent')}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium ${section === 'rerent' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+        >
+          Re-rent calls
+        </button>
         {OUTREACH_AUDIENCES.map((item) => (
           <button
             key={item}
             type="button"
-            onClick={() => setAudience(item)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${audience === item ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+            onClick={() => { setSection('audiences'); setAudience(item); }}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${section === 'audiences' && audience === item ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
           >
             {OUTREACH_AUDIENCE_LABELS[item]}
           </button>
         ))}
       </div>
-      {data ? (
+      {section === 'rerent' ? <RerentCallsTab /> : null}
+      {section === 'audiences' && data ? (
         <div className="grid gap-2 sm:grid-cols-4 lg:grid-cols-8">
           {OUTREACH_STATUSES.map((item) => (
             <button key={item} type="button" onClick={() => setStatus(status === item ? '' : item)} className={`rounded-xl border bg-white px-3 py-2 text-left shadow-sm ${status === item ? 'border-orange-300' : 'border-slate-200'}`}>
@@ -104,6 +115,7 @@ export default function OutreachWorkspace() {
           ))}
         </div>
       ) : null}
+      {section === 'audiences' ? <>
       <div className="flex flex-wrap gap-2">
         <select className={selectClass} aria-label="Filter by wave" value={wave} onChange={(event) => setWave(event.target.value)}>
           <option value="">All waves</option>
@@ -253,6 +265,7 @@ export default function OutreachWorkspace() {
         </div>
         {data && data.items.length === 0 ? <p className="px-4 py-8 text-center text-sm text-slate-500">No contacts in this view.</p> : null}
       </div>
+      </> : null}
     </div>
   );
 }

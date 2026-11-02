@@ -43,7 +43,8 @@ export function isOpsProjectUpsertPath(pathname, method) {
     || normalized === '/api/ops/projects/resale'
     || normalized === '/api/ops/outreach'
     || normalized === '/api/ops/rerent'
-    || normalized === '/api/ops/portfolio-owners';
+    || normalized === '/api/ops/portfolio-owners'
+    || normalized === '/api/ops/outreach/lease-expiries';
 }
 
 function isPublicAuthPath(pathname) {

@@ -7,6 +7,8 @@ import { NextRequest } from 'next/server';
 import { maskName, maskPhone } from '../lib/ops/portfolio/mask';
 import { parseOutreachCsv, parseTemplatesJson } from '../lib/ops/outreach/parse';
 import { renderOutreachTemplate } from '../lib/ops/outreach/template';
+import { daysToExpiry, leaseBucket, normalizeLeaseDate } from '../lib/ops/lease-expiries/types';
+import { parseLeaseCsv } from '../lib/ops/lease-expiries/parse';
 import { expiryBucket } from '../lib/ops/rerent/types';
 import { isOpsProjectUpsertPath, middleware } from '../middleware.js';
 
@@ -44,6 +46,30 @@ async function main() {
   assert.equal(isOpsProjectUpsertPath('/api/ops/rerent', 'PATCH'), true);
   assert.equal(isOpsProjectUpsertPath('/api/ops/portfolio-owners', 'POST'), true);
   assert.equal(isOpsProjectUpsertPath('/api/ops/outreach/import', 'POST'), false);
+  assert.equal(isOpsProjectUpsertPath('/api/ops/outreach/lease-expiries', 'PATCH'), true);
+  assert.equal(isOpsProjectUpsertPath('/api/ops/outreach/lease-expiries/import', 'POST'), false);
+
+  const leaseToday = new Date(2026, 10, 2);
+  function plus(days: number): string {
+    const date = new Date(2026, 10, 2);
+    date.setDate(date.getDate() + days);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+  assert.equal(leaseBucket(plus(-1), leaseToday), 'expired');
+  assert.equal(leaseBucket(plus(0), leaseToday), '0_30');
+  assert.equal(leaseBucket(plus(30), leaseToday), '0_30');
+  assert.equal(leaseBucket(plus(31), leaseToday), '31_60');
+  assert.equal(leaseBucket(plus(90), leaseToday), '61_90');
+  assert.equal(leaseBucket(plus(91), leaseToday), '91_180');
+  assert.equal(leaseBucket(plus(180), leaseToday), '91_180');
+  assert.equal(leaseBucket(plus(181), leaseToday), 'later');
+  assert.equal(daysToExpiry(plus(12), leaseToday), 12);
+  assert.equal(normalizeLeaseDate('02/12/2026'), '2026-12-02');
+  const leases = parseLeaseCsv('project,tower,flat,lease_end\nElysian,A,A-101,02/12/2026\n');
+  assert.equal(leases[0].project, 'Elysian');
+  assert.equal(leases[0].flat, 'A-101');
   const open = await middleware(request('/api/ops/outreach', 'POST'));
   assert.notEqual(open.status, 401);
   const blocked = await middleware(request('/api/ops/outreach'));
