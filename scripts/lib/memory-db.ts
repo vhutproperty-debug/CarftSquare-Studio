@@ -9,7 +9,7 @@ function getPath(doc: Doc, path: string): unknown {
   }, doc);
 }
 
-function matchValue(actual: unknown, expected: unknown): boolean {
+function matchScalar(actual: unknown, expected: unknown): boolean {
   if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
     const ops = expected as Record<string, unknown>;
     if ('$in' in ops) return (ops.$in as unknown[]).some((item) => item === actual);
@@ -28,6 +28,29 @@ function matchValue(actual: unknown, expected: unknown): boolean {
   return actual === expected;
 }
 
+function matchValue(actual: unknown, expected: unknown): boolean {
+  if (!Array.isArray(actual)) return matchScalar(actual, expected);
+  if (Array.isArray(expected)) {
+    return actual.length === expected.length && actual.every((item, index) => item === expected[index]);
+  }
+  if (expected && typeof expected === 'object') {
+    const ops = expected as Record<string, unknown>;
+    const keys = Object.keys(ops);
+    if (keys.length && keys.every((key) => key.startsWith('$'))) {
+      if ('$in' in ops) return actual.some((item) => (ops.$in as unknown[]).includes(item));
+      if ('$nin' in ops) return actual.every((item) => !(ops.$nin as unknown[]).includes(item));
+      if ('$ne' in ops) return actual.every((item) => item !== ops.$ne);
+      if ('$exists' in ops) return Boolean(ops.$exists);
+      if ('$regex' in ops) {
+        const flags = String(ops.$options || '');
+        const pattern = new RegExp(String(ops.$regex), flags);
+        return actual.some((item) => pattern.test(String(item ?? '')));
+      }
+    }
+  }
+  return actual.some((item) => item === expected);
+}
+
 function matches(doc: Doc, query: Doc | undefined): boolean {
   if (!query || !Object.keys(query).length) return true;
   if (Array.isArray(query.$or)) {
@@ -40,6 +63,21 @@ function matches(doc: Doc, query: Doc | undefined): boolean {
     if (key === '$or' || key === '$and') return true;
     return matchValue(getPath(doc, key), expected);
   });
+}
+
+function indexTuples(doc: Doc, keys: string[]): unknown[][] {
+  let tuples: unknown[][] = [[]];
+  for (const key of keys) {
+    const value = getPath(doc, key);
+    const variants = Array.isArray(value) ? value : [value];
+    if (Array.isArray(value) && value.length === 0) return [];
+    const next: unknown[][] = [];
+    for (const tuple of tuples) {
+      for (const variant of variants) next.push([...tuple, variant]);
+    }
+    tuples = next;
+  }
+  return tuples;
 }
 
 function applyUpdate(doc: Doc, update: Doc, isInsert: boolean) {
@@ -58,17 +96,19 @@ function applyUpdate(doc: Doc, update: Doc, isInsert: boolean) {
 class Cursor {
   constructor(private rows: Doc[]) {}
   sort(spec: Record<string, number>) {
-    const [key, dir] = Object.entries(spec)[0] || [];
-    if (key) {
-      this.rows.sort((a, b) => {
+    const entries = Object.entries(spec);
+    this.rows.sort((a, b) => {
+      for (const [key, dir] of entries) {
         const av = getPath(a, key);
         const bv = getPath(b, key);
-        if (av === bv) return 0;
+        if (av === bv) continue;
         if (av == null) return 1;
         if (bv == null) return -1;
-        return av > bv ? dir : -dir;
-      });
-    }
+        if (av > bv) return dir;
+        if (av < bv) return -dir;
+      }
+      return 0;
+    });
     return this;
   }
   limit(n: number) {
@@ -93,18 +133,26 @@ class Collection {
   }
 
   private assertUnique(doc: Doc, ignore?: Doc) {
+    const duplicate = () => {
+      const error = new Error('E11000 duplicate key') as Error & { code?: number };
+      error.code = 11000;
+      return error;
+    };
     for (const index of this.indexes) {
       if (!index.unique) continue;
-      const values = index.keys.map((key) => getPath(doc, key));
-      if (index.sparse && values.some((value) => value == null)) continue;
-      const clash = this.docs.find((existing) => {
-        if (ignore && existing === ignore) return false;
-        return index.keys.every((key, i) => getPath(existing, key) === values[i]);
-      });
-      if (clash) {
-        const error = new Error('E11000 duplicate key') as Error & { code?: number };
-        error.code = 11000;
-        throw error;
+      const tuples = indexTuples(doc, index.keys);
+      if (!tuples.length && index.sparse) continue;
+      const seen = new Set<string>();
+      for (const tuple of tuples) {
+        if (index.sparse && tuple.every((value) => value == null || value === '')) continue;
+        const signature = JSON.stringify(tuple);
+        if (seen.has(signature)) throw duplicate();
+        seen.add(signature);
+        const clash = this.docs.find((existing) => {
+          if (ignore && existing === ignore) return false;
+          return indexTuples(existing, index.keys).some((other) => JSON.stringify(other) === signature);
+        });
+        if (clash) throw duplicate();
       }
     }
   }
@@ -135,7 +183,15 @@ class Collection {
       await this.insertOne(doc);
       return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
     }
+    const snapshot = { ...found };
     applyUpdate(found, update, false);
+    try {
+      this.assertUnique(found, found);
+    } catch (error) {
+      for (const key of Object.keys(found)) delete found[key];
+      Object.assign(found, snapshot);
+      throw error;
+    }
     return { matchedCount: 1, modifiedCount: 1 };
   }
 
@@ -175,6 +231,17 @@ class Collection {
 
   async insertMany(docs: Doc[]) {
     for (const doc of docs) await this.insertOne(doc);
+  }
+
+  async distinct(field: string, query: Doc = {}) {
+    const values = new Set<unknown>();
+    for (const doc of this.docs) {
+      if (!matches(doc, query)) continue;
+      const value = getPath(doc, field);
+      if (Array.isArray(value)) value.forEach((item) => values.add(item));
+      else if (value !== undefined) values.add(value);
+    }
+    return [...values];
   }
 }
 

@@ -292,6 +292,23 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'contacts',
       },
       {
+        href: '/ops/contacts',
+        label: 'Contacts',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'contacts',
+        exact: true,
+      },
+      {
+        href: '/ops/contacts/queue',
+        label: 'Cold calls',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'supply',
+      },
+      {
         href: '/ops/brokers',
         label: 'Brokers',
         pillar: 'supply',
