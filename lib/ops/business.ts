@@ -166,7 +166,8 @@ export type OpsNavItem = {
     | 'contacts'
     | 'whatsapp'
     | 'automation'
-    | 'campaigns';
+    | 'campaigns'
+    | 'projects';
   exact?: boolean;
 };
 
@@ -257,6 +258,14 @@ export const OPS_NAV_SECTIONS: Array<{
         pipelineStage: 'supply',
         status: 'active',
         icon: 'supply',
+      },
+      {
+        href: '/ops/projects',
+        label: 'Projects',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'projects',
       },
       {
         href: '/ops/brokers',

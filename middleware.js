@@ -30,6 +30,18 @@ export function isCronAuthPath(pathname) {
   return CRON_AUTH_PATHS.has(normalized);
 }
 
+/**
+ * Assistant upserts carry Authorization: Bearer OPS_API_TOKEN and no admin cookie.
+ * The route still rejects a missing or wrong token. GET and DELETE stay on the session gate.
+ */
+export function isOpsProjectUpsertPath(pathname, method) {
+  const path = String(pathname || '');
+  const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  const verb = String(method || 'GET').toUpperCase();
+  if (verb !== 'POST' && verb !== 'PATCH') return false;
+  return normalized === '/api/ops/projects/developer' || normalized === '/api/ops/projects/resale';
+}
+
 function isPublicAuthPath(pathname) {
   return PUBLIC_AUTH_PATHS.has(pathname);
 }
@@ -103,6 +115,7 @@ export async function middleware(request) {
 
   if (
     !isCronAuthPath(pathname)
+    && !isOpsProjectUpsertPath(pathname, request.method)
     && (
       isProtectedAdminApi(pathname)
       || isProtectedDataApi(pathname)
