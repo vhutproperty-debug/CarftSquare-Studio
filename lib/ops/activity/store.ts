@@ -67,7 +67,25 @@ export type OpsActivityAction =
   | 'meta_ads_creative_approve'
   | 'meta_ads_creative_reject'
   | 'meta_ads_campaign_create'
-  | 'meta_ads_publish_paused';
+  | 'meta_ads_publish_paused'
+  | 'view_developer_projects'
+  | 'view_developer_project'
+  | 'upsert_developer_project'
+  | 'delete_developer_project'
+  | 'view_resale_inventory'
+  | 'view_resale_record'
+  | 'upsert_resale_record'
+  | 'delete_resale_record'
+  | 'view_outreach'
+  | 'upsert_outreach'
+  | 'approve_outreach_wave'
+  | 'export_outreach'
+  | 'view_rerent'
+  | 'upsert_rerent'
+  | 'view_portfolio_owners'
+  | 'upsert_portfolio_owner'
+  | 'view_lease_expiries'
+  | 'upsert_lease_expiry';
 
 export type OpsActivityLog = {
   id: string;

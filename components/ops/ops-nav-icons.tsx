@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Timer,
   Megaphone,
+  Building2,
   Users,
 } from 'lucide-react';
 import type { OpsNavItem } from '@/lib/ops/business';
@@ -33,6 +34,7 @@ const ICONS = {
   whatsapp: MessageCircle,
   automation: Timer,
   campaigns: Megaphone,
+  projects: Building2,
 } as const;
 
 export function OpsNavIcon({ icon, className }: { icon: OpsNavItem['icon']; className?: string }) {
