@@ -8,10 +8,6 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/setup',
   '/api/auth/status',
   '/api/auth/logout',
-  // Emergency reset authenticates with x-reset-token inside the route.
-  // Leaving it session-gated would 401 before that check, and before the 404
-  // returned when the reset env vars are unset.
-  '/api/auth/emergency-reset',
 ]);
 
 /**
