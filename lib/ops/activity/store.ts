@@ -75,7 +75,15 @@ export type OpsActivityAction =
   | 'view_resale_inventory'
   | 'view_resale_record'
   | 'upsert_resale_record'
-  | 'delete_resale_record';
+  | 'delete_resale_record'
+  | 'view_outreach'
+  | 'upsert_outreach'
+  | 'approve_outreach_wave'
+  | 'export_outreach'
+  | 'view_rerent'
+  | 'upsert_rerent'
+  | 'view_portfolio_owners'
+  | 'upsert_portfolio_owner';
 
 export type OpsActivityLog = {
   id: string;

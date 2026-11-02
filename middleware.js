@@ -39,7 +39,11 @@ export function isOpsProjectUpsertPath(pathname, method) {
   const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
   const verb = String(method || 'GET').toUpperCase();
   if (verb !== 'POST' && verb !== 'PATCH') return false;
-  return normalized === '/api/ops/projects/developer' || normalized === '/api/ops/projects/resale';
+  return normalized === '/api/ops/projects/developer'
+    || normalized === '/api/ops/projects/resale'
+    || normalized === '/api/ops/outreach'
+    || normalized === '/api/ops/rerent'
+    || normalized === '/api/ops/portfolio-owners';
 }
 
 function isPublicAuthPath(pathname) {
