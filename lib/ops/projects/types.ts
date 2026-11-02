@@ -29,14 +29,29 @@ export const CHANNEL_PARTNER_LABELS: Record<ChannelPartnerStatus, string> = {
   empanelled: 'Empanelled',
 };
 
-export const RESALE_UNIT_STATUSES = ['available', 'under_offer', 'sold'] as const;
+export const RESALE_UNIT_STATUSES = [
+  'for_sale',
+  'for_rent',
+  'available',
+  'follow_up',
+  'under_offer',
+  'sold',
+  'rented',
+] as const;
 export type ResaleUnitStatus = (typeof RESALE_UNIT_STATUSES)[number];
 
 export const RESALE_UNIT_STATUS_LABELS: Record<ResaleUnitStatus, string> = {
+  for_sale: 'For sale',
+  for_rent: 'For rent',
   available: 'Available',
+  follow_up: 'Follow-up',
   under_offer: 'Under offer',
   sold: 'Sold',
+  rented: 'Rented',
 };
+
+export const RESALE_PRIORITIES = ['HIGH', 'MEDIUM', 'LOW'] as const;
+export type ResalePriority = (typeof RESALE_PRIORITIES)[number] | '';
 
 export const LISTING_TYPES = ['resale', 'rental'] as const;
 export type ResaleListingType = (typeof LISTING_TYPES)[number];
@@ -129,6 +144,15 @@ export type ResaleOwner = {
   name: string;
   phone: string;
   email: string;
+  whatsapp: string;
+};
+
+export type ResaleFollowUp = {
+  id: string;
+  at: string;
+  by: string;
+  note: string;
+  source: 'import' | 'ops';
 };
 
 export type ResaleUnit = {
@@ -137,16 +161,28 @@ export type ResaleUnit = {
   projectSlug: string;
   projectName: string;
   tower: string;
+  /** Exact flat id. Omitted for non-admin roles. */
   unitNumber: string;
+  /** Exact floor. Omitted for non-admin roles; they see floorBand. */
+  floor: string;
   bhk: number | null;
   carpetSqft: number | null;
   floorBand: string;
+  configLabel: string;
   askingPriceCrore: number | null;
   askingPriceLabel: string;
+  offerTag: string;
   status: ResaleUnitStatus;
   listingType: ResaleListingType;
   owner: ResaleOwner;
+  intent: string;
+  response: string;
+  nextAction: string;
+  priority: ResalePriority;
   notes: string;
+  campaign: string;
+  asOf: string;
+  followUps: ResaleFollowUp[];
   sourceLinks: string[];
   lastUpdatedBy: string;
   lastUpdatedAt: string;
@@ -154,7 +190,7 @@ export type ResaleUnit = {
   updatedAt: string;
 };
 
-export type PublicResaleUnit = Omit<ResaleUnit, 'unitNumber' | 'owner'>;
+export type PublicResaleUnit = Omit<ResaleUnit, 'unitNumber' | 'owner' | 'floor'>;
 
 export type DeveloperListQuery = {
   q: string;

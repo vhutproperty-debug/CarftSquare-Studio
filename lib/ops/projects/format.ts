@@ -111,6 +111,25 @@ export function isResaleUnitStatus(value: string): value is ResaleUnitStatus {
   return (RESALE_UNIT_STATUSES as readonly string[]).includes(value);
 }
 
+export function normalizeResaleStatus(value: string): ResaleUnitStatus | null {
+  const key = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const mapped: Record<string, ResaleUnitStatus> = {
+    for_sale: 'for_sale',
+    sale: 'for_sale',
+    selling: 'for_sale',
+    for_rent: 'for_rent',
+    rent: 'for_rent',
+    rental: 'for_rent',
+    available: 'available',
+    follow_up: 'follow_up',
+    followup: 'follow_up',
+    under_offer: 'under_offer',
+    sold: 'sold',
+    rented: 'rented',
+  };
+  return mapped[key] || (isResaleUnitStatus(key) ? key : null);
+}
+
 export function isListingType(value: string): value is ResaleListingType {
   return (LISTING_TYPES as readonly string[]).includes(value);
 }

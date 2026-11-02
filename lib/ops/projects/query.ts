@@ -68,7 +68,7 @@ export function filterResaleUnits(
     if (!overlapsPriceBand(unit.askingPriceCrore, unit.askingPriceCrore, query.priceBand)) return false;
     if (query.q) {
       const parts = [unit.projectName, unit.tower, unit.floorBand, unit.askingPriceLabel, unit.notes];
-      if (includePrivate) parts.push(unit.unitNumber, unit.owner.name, unit.owner.phone, unit.owner.email);
+      if (includePrivate) parts.push(unit.unitNumber, unit.floor, unit.owner.name, unit.owner.phone, unit.owner.whatsapp, unit.owner.email);
       if (!includes(parts.join(' '), query.q)) return false;
     }
     return true;

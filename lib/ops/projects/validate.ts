@@ -4,8 +4,8 @@ import {
   isChannelPartnerStatus,
   isDeveloperStatus,
   isListingType,
-  isResaleUnitStatus,
   normalizeDeveloperStatus,
+  normalizeResaleStatus,
   parseBhks,
   parseCarpet,
   parseCrores,
@@ -264,8 +264,12 @@ export function parseResaleUnitWrite(body: Record<string, unknown>): ResaleUnitW
     patch.bhk = bhk ?? null;
   }
   assignNumber(patch, 'carpetSqft', readNumber(body, 'carpetSqft'));
+  const floor = readString(body, 'floor', 20);
+  if (floor !== undefined) patch.floor = floor;
   const floorBand = readString(body, 'floorBand', 40);
   if (floorBand !== undefined) patch.floorBand = floorBand;
+  const configLabel = readString(body, 'configLabel', 240);
+  if (configLabel !== undefined) patch.configLabel = configLabel;
   const askingPriceLabel = readString(body, 'askingPriceLabel', 160);
   if (askingPriceLabel !== undefined) patch.askingPriceLabel = askingPriceLabel;
   assignNumber(patch, 'askingPriceCrore', readNumber(body, 'askingPriceCrore'));
@@ -273,15 +277,37 @@ export function parseResaleUnitWrite(body: Record<string, unknown>): ResaleUnitW
     patch.askingPriceCrore = parseCrores(askingPriceLabel).min;
   }
   if (has(body, 'status')) {
-    const status = readString(body, 'status', 40) || '';
-    if (!isResaleUnitStatus(status)) throw new ProjectValidationError('status must be available, under_offer, or sold.');
+    const status = normalizeResaleStatus(readString(body, 'status', 40) || '');
+    if (!status) throw new ProjectValidationError('status must be for_sale, for_rent, available, follow_up, under_offer, sold, or rented.');
     patch.status = status satisfies ResaleUnitStatus;
+    if (!has(body, 'listingType')) patch.listingType = status === 'for_rent' || status === 'rented' ? 'rental' : 'resale';
   }
   if (has(body, 'listingType')) {
     const listingType = readString(body, 'listingType', 20) || '';
     if (!isListingType(listingType)) throw new ProjectValidationError('listingType must be resale or rental.');
     patch.listingType = listingType satisfies ResaleListingType;
   }
+  const offerTag = readString(body, 'offerTag', 80);
+  if (offerTag !== undefined) patch.offerTag = offerTag;
+  const intent = readString(body, 'intent', 500);
+  if (intent !== undefined) patch.intent = intent;
+  const response = readString(body, 'response', 500);
+  if (response !== undefined) patch.response = response;
+  const nextAction = readString(body, 'nextAction', 500);
+  if (nextAction !== undefined) patch.nextAction = nextAction;
+  if (has(body, 'priority')) {
+    const priority = (readString(body, 'priority', 20) || '').toUpperCase();
+    if (priority && priority !== 'HIGH' && priority !== 'MEDIUM' && priority !== 'LOW') {
+      throw new ProjectValidationError('priority must be HIGH, MEDIUM, or LOW.');
+    }
+    patch.priority = priority;
+  }
+  const campaign = readString(body, 'campaign', 120);
+  if (campaign !== undefined) patch.campaign = campaign;
+  const asOf = readString(body, 'asOf', 40);
+  if (asOf !== undefined) patch.asOf = asOf;
+  const followUpNote = readString(body, 'followUpNote', 2000);
+  if (followUpNote !== undefined) patch.followUpNote = followUpNote;
   if (has(body, 'owner')) {
     if (!isRecord(body.owner) && body.owner != null) throw new ProjectValidationError('owner must be an object.');
     const owner = isRecord(body.owner) ? body.owner : {};
@@ -289,6 +315,7 @@ export function parseResaleUnitWrite(body: Record<string, unknown>): ResaleUnitW
       name: readString(owner, 'name', 120) || '',
       phone: readString(owner, 'phone', 40) || '',
       email: readString(owner, 'email', 160) || '',
+      whatsapp: readString(owner, 'whatsapp', 40) || '',
     };
     patch.owner = value;
   }

@@ -101,6 +101,30 @@ export default function ResaleUnitDetail({ unitId }: { unitId: string }) {
     }
   }
 
+  async function quick(patch: Record<string, unknown>) {
+    if (!unit) return;
+    setPending(true);
+    setError('');
+    try {
+      const response = await fetch('/api/ops/projects/resale', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ recordType: 'unit', slug: unit.slug, projectSlug: unit.projectSlug, ...patch }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(body.error || 'Unable to update the unit.');
+        return;
+      }
+      setUnit(body.unit);
+    } catch {
+      setError('Unable to update the unit.');
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function remove() {
     if (!unit || !window.confirm('Delete this unit?')) return;
     setPending(true);
@@ -175,30 +199,75 @@ export default function ResaleUnitDetail({ unitId }: { unitId: string }) {
             </Pill>
           </div>
           {canManage ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+              <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => quick({ status: 'sold', listingType: 'resale' })}>Mark sold</Button>
+              <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => quick({ status: 'rented', listingType: 'rental' })}>Mark rented</Button>
               <Button type="button" size="sm" variant="destructive" disabled={pending} onClick={remove}>Delete</Button>
             </div>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Fact label="Carpet" value={unit.carpetSqft ? `${unit.carpetSqft.toLocaleString('en-IN')} sq ft` : ''} />
+            <Fact label="Tower" value={unit.tower ? `Tower ${unit.tower}` : ''} />
             <Fact label="Floor band" value={unit.floorBand} />
+            <Fact label="Configuration" value={unit.configLabel} />
+            <Fact label="Carpet" value={unit.carpetSqft ? `${unit.carpetSqft.toLocaleString('en-IN')} sq ft` : ''} />
             <Fact label="Asking price" value={unit.askingPriceLabel || formatCrore(unit.askingPriceCrore)} />
+            <Fact label="Offer" value={unit.offerTag} />
+            <Fact label="Intent" value={unit.intent} />
+            <Fact label="Response" value={unit.response} />
+            <Fact label="Next action" value={unit.nextAction} />
+            <Fact label="Priority" value={unit.priority} />
+            <Fact label="Campaign" value={unit.campaign} />
+            <Fact label="As of" value={unit.asOf} />
             {canSeeSensitive ? <Fact label="Flat number" value={unitNumber || ''} /> : null}
+            {canSeeSensitive ? <Fact label="Floor" value={unit.floor || ''} /> : null}
           </div>
           {canSeeSensitive ? (
             <section>
               <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Owner</h3>
               <p className="mt-1 text-sm text-slate-500">Visible to admin roles only.</p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <div className="mt-3 grid gap-4 sm:grid-cols-4">
                 <Fact label="Name" value={owner?.name} />
                 <Fact label="Phone" value={owner?.phone} />
+                <Fact label="WhatsApp" value={owner?.whatsapp} />
                 <Fact label="Email" value={owner?.email} />
               </div>
             </section>
           ) : (
-            <Notice tone="info">Flat number and owner contact are hidden for non-admin roles.</Notice>
+            <Notice tone="info">Flat number and owner contact are hidden for non-admin roles. This card shows tower and floor band.</Notice>
           )}
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Follow-up history</h3>
+            {(unit.followUps || []).length === 0 ? <p className="mt-2 text-sm text-slate-500">No follow-up notes yet.</p> : (
+              <ul className="mt-2 space-y-2">
+                {unit.followUps.map((entry) => (
+                  <li key={entry.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                    <p className="text-xs text-slate-500">{entry.at || '—'} · {entry.by || '—'}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-slate-800">{entry.note}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canManage ? (
+              <form
+                className="mt-3 flex flex-wrap items-end gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const note = String(new FormData(event.currentTarget).get('followUpNote') || '').trim();
+                  if (!note) return;
+                  event.currentTarget.reset();
+                  quick({ followUpNote: note });
+                }}
+              >
+                <div className="min-w-[16rem] flex-1">
+                  <Field label="Add follow-up">
+                    <Input name="followUpNote" aria-label="Follow-up note" placeholder="Timestamp and your name are stored with this note" />
+                  </Field>
+                </div>
+                <Button type="submit" size="sm" disabled={pending}>Add follow-up</Button>
+              </form>
+            ) : null}
+          </section>
           <section>
             <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Notes</h3>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">{unit.notes || '—'}</p>

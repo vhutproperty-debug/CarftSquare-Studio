@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { EmptyState, Field, Notice, Pill, ProjectsTabs, selectClass } from '@/components/ops/projects/ui';
-import { formatCrore } from '@/lib/ops/projects/format';
+import ResaleUnitCard from '@/components/ops/projects/ResaleUnitCard';
 import {
   LISTING_TYPE_LABELS,
   LISTING_TYPES,
@@ -33,10 +33,6 @@ type ListResponse = {
   canManage: boolean;
   canSeeSensitive: boolean;
 };
-
-function hasOwner(unit: ListedUnit): unit is ResaleUnit {
-  return 'owner' in unit || 'unitNumber' in unit;
-}
 
 export default function ResaleInventory() {
   const router = useRouter();
@@ -126,8 +122,48 @@ export default function ResaleInventory() {
         ) : null}
       </div>
       <p className="text-sm text-slate-600">
-        Individual resale and rental flats. Flat numbers and owner contacts are visible to admins only.
+        Individual resale and rental flats. Everyone sees tower and floor band. Flat numbers, owner names, and phone numbers are visible to admins only.
       </p>
+      {data?.canManage ? (
+        <form
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const file = new FormData(form).get('file');
+            if (!(file instanceof File) || !file.name) {
+              setError('Choose a .csv or .xlsx file.');
+              return;
+            }
+            setPending(true);
+            setError('');
+            try {
+              const body = new FormData();
+              body.set('file', file);
+              if (project) body.set('project', project);
+              const response = await fetch('/api/ops/projects/resale/import', { method: 'POST', body, credentials: 'include' });
+              const payload = await response.json().catch(() => ({}));
+              if (!response.ok) {
+                setError(payload.error || 'Unable to import units.');
+                return;
+              }
+              form.reset();
+              await load();
+            } catch {
+              setError('Unable to import units.');
+            } finally {
+              setPending(false);
+            }
+          }}
+        >
+          <div>
+            <p className="text-sm font-medium text-slate-900">Bulk upload units</p>
+            <p className="text-xs text-slate-500">CSV or Excel. Columns: project, unit, tower, floor, bhk, carpet, config, status, asking, offer, owner, phone, whatsapp, intent, response, next, priority, notes, campaign, as_of. Upserts by flat, and the flat number is not put in the link.</p>
+          </div>
+          <input name="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Resale spreadsheet" className="text-sm text-slate-700" />
+          <Button type="submit" size="sm" disabled={pending}>{pending ? 'Importing…' : 'Upsert units'}</Button>
+        </form>
+      ) : null}
       {addingProject && data?.canManage ? (
         <ProjectCreate pending={pending} onCancel={() => setAddingProject(false)} onSubmit={(payload) => submit(payload, (body) => `/ops/projects/resale/${body.project?.slug}`)} />
       ) : null}
@@ -199,24 +235,13 @@ export default function ResaleInventory() {
         {data && data.units.length === 0 ? <EmptyState>No units yet. Oberoi groupings are ready for flats to be added.</EmptyState> : null}
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {(data?.units || []).map((unit) => (
-            <Link key={unit.id} href={`/ops/projects/resale/units/${unit.slug}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-orange-200">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold text-slate-900">{unit.projectName}</h3>
-                  <p className="text-sm text-slate-600">{[unit.tower && `Tower ${unit.tower}`, unit.bhk ? `${unit.bhk} BHK` : ''].filter(Boolean).join(' · ') || 'Configuration not recorded'}</p>
-                </div>
-                <Pill tone={unit.status === 'available' ? 'emerald' : unit.status === 'under_offer' ? 'orange' : 'slate'}>{RESALE_UNIT_STATUS_LABELS[unit.status]}</Pill>
-              </div>
-              <dl className="mt-3 space-y-1 text-sm text-slate-700">
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Carpet</dt><dd>{unit.carpetSqft ? `${unit.carpetSqft.toLocaleString('en-IN')} sq ft` : '—'}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Floor</dt><dd>{unit.floorBand || '—'}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Asking</dt><dd>{unit.askingPriceLabel || formatCrore(unit.askingPriceCrore)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Type</dt><dd>{LISTING_TYPE_LABELS[unit.listingType]}</dd></div>
-                {data?.canSeeSensitive && hasOwner(unit) ? (
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Flat</dt><dd>{unit.unitNumber || '—'}</dd></div>
-                ) : null}
-              </dl>
-            </Link>
+            <ResaleUnitCard
+              key={unit.id}
+              unit={unit}
+              canManage={Boolean(data?.canManage)}
+              canSeeSensitive={Boolean(data?.canSeeSensitive)}
+              onChanged={load}
+            />
           ))}
         </div>
       </section>

@@ -9,6 +9,7 @@ import {
   DEVELOPER_PROJECTS_COLLECTION,
   RESALE_PROJECTS_COLLECTION,
   RESALE_UNITS_COLLECTION,
+  RESALE_UNIT_STATUSES,
   type ChannelPartnerStatus,
   type DeveloperProject,
   type DeveloperProjectStatus,
@@ -89,7 +90,32 @@ function floorPlansOf(value: unknown): FloorPlan[] {
 
 function ownerOf(value: unknown): ResaleOwner {
   const owner = value && typeof value === 'object' ? value as Record<string, unknown> : {};
-  return { name: text(owner.name), phone: text(owner.phone), email: text(owner.email) };
+  return {
+    name: text(owner.name),
+    phone: text(owner.phone),
+    email: text(owner.email),
+    whatsapp: text(owner.whatsapp),
+  };
+}
+
+function followUpsOf(value: unknown): ResaleUnit['followUps'] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const entry = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+    return {
+      id: text(entry.id) || randomUUID(),
+      at: text(entry.at),
+      by: text(entry.by),
+      note: text(entry.note),
+      source: entry.source === 'ops' ? 'ops' as const : 'import' as const,
+    };
+  }).filter((entry) => entry.note || entry.at);
+}
+
+function priorityOf(value: unknown): ResaleUnit['priority'] {
+  const priority = text(value).toUpperCase();
+  if (priority === 'HIGH' || priority === 'MEDIUM' || priority === 'LOW') return priority;
+  return '';
 }
 
 function developerStatus(value: unknown): DeveloperProjectStatus {
@@ -167,7 +193,7 @@ export function asResaleProject(doc: Record<string, unknown>): ResaleProject {
 
 function unitStatus(value: unknown): ResaleUnitStatus {
   const status = text(value);
-  if (status === 'under_offer' || status === 'sold' || status === 'available') return status;
+  if ((RESALE_UNIT_STATUSES as readonly string[]).includes(status)) return status as ResaleUnitStatus;
   return 'available';
 }
 
@@ -183,15 +209,25 @@ export function asResaleUnit(doc: Record<string, unknown>): ResaleUnit {
     projectName: text(doc.projectName),
     tower: text(doc.tower),
     unitNumber: text(doc.unitNumber),
+    floor: text(doc.floor),
     bhk: numberOrNull(doc.bhk),
     carpetSqft: numberOrNull(doc.carpetSqft),
     floorBand: text(doc.floorBand),
+    configLabel: text(doc.configLabel),
     askingPriceCrore: numberOrNull(doc.askingPriceCrore),
     askingPriceLabel: text(doc.askingPriceLabel),
+    offerTag: text(doc.offerTag),
     status: unitStatus(doc.status),
     listingType: listingType(doc.listingType),
     owner: ownerOf(doc.owner),
+    intent: text(doc.intent),
+    response: text(doc.response),
+    nextAction: text(doc.nextAction),
+    priority: priorityOf(doc.priority),
     notes: text(doc.notes),
+    campaign: text(doc.campaign),
+    asOf: text(doc.asOf),
+    followUps: followUpsOf(doc.followUps),
     sourceLinks: textList(doc.sourceLinks),
     lastUpdatedBy: text(doc.lastUpdatedBy),
     lastUpdatedAt: text(doc.lastUpdatedAt),
@@ -409,6 +445,18 @@ export async function saveResaleUnit(
   const project = await getResaleProject(db, projectSlug);
   if (!project) throw new ProjectValidationError('Resale project was not found. Create the project grouping first.');
   const now = new Date().toISOString();
+  const patchInput: Record<string, unknown> = { ...input.patch };
+  const followUpNote = typeof patchInput.followUpNote === 'string' ? patchInput.followUpNote.trim() : '';
+  delete patchInput.followUpNote;
+  if (followUpNote) {
+    const base = Array.isArray(patchInput.followUps)
+      ? followUpsOf(patchInput.followUps)
+      : (existing ? asResaleUnit(existing as Record<string, unknown>).followUps : []);
+    patchInput.followUps = [
+      ...base,
+      { id: randomUUID(), at: now, by: actor, note: followUpNote.slice(0, 2000), source: 'ops' as const },
+    ];
+  }
   const stamp = {
     projectSlug: project.slug,
     projectName: project.name,
@@ -422,24 +470,34 @@ export async function saveResaleUnit(
       slug: input.slug,
       tower: '',
       unitNumber: '',
+      floor: '',
       bhk: null,
       carpetSqft: null,
       floorBand: '',
+      configLabel: '',
       askingPriceCrore: null,
       askingPriceLabel: '',
+      offerTag: '',
       status: 'available' as const,
       listingType: 'resale' as const,
-      owner: { name: '', phone: '', email: '' },
+      owner: { name: '', phone: '', email: '', whatsapp: '' },
+      intent: '',
+      response: '',
+      nextAction: '',
+      priority: '',
       notes: '',
+      campaign: '',
+      asOf: '',
+      followUps: [],
       sourceLinks: [],
       createdAt: now,
-      ...input.patch,
+      ...patchInput,
       ...stamp,
     };
     await db.collection(RESALE_UNITS_COLLECTION).insertOne(record);
     return { unit: asResaleUnit(record), created: true };
   }
-  const patch: Record<string, unknown> = { ...input.patch, ...stamp };
+  const patch: Record<string, unknown> = { ...patchInput, ...stamp };
   delete patch.slug;
   await db.collection(RESALE_UNITS_COLLECTION).updateOne({ slug: input.slug }, { $set: patch });
   const saved = await getResaleUnit(db, input.slug);
