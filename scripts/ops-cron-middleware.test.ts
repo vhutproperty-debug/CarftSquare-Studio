@@ -80,6 +80,14 @@ async function main() {
   assert.equal(nearMiss.status, 401);
   assert.equal((await nearMiss.json()).error, ADMIN_AUTH_ERROR);
 
+  const emergencyReset = await middleware(request('/api/auth/emergency-reset', { method: 'POST' }));
+  assert.equal(emergencyReset.headers.get('x-middleware-next'), '1');
+  assert.notEqual(emergencyReset.status, 401);
+
+  const sessionReset = await middleware(request('/api/auth/reset-password', { method: 'POST' }));
+  assert.equal(sessionReset.status, 401);
+  assert.equal((await sessionReset.json()).error, ADMIN_AUTH_ERROR);
+
   console.log('ops-cron-middleware: ok');
 }
 
