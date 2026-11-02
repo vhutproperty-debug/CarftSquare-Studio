@@ -154,6 +154,8 @@ export default function DeveloperProjectList() {
               <div className="flex justify-between gap-3"><dt className="text-slate-500">Price</dt><dd className="text-right">{project.priceLabel || '—'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-slate-500">₹/sqft</dt><dd className="text-right">{formatPsf(project.pricePerSqft, project.pricePerSqftMax)}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-slate-500">Possession</dt><dd className="text-right">{project.possession || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Sales email</dt><dd className="text-right">{project.salesEmail?.value || 'Not recorded'} · {project.salesEmail?.verification === 'verified' ? 'Verified' : 'Unverified'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Sales phone</dt><dd className="text-right">{project.salesPhone?.value || 'Not recorded'} · {project.salesPhone?.verification === 'verified' ? 'Verified' : 'Unverified'}</dd></div>
             </dl>
           </Link>
         ))}

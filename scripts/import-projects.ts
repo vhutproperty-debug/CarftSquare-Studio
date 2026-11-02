@@ -3,7 +3,12 @@
  *
  * The spreadsheet is not committed. Pass it with --file.
  *
+ *   npx tsx scripts/import-projects.ts
  *   npx tsx scripts/import-projects.ts --file /absolute/path/to/Andheri_Goregaon_Launches.xlsx
+ *
+ * With or without the spreadsheet, this also upserts the 14 public sales-desk
+ * contacts in data/ops/project-sales-contacts.json. Those addresses stay unverified
+ * until someone on the team marks them verified.
  *
  * Sheet names become the locality (Andheri West, Goregaon West).
  * Re-running updates launch fields and keeps contacts, notes, USPs, amenities,
@@ -18,6 +23,7 @@ import { resolve } from 'node:path';
 import { loadEnvLocal } from './lib/load-env-local.mjs';
 import { draftsFromLaunchSheets } from '../lib/ops/projects/parse-launch-sheet';
 import {
+  applySalesContactSeed,
   getProjectsDatabase,
   importDeveloperDraft,
   seedResalePlaceholders,
@@ -34,27 +40,28 @@ function argument(name: string): string | undefined {
 
 async function main() {
   const file = argument('--file');
-  if (!file) {
-    console.error('Usage: npx tsx scripts/import-projects.ts --file /absolute/path/to/Andheri_Goregaon_Launches.xlsx');
-    process.exit(1);
-  }
-  const sheets = readXlsxSheets(readFileSync(resolve(file)));
-  const drafts = draftsFromLaunchSheets(sheets);
   const db = await getProjectsDatabase();
   let created = 0;
   let updated = 0;
-  for (const draft of drafts) {
-    const result = await importDeveloperDraft(db, draft, 'import');
-    if (result === 'created') created += 1;
-    else updated += 1;
+  let drafts: Awaited<ReturnType<typeof draftsFromLaunchSheets>> = [];
+  if (file) {
+    const sheets = readXlsxSheets(readFileSync(resolve(file)));
+    drafts = draftsFromLaunchSheets(sheets);
+    for (const draft of drafts) {
+      const result = await importDeveloperDraft(db, draft, 'import');
+      if (result === 'created') created += 1;
+      else updated += 1;
+    }
   }
+  const salesContacts = await applySalesContactSeed(db, 'import');
   const resale = await seedResalePlaceholders(db, 'import');
   const localities = drafts.reduce<Record<string, number>>((counts, draft) => {
     counts[draft.locality] = (counts[draft.locality] || 0) + 1;
     return counts;
   }, {});
   console.log(JSON.stringify({
-    developer: { parsed: drafts.length, created, updated, localities, slugs: drafts.map((draft) => draft.slug) },
+    developer: file ? { parsed: drafts.length, created, updated, localities, slugs: drafts.map((draft) => draft.slug) } : { skipped: true },
+    salesContacts,
     resaleProjects: resale,
   }));
 }

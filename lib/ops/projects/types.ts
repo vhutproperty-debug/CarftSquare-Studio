@@ -77,6 +77,13 @@ export type ProjectContact = {
   email: string;
 };
 
+/** Public developer-desk detail. Verification is a team check, not a privacy flag. */
+export type SalesOfficeField = {
+  value: string;
+  verification: 'verified' | 'unverified';
+  note: string;
+};
+
 export type FloorPlan = {
   id: string;
   name: string;
@@ -111,6 +118,9 @@ export type DeveloperProject = {
   amenities: string[];
   floorPlans: FloorPlan[];
   brochureUrl: string;
+  salesEmail: SalesOfficeField;
+  cpEmail: SalesOfficeField;
+  salesPhone: SalesOfficeField;
   contacts: ProjectContact[];
   notes: string;
   sourceLinks: string[];

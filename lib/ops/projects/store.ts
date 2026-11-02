@@ -3,6 +3,7 @@ import type { Db } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 import { ProjectValidationError } from '@/lib/ops/projects/errors';
 import { slugify } from '@/lib/ops/projects/format';
+import { localityFromAddress, salesFieldsFromSeed, sameProjectName, SALES_CONTACT_SEED } from '@/lib/ops/projects/sales-contacts';
 import type { LaunchDraft } from '@/lib/ops/projects/parse-launch-sheet';
 import { RESALE_PROJECT_PLACEHOLDERS } from '@/lib/ops/projects/placeholders';
 import {
@@ -15,6 +16,7 @@ import {
   type DeveloperProjectStatus,
   type FloorPlan,
   type ProjectContact,
+  type SalesOfficeField,
   type ResaleListingType,
   type ResaleOwner,
   type ResaleProject,
@@ -59,6 +61,16 @@ function numberOrNull(value: unknown): number | null {
 function numberList(value: unknown): number[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+}
+
+function salesFieldOf(value: unknown): SalesOfficeField {
+  const field = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const verification = text(field.verification) === 'verified' ? 'verified' : 'unverified';
+  return {
+    value: text(field.value),
+    verification,
+    note: text(field.note),
+  };
 }
 
 function contactsOf(value: unknown): ProjectContact[] {
@@ -160,6 +172,9 @@ export function asDeveloperProject(doc: Record<string, unknown>): DeveloperProje
     amenities: textList(doc.amenities),
     floorPlans: floorPlansOf(doc.floorPlans),
     brochureUrl: text(doc.brochureUrl),
+    salesEmail: salesFieldOf(doc.salesEmail),
+    cpEmail: salesFieldOf(doc.cpEmail),
+    salesPhone: salesFieldOf(doc.salesPhone),
     contacts: contactsOf(doc.contacts),
     notes: text(doc.notes),
     sourceLinks: textList(doc.sourceLinks),
@@ -511,6 +526,62 @@ export async function deleteResaleUnit(db: Db, idOrSlug: string): Promise<boolea
   if (!existing) return false;
   await db.collection(RESALE_UNITS_COLLECTION).deleteOne({ slug: existing.slug });
   return true;
+}
+
+function keepVerified(previous: SalesOfficeField | undefined, next: SalesOfficeField): SalesOfficeField {
+  if (previous && previous.verification === 'verified' && previous.value === next.value) {
+    return { ...next, verification: 'verified', note: previous.note || 'Verified by the team.' };
+  }
+  return next;
+}
+
+/** Upsert the committed public sales-desk contacts. Does not wipe launch data already on a project. */
+export async function applySalesContactSeed(db: Db, actor = 'sales-contacts-seed'): Promise<{ created: number; updated: number }> {
+  await ensureProjectIndexes(db);
+  const existing = await listDeveloperProjects(db);
+  let created = 0;
+  let updated = 0;
+  for (const row of SALES_CONTACT_SEED) {
+    const fields = salesFieldsFromSeed(row);
+    const match = existing.find((project) => sameProjectName(project.name, row.project));
+    if (!match) {
+      const slug = slugify(row.project);
+      await saveDeveloperProject(db, {
+        slug,
+        name: row.project,
+        patch: {
+          name: row.project,
+          developer: row.developer,
+          locality: localityFromAddress(row.location),
+          address: row.location,
+          salesEmail: fields.salesEmail,
+          cpEmail: fields.cpEmail,
+          salesPhone: fields.salesPhone,
+          sourceLinks: fields.sourceLinks,
+          status: 'other',
+          statusLabel: '',
+        },
+      }, actor);
+      created += 1;
+      continue;
+    }
+    const sourceLinks = [...new Set([...match.sourceLinks, ...fields.sourceLinks])];
+    await saveDeveloperProject(db, {
+      slug: match.slug,
+      name: match.name,
+      patch: {
+        developer: match.developer || row.developer,
+        locality: match.locality || localityFromAddress(row.location),
+        address: match.address || row.location,
+        salesEmail: keepVerified(match.salesEmail, fields.salesEmail),
+        cpEmail: keepVerified(match.cpEmail, fields.cpEmail),
+        salesPhone: keepVerified(match.salesPhone, fields.salesPhone),
+        sourceLinks,
+      },
+    }, actor);
+    updated += 1;
+  }
+  return { created, updated };
 }
 
 export async function countUnitsByProject(units: ResaleUnit[]): Promise<Record<string, number>> {

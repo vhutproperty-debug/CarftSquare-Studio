@@ -19,6 +19,7 @@ import type {
   FloorPlan,
   ProjectContact,
   ResaleListingType,
+  SalesOfficeField,
   ResaleOwner,
   ResaleUnitStatus,
 } from '@/lib/ops/projects/types';
@@ -93,6 +94,24 @@ function readContacts(body: Record<string, unknown>, key: string): ProjectContac
       email: readString(item, 'email', 160) || '',
     };
   }).filter((contact) => contact.name || contact.role || contact.phone || contact.email);
+}
+
+function readSalesField(body: Record<string, unknown>, key: string): SalesOfficeField | undefined {
+  if (!has(body, key)) return undefined;
+  const raw = body[key];
+  if (typeof raw === 'string') {
+    return { value: raw.trim().slice(0, 300), verification: 'unverified', note: '' };
+  }
+  if (!isRecord(raw)) throw new ProjectValidationError(`${key} must be a string or { value, verification, note }.`);
+  const verification = readString(raw, 'verification', 20) || 'unverified';
+  if (verification !== 'verified' && verification !== 'unverified') {
+    throw new ProjectValidationError(`${key}.verification must be verified or unverified.`);
+  }
+  return {
+    value: readString(raw, 'value', 300) || '',
+    verification,
+    note: readString(raw, 'note', 240) || '',
+  };
 }
 
 function readFloorPlans(body: Record<string, unknown>): FloorPlan[] | undefined {
@@ -200,6 +219,12 @@ export function parseDeveloperWrite(body: unknown): DeveloperWrite {
   if (floorPlans) patch.floorPlans = floorPlans;
   const brochureUrl = readUrl(body, 'brochureUrl');
   if (brochureUrl !== undefined) patch.brochureUrl = brochureUrl;
+  const salesEmail = readSalesField(body, 'salesEmail');
+  if (salesEmail) patch.salesEmail = salesEmail;
+  const cpEmail = readSalesField(body, 'cpEmail');
+  if (cpEmail) patch.cpEmail = cpEmail;
+  const salesPhone = readSalesField(body, 'salesPhone');
+  if (salesPhone) patch.salesPhone = salesPhone;
   const contacts = readContacts(body, 'contacts');
   if (contacts) patch.contacts = contacts;
   const notes = readString(body, 'notes', 4000);
@@ -369,6 +394,9 @@ export function emptyDeveloperFields() {
     amenities: [] as string[],
     floorPlans: [] as FloorPlan[],
     brochureUrl: '',
+    salesEmail: { value: '', verification: 'unverified' as const, note: '' },
+    cpEmail: { value: '', verification: 'unverified' as const, note: '' },
+    salesPhone: { value: '', verification: 'unverified' as const, note: '' },
     contacts: [] as ProjectContact[],
     notes: '',
     sourceLinks: [] as string[],

@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { createMemoryDb } from './lib/memory-db';
 import { overlapsPriceBand, parseBhks, parseCrores, parsePsf, slugify } from '../lib/ops/projects/format';
 import { draftsFromLaunchSheets } from '../lib/ops/projects/parse-launch-sheet';
+import { classifySalesField, SALES_CONTACT_SEED, sameProjectName } from '../lib/ops/projects/sales-contacts';
 import { RESALE_PROJECT_PLACEHOLDERS } from '../lib/ops/projects/placeholders';
 import { parseDashboardHtml } from '../lib/ops/projects/parse-resale-dashboards';
 import { elysianConfig } from '../lib/ops/projects/resale-identity';
@@ -261,6 +262,22 @@ async function main() {
       });
     }
   }
+
+  assert.equal(SALES_CONTACT_SEED.length, 14);
+  assert.equal(sameProjectName('Kalpataru Vian (regd. Kalpataru Hrushikesh)', 'Kalpataru Vian'), true);
+  const kolte = classifySalesField('sales@koltepatil.com');
+  assert.equal(kolte.verification, 'unverified');
+  assert.equal(kolte.value, 'sales@koltepatil.com');
+  const missing = classifySalesField('not found');
+  assert.equal(missing.value, '');
+  assert.match(missing.note, /Unverified/);
+  const general = classifySalesField('not found (general: cs@rustomjee.com; nri@rustomjee.com)');
+  assert.equal(general.verification, 'unverified');
+  assert.match(general.value, /cs@rustomjee.com/);
+  assert.match(general.note, /general inbox/);
+  const axiom = SALES_CONTACT_SEED.find((row) => row.project === 'Axiom Rudra');
+  assert.equal(classifySalesField(axiom?.sales_email || '').value, '');
+  assert.equal(classifySalesField(axiom?.source_url || '').value, '');
 
   console.log('projects inventory tests passed');
 }

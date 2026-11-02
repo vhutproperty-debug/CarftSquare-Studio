@@ -158,8 +158,17 @@ export default function DeveloperProjectDetail({ projectId }: { projectId: strin
             )}
           </section>
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Developer and sales contacts</h3>
-            <p className="mt-1 text-sm text-slate-500">Team-visible inside ops. Not shown on the public site.</p>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Public sales office</h3>
+            <p className="mt-1 text-sm text-slate-500">Company desk contacts. Unverified means the team has not checked the address yet.</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <SalesOfficeFact label="Sales email" field={project.salesEmail} />
+              <SalesOfficeFact label="Channel partner email" field={project.cpEmail} />
+              <SalesOfficeFact label="Sales phone" field={project.salesPhone} />
+            </div>
+          </section>
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Team contacts</h3>
+            <p className="mt-1 text-sm text-slate-500">Named people added by the team. Not shown on the public site.</p>
             {project.contacts.length === 0 ? <p className="mt-2 text-sm text-slate-500">No contacts yet.</p> : (
               <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
                 {project.contacts.map((contact, index) => (
@@ -190,6 +199,19 @@ export default function DeveloperProjectDetail({ projectId }: { projectId: strin
           <p className="text-xs text-slate-500">Last updated by {project.lastUpdatedBy || '—'} at {formatWhen(project.lastUpdatedAt)}</p>
         </article>
       ) : null}
+    </div>
+  );
+}
+
+function SalesOfficeFact({ label, field }: { label: string; field: DeveloperProject['salesEmail'] }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+        <Pill tone={field.verification === 'verified' ? 'emerald' : 'orange'}>{field.verification === 'verified' ? 'Verified' : 'Unverified'}</Pill>
+      </div>
+      <p className="mt-1 text-sm text-slate-800">{field.value || 'Not recorded'}</p>
+      {field.note ? <p className="mt-1 text-xs text-slate-500">{field.note}</p> : null}
     </div>
   );
 }

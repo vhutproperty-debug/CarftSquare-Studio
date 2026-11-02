@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, selectClass } from '@/components/ops/projects/ui';
 import { CHANNEL_PARTNER_LABELS, CHANNEL_PARTNER_STATUSES, DEVELOPER_STATUS_LABELS, DEVELOPER_STATUSES } from '@/lib/ops/projects/types';
-import type { DeveloperProject, FloorPlan, ProjectContact } from '@/lib/ops/projects/types';
+import type { DeveloperProject, FloorPlan, ProjectContact, SalesOfficeField } from '@/lib/ops/projects/types';
 
 export type DeveloperDraft = {
   name: string;
@@ -28,11 +28,15 @@ export type DeveloperDraft = {
   brochureUrl: string;
   notes: string;
   sourceLinks: string;
+  salesEmail: SalesOfficeField;
+  cpEmail: SalesOfficeField;
+  salesPhone: SalesOfficeField;
   contacts: ProjectContact[];
   floorPlans: FloorPlan[];
 };
 
 const emptyContact = (): ProjectContact => ({ name: '', role: '', phone: '', email: '' });
+const emptySalesField = (): SalesOfficeField => ({ value: '', verification: 'unverified', note: '' });
 
 export function emptyDeveloperDraft(): DeveloperDraft {
   return {
@@ -55,6 +59,9 @@ export function emptyDeveloperDraft(): DeveloperDraft {
     brochureUrl: '',
     notes: '',
     sourceLinks: '',
+    salesEmail: emptySalesField(),
+    cpEmail: emptySalesField(),
+    salesPhone: emptySalesField(),
     contacts: [],
     floorPlans: [],
   };
@@ -81,6 +88,9 @@ export function draftFromDeveloper(project: DeveloperProject): DeveloperDraft {
     brochureUrl: project.brochureUrl,
     notes: project.notes,
     sourceLinks: project.sourceLinks.join('\n'),
+    salesEmail: project.salesEmail,
+    cpEmail: project.cpEmail,
+    salesPhone: project.salesPhone,
     contacts: project.contacts,
     floorPlans: project.floorPlans,
   };
@@ -108,6 +118,9 @@ export function developerPayload(draft: DeveloperDraft) {
     brochureUrl: draft.brochureUrl.trim(),
     notes: draft.notes.trim(),
     sourceLinks: lines(draft.sourceLinks),
+    salesEmail: draft.salesEmail,
+    cpEmail: draft.cpEmail,
+    salesPhone: draft.salesPhone,
     contacts: draft.contacts.filter((contact) => contact.name || contact.phone || contact.email || contact.role),
     floorPlans: draft.floorPlans.filter((plan) => plan.url && plan.url !== 'https://'),
   };
@@ -268,9 +281,16 @@ export default function DeveloperProjectForm({
         </div>
         {uploadError ? <p className="text-sm text-rose-700">{uploadError}</p> : null}
       </div>
+      <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Public sales office</p>
+        <p className="text-sm text-slate-600">Company desk contacts. Mark a field verified only after someone on the team has checked it.</p>
+        <SalesFieldEditor label="Sales email" field={draft.salesEmail} onChange={(salesEmail) => set('salesEmail', salesEmail)} />
+        <SalesFieldEditor label="Channel partner email" field={draft.cpEmail} onChange={(cpEmail) => set('cpEmail', cpEmail)} />
+        <SalesFieldEditor label="Sales phone" field={draft.salesPhone} onChange={(salesPhone) => set('salesPhone', salesPhone)} />
+      </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Developer and sales contacts</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Team contacts</p>
           <Button type="button" variant="outline" size="sm" onClick={() => set('contacts', [...draft.contacts, emptyContact()])}>Add contact</Button>
         </div>
         <p className="text-sm text-slate-600">Visible to the ops team on this screen only. These numbers are not published on the website.</p>
@@ -297,5 +317,39 @@ export default function DeveloperProjectForm({
         {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button> : null}
       </div>
     </form>
+  );
+}
+
+function SalesFieldEditor({
+  label,
+  field,
+  onChange,
+}: {
+  label: string;
+  field: SalesOfficeField;
+  onChange: (next: SalesOfficeField) => void;
+}) {
+  return (
+    <div className="grid gap-2 md:grid-cols-[1fr_9rem]">
+      <Field label={label}>
+        <Input aria-label={label} value={field.value} onChange={(event) => onChange({ ...field, value: event.target.value })} />
+      </Field>
+      <Field label="Check">
+        <select
+          className={selectClass}
+          aria-label={`${label} verification`}
+          value={field.verification}
+          onChange={(event) => onChange({
+            ...field,
+            verification: event.target.value === 'verified' ? 'verified' : 'unverified',
+            note: event.target.value === 'verified' ? 'Verified by the team.' : field.note,
+          })}
+        >
+          <option value="unverified">Unverified</option>
+          <option value="verified">Verified</option>
+        </select>
+      </Field>
+      {field.note ? <p className="text-xs text-slate-500 md:col-span-2">{field.note}</p> : null}
+    </div>
   );
 }
