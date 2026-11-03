@@ -218,6 +218,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'brokers',
       },
       {
+        href: '/ops/interior',
+        label: 'Interior',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'projects',
+      },
+      {
         href: '/ops/leads',
         label: 'Demand',
         pillar: 'demand',
