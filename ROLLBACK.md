@@ -31,6 +31,7 @@ Every `CSOS_P7_*` module is off until it is set to `1`. Turning one off hides th
 | Demand Profiler | `CSOS_P7_DEMAND_PROFILER=1` | Off. Profiles stay hidden. Contacts are not edited. |
 | Lead Intelligence | `CSOS_P7_LEAD_INTELLIGENCE=1` | Off. Scores and new duplicate reviews stay hidden. Contacts are not merged. |
 | Automated Follow-up | `CSOS_P7_FOLLOWUP=1` | Off. New batches stay hidden. Sends stay blocked while the WABA is restricted. |
+| Revenue Attribution | `CSOS_P7_REVENUE=1` | Off. The report stays hidden. Payments are not edited. |
 
 ## Revert a phase
 
@@ -56,6 +57,7 @@ Down steps do not delete documents.
 | 7 Demand Profiler | `ops_growth_demand_profiles` | Ignore the collection. Linked contacts are not edited. A requirement row may exist and can stay. |
 | 7 Lead Intelligence | `ops_growth_score_weights`. New rows in `contact_duplicate_reviews` include `leadIds`. | Ignore the weight document. Duplicate reviews stay open until a person resolves them. Contacts are not merged. |
 | 7 Follow-up | `ops_growth_wa_templates`, `ops_growth_followup_batches`. Approved sends also enqueue existing `ops_follow_up_jobs`. | Ignore the new collections. Queued jobs remain queued and are not sent while the WABA is restricted. |
+| 7 Revenue Attribution | `ops_growth_attribution_links` | Ignore the collection. Deals, visits, and payments are not edited. Unverified payments stay out of collected brokerage. |
 
 ## Phase 0 access change to know about
 
