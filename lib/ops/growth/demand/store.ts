@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { createRequirement } from '@/lib/ops/crm/requirements-store';
 import { listApprovedCampaignInventory } from '@/lib/ops/growth/campaign-studio/store';
@@ -118,4 +117,8 @@ export async function profileMatches(db: Db, profileId: string) {
   const profile = (await listDemandProfiles(db)).find((row) => row.id === profileId);
   if (!profile) return null;
   return { profile, matches: matchInventory(profile, await inventoryOffers(db)) };
+}
+
+export async function getGrowthDb(): Promise<Db> {
+  return getDb();
 }
