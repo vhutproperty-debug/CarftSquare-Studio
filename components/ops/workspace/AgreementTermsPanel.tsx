@@ -20,14 +20,21 @@ export default function AgreementTermsPanel() {
   const [noticeDays, setNoticeDays] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [hidden, setHidden] = useState(true);
 
   const load = useCallback(async () => {
     const response = await fetch('/api/ops/agreements/terms', { cache: 'no-store' });
+    if (response.status === 404) {
+      setHidden(true);
+      return;
+    }
     const data = await response.json();
     if (!response.ok) {
+      setHidden(false);
       setError(data.error || 'Could not load agreement terms.');
       return;
     }
+    setHidden(false);
     setTerms(data.terms || []);
   }, []);
 
@@ -63,6 +70,8 @@ export default function AgreementTermsPanel() {
     setNoticeDays('');
     await load();
   }
+
+  if (hidden) return null;
 
   return (
     <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
