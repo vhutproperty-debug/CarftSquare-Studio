@@ -290,6 +290,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'demand',
       },
       {
+        href: '/ops/growth/demand',
+        label: 'Demand Profiler',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'contacts',
+      },
+      {
         href: '/ops/meta-business',
         label: 'Meta Business',
         pillar: 'demand',

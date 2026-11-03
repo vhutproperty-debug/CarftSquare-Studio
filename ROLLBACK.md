@@ -28,6 +28,7 @@ Every `CSOS_P7_*` module is off until it is set to `1`. Turning one off hides th
 | --- | --- | --- |
 | Campaign Studio | `CSOS_P7_CAMPAIGN_STUDIO=1` | Off. Proposals stay hidden. Nothing is created or activated on Meta. |
 | Lead Capture | `CSOS_P7_LEAD_CAPTURE=1` | Off. Meta and WhatsApp webhooks do not write growth inbox rows. |
+| Demand Profiler | `CSOS_P7_DEMAND_PROFILER=1` | Off. Profiles stay hidden. Contacts are not edited. |
 
 ## Revert a phase
 
@@ -50,6 +51,7 @@ Down steps do not delete documents.
 | 6 | `ops_interior_projects` | Ignore the collection. No campaign is activated. |
 | 7 Campaign Studio | `ops_growth_campaigns` | Ignore the collection. Pausing the flag does not activate or delete a Meta campaign. |
 | 7 Lead Capture | `ops_growth_inbox_events` | Ignore the collection. Contacts, deals, and existing leads are not rewritten. |
+| 7 Demand Profiler | `ops_growth_demand_profiles` | Ignore the collection. Linked contacts are not edited. A requirement row may exist and can stay. |
 
 ## Phase 0 access change to know about
 
