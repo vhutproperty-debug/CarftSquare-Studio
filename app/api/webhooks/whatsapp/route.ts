@@ -3,6 +3,7 @@ import { waitUntil } from '@vercel/functions';
 import { getWhatsAppVerifyToken } from '@/lib/whatsapp-cloud/config';
 import { verifyXHubSignature256 } from '@/lib/whatsapp-cloud/signature';
 import { acceptCloudWebhook, processCloudWebhookEvent } from '@/lib/whatsapp-cloud/process-event';
+import { captureWhatsAppWebhook } from '@/lib/ops/growth/capture/store';
 import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
 import { runOpsMaintenance } from '@/lib/ops/maintenance';
 
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
   try {
     const db = await getWaDatabase();
     const accepted = await acceptCloudWebhook(db, rawBody, body);
+    await captureWhatsAppWebhook(db, body).catch((error) => {
+      console.warn('[whatsapp] growth_capture_failed', error instanceof Error ? error.message : error);
+    });
     waitUntil(
       (async () => {
         try {

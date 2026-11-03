@@ -4,6 +4,7 @@ import { getDb } from '@/lib/mongodb';
 import { verifyXHubSignature256 } from '@/lib/whatsapp-cloud/signature';
 import { ensureMetaAdsLeadIndexes } from '@/lib/ops/leads/adapters/meta-ads';
 import { processLeadgenPayload } from '@/lib/meta-leads/ingest';
+import { captureMetaWebhook } from '@/lib/ops/growth/capture/store';
 import { runOpsMaintenance } from '@/lib/ops/maintenance';
 import { sendMetaConversionEvent } from '@/lib/meta-capi/server';
 import { isValidIndianMobile, normalizeIndianMobile } from '@/lib/phone/indian-mobile';
@@ -47,6 +48,9 @@ export async function POST(request: Request) {
     const db = await getDb();
     await ensureMetaAdsLeadIndexes(db);
     const result = await processLeadgenPayload(db, body);
+    await captureMetaWebhook(db, body).catch((error) => {
+      console.warn('[meta-leads] growth_capture_failed', error instanceof Error ? error.message : error);
+    });
 
     for (const entry of body.entry || []) {
       for (const change of entry.changes || []) {

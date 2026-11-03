@@ -1,4 +1,4 @@
-export type InboxSource = 'requirement' | 'demand' | 'whatsapp';
+export type InboxSource = 'requirement' | 'demand' | 'whatsapp' | 'meta_instant_form' | 'whatsapp_enquiry';
 
 export type InboxItem = {
   source: InboxSource;
@@ -27,4 +27,18 @@ export function buildInbox(input: InboxInput): InboxItem[] {
     items.push({ source: 'whatsapp', sourceId: row.id, title: row.title, at: row.at || '', assignedTo: row.assignedTo || '' });
   }
   return items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
+export function withCapturedLeads(
+  items: InboxItem[],
+  captured: Array<{ id: string; source: 'meta_instant_form' | 'whatsapp_cloud'; title: string; at?: string }>,
+): InboxItem[] {
+  const extra: InboxItem[] = captured.map((row) => ({
+    source: row.source === 'whatsapp_cloud' ? 'whatsapp_enquiry' : 'meta_instant_form',
+    sourceId: row.id,
+    title: row.title,
+    at: row.at || '',
+    assignedTo: '',
+  }));
+  return [...items, ...extra].sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }

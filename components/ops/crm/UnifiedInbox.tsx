@@ -9,6 +9,8 @@ const HREF: Record<string, string> = {
   requirement: '/ops/requirements',
   demand: '/ops/leads',
   whatsapp: '/ops/whatsapp',
+  meta_instant_form: '/ops/growth/capture',
+  whatsapp_enquiry: '/ops/growth/capture',
 };
 
 export default function UnifiedInbox() {

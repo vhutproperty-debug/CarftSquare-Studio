@@ -282,6 +282,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'campaigns',
       },
       {
+        href: '/ops/growth/capture',
+        label: 'Lead Capture',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'demand',
+      },
+      {
         href: '/ops/meta-business',
         label: 'Meta Business',
         pillar: 'demand',
