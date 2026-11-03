@@ -46,6 +46,7 @@
         "test:os-phase6": "npx tsx scripts/os-phase6-channels.test.ts",
         "test:waba-restriction": "npx tsx scripts/waba-restriction.test.ts",
         "test:os-phase7-campaign": "npx tsx scripts/os-phase7-campaign-studio.test.ts",
+        "test:os-phase7-capture": "npx tsx scripts/os-phase7-lead-capture.test.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },

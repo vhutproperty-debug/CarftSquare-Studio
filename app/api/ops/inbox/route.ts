@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
 import { WA_CONVERSATIONS_COLLECTION } from '@/lib/whatsapp-cloud/conversation-store';
-import { buildInbox } from '@/lib/ops/crm/inbox';
+import { buildInbox, withCapturedLeads } from '@/lib/ops/crm/inbox';
 import { getCrmDb, listRequirements } from '@/lib/ops/crm/requirements-store';
+import { listGrowthCaptures } from '@/lib/ops/growth/capture/store';
+import { growthModuleEnabled } from '@/lib/ops/os/flags';
 import { forbidUnlessPhase, releaseList } from '@/lib/ops/os/guard';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +40,17 @@ export async function GET(request: Request) {
       assignedTo: String(row.assignedTo || ''),
     })).filter((row) => row.id),
   });
+  const captured = growthModuleEnabled('LEAD_CAPTURE') ? await listGrowthCaptures(db) : [];
+  const visible = withCapturedLeads(items, captured.map((row) => ({
+    id: row.id,
+    source: row.source,
+    title: row.source === 'meta_instant_form'
+      ? `Meta Instant Form${row.campaignId ? ` · ${row.campaignId}` : ''}`
+      : 'WhatsApp enquiry',
+    at: row.at,
+  })));
   return NextResponse.json({
-    items: releaseList(auth.admin, items, 'client'),
+    items: releaseList(auth.admin, visible, 'client'),
     merged: false,
   });
 }
