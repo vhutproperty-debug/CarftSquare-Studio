@@ -149,7 +149,7 @@ export type ResaleProject = {
   updatedAt: string;
 };
 
-/** Owner and flat number are admin-only. They are omitted before a response leaves the server. */
+/** Owner and flat number are super-admin only. They are omitted before a response leaves the server. */
 export type ResaleOwner = {
   name: string;
   phone: string;
@@ -171,9 +171,9 @@ export type ResaleUnit = {
   projectSlug: string;
   projectName: string;
   tower: string;
-  /** Exact flat id. Omitted for non-admin roles. */
+  /** Exact flat id. Omitted unless the viewer is a super admin. */
   unitNumber: string;
-  /** Exact floor. Omitted for non-admin roles; they see floorBand. */
+  /** Exact floor. Omitted unless the viewer is a super admin; others see floorBand. */
   floor: string;
   bhk: number | null;
   carpetSqft: number | null;

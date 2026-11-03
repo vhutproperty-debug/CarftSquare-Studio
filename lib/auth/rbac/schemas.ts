@@ -16,16 +16,20 @@ const permissionMatrixSchema = z.record(
   actionGrantSchema,
 ).optional().default({});
 
+const assignableRoleSchema = z.enum(['admin', 'ops_exec', 'sales_exec', 'interior', 'broker']);
+
 export const createAdminSchema = z.object({
   email: z.string().trim().email().max(254),
   name: z.string().trim().min(2).max(120),
   password: z.string().min(8).max(128),
   permissions: permissionMatrixSchema,
+  role: assignableRoleSchema.optional().default('admin'),
 });
 
 export const updateAdminSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   email: z.string().trim().email().max(254).optional(),
+  role: assignableRoleSchema.optional(),
 });
 
 export const assignPermissionsSchema = z.object({

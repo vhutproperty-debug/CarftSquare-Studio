@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { OpsNavIcon } from '@/components/ops/ops-nav-icons';
+import { useOpsRole } from '@/components/ops/OpsActor';
+import { navHrefVisible } from '@/lib/ops/os/nav';
 
 const MOBILE_NAV = [
   { href: '/ops', label: 'Home', icon: 'overview' as const, exact: true },
@@ -23,6 +25,8 @@ type OpsMobileNavProps = {
 
 export default function OpsMobileNav({ onOpenMenu }: OpsMobileNavProps) {
   const pathname = usePathname() || '/ops';
+  const role = useOpsRole();
+  const items = MOBILE_NAV.filter((item) => navHrefVisible(role, item.href));
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-1.5 py-1.5 md:hidden">
@@ -37,7 +41,7 @@ export default function OpsMobileNav({ onOpenMenu }: OpsMobileNavProps) {
             Menu
           </button>
         </li>
-        {MOBILE_NAV.map((item) => {
+        {items.map((item) => {
           const active = isActive(pathname, item.href, item.exact);
           return (
             <li key={item.href}>

@@ -3,22 +3,26 @@ import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
 import { canManageProjects, canSeeResalePrivate } from '@/lib/ops/projects/access';
+import { canOps } from '@/lib/ops/os/permissions';
 
 export type ProjectActor = {
   id: string;
   email: string;
   name: string;
+  role?: string;
+  status?: string;
   via: 'session' | 'token';
 };
 
 export type ProjectAuth =
-  | { ok: true; actor: ProjectActor; canManage: boolean; canSeeSensitive: boolean }
+  | { ok: true; actor: ProjectActor; canManage: boolean; canSeeSensitive: boolean; canExport: boolean }
   | { ok: false; response: Response };
 
 const TOKEN_ACTOR: ProjectActor = {
   id: 'ops-api-token',
   email: 'ops-api-token',
   name: 'OPS API',
+  role: 'super_admin',
   via: 'token',
 };
 
@@ -37,11 +41,13 @@ export function opsApiTokenMatches(request: Request): boolean {
   return timingSafeEqual(actual, wanted);
 }
 
-function actorFromSession(admin: { id: string; email: string; name?: string }): ProjectActor {
+function actorFromSession(admin: { id: string; email: string; name?: string; role?: string; status?: string }): ProjectActor {
   return {
     id: admin.id,
     email: admin.email,
     name: admin.name || admin.email,
+    role: admin.role,
+    status: admin.status,
     via: 'session',
   };
 }
@@ -56,6 +62,7 @@ export async function authorizeProjectRead(request: Request): Promise<ProjectAut
     actor: actorFromSession(auth.admin),
     canManage: canManageProjects(auth.admin),
     canSeeSensitive: canSeeResalePrivate(auth.admin),
+    canExport: canOps(auth.admin, 'export'),
   };
 }
 
@@ -72,7 +79,7 @@ export async function authorizeProjectWrite(request: Request): Promise<ProjectAu
     if (!opsApiTokenMatches(request)) {
       return { ok: false, response: NextResponse.json({ error: 'Invalid OPS API token.' }, { status: 401 }) };
     }
-    return { ok: true, actor: TOKEN_ACTOR, canManage: true, canSeeSensitive: true };
+    return { ok: true, actor: TOKEN_ACTOR, canManage: true, canSeeSensitive: true, canExport: true };
   }
   const auth = await authorizeProjectRead(request);
   if (!auth.ok) return auth;

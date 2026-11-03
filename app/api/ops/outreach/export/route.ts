@@ -13,6 +13,12 @@ export const revalidate = 0;
 export async function GET(request: Request) {
   const auth = await authorizeProjectRead(request);
   if (deniedProjectAuth(auth)) return auth.response;
+  if (!auth.canExport) {
+    return new Response(JSON.stringify({ error: 'Only a super admin can export.' }), {
+      status: 403,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
   try {
     const url = new URL(request.url);
     const audience = url.searchParams.get('audience') || '';

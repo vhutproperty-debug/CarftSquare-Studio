@@ -6,6 +6,7 @@ import { createSupplyRecordSchema, supplyQueueQuerySchema } from '@/lib/ops/supp
 import { querySupplyWorkspace } from '@/lib/ops/supply/query';
 import { createSupplyRecord, getDatabase } from '@/lib/ops/supply/store';
 import { isSupplyPriority, isSupplyStatus } from '@/lib/ops/supply/statuses';
+import { releaseWorkspace } from '@/lib/ops/os/guard';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       request,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(releaseWorkspace(auth.admin, result, 'supply'));
   } catch (error) {
     console.error('[ops-supply] queue_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load supply workspace.' }, { status: 500 });

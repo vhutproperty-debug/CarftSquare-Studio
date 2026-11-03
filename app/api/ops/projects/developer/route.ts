@@ -7,6 +7,7 @@ import { developerFilterOptions, filterDeveloperProjects } from '@/lib/ops/proje
 import { getProjectsDatabase, listDeveloperProjects, saveDeveloperProject } from '@/lib/ops/projects/store';
 import type { DeveloperListQuery } from '@/lib/ops/projects/types';
 import { parseDeveloperWrite } from '@/lib/ops/projects/validate';
+import { presentForActor } from '@/lib/ops/os/redact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,12 +41,12 @@ export async function GET(request: Request) {
       details: { total: projects.length, shown: items.length },
       request,
     });
-    return NextResponse.json({
+    return NextResponse.json(presentForActor(auth.actor, {
       items,
       total: items.length,
       filterOptions: developerFilterOptions(projects),
       canManage: auth.canManage,
-    });
+    }));
   } catch (error) {
     return projectError(error, 'Unable to load developer projects.');
   }

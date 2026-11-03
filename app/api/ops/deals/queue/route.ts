@@ -5,6 +5,7 @@ import { requireOpsEditAccess, requireOpsViewAccess } from '@/lib/ops/auth';
 import { createDealSchema, dealQueueQuerySchema } from '@/lib/ops/deals/schemas';
 import { createDealFromMatch, queryDealWorkspace } from '@/lib/ops/deals/query';
 import { isDealStage } from '@/lib/ops/deals/statuses';
+import { releaseWorkspace } from '@/lib/ops/os/guard';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
       request,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(releaseWorkspace(auth.admin, result, 'deal'));
   } catch (error) {
     console.error('[ops-deals] queue_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load deal workspace.' }, { status: 500 });

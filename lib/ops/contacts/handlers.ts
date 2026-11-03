@@ -3,6 +3,8 @@ import type { Db } from 'mongodb';
 import { csvEscape } from '@/lib/ops/csv';
 import type { ContactActor, ContactCapabilities } from '@/lib/ops/permissions';
 import { manageDenied } from '@/lib/ops/contacts/auth';
+import { canOps, recordVisibleTo, scopeRecords } from '@/lib/ops/os/permissions';
+import { presentForActor } from '@/lib/ops/os/redact';
 import type { CanonicalField } from '@/lib/ops/contacts/columns';
 import { ContactAccessError, ContactValidationError } from '@/lib/ops/contacts/errors';
 import {
@@ -63,41 +65,49 @@ function denied(auth: HandlerAuth, action?: 'import' | 'export' | 'edit' | 'dele
   return null;
 }
 
+function contactsClosed(auth: HandlerAuth): Response | null {
+  if (canOps(auth.actor, 'see_contact_fields')) return null;
+  return NextResponse.json({ error: 'You do not have permission to view contacts.' }, { status: 403 });
+}
+
 export async function handleListContacts(db: Db, auth: HandlerAuth, url: URL) {
   return respond('Unable to load contacts.', async () => {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
   const limit = Number(url.searchParams.get('limit') || 50);
-  const items = await listContacts(db, {
+  const items = scopeRecords(auth.actor, await listContacts(db, {
     q: url.searchParams.get('q') || '',
     complex: url.searchParams.get('complex') || '',
     limit,
-  });
+  }), 'contact');
   const complexes = await listComplexNames(db);
-  return NextResponse.json({
+  return NextResponse.json(presentForActor(auth.actor, {
     items,
     complexes,
     canManage: auth.capabilities.editExisting,
-  });
+  }));
   });
 }
 
 export async function handleGetContact(db: Db, auth: HandlerAuth, id: string) {
   return respond('Unable to load the contact.', async () => {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
   const contact = await requireContact(db, id);
+  if (!recordVisibleTo(auth.actor, contact, 'contact')) {
+    return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
+  }
   const [view, interactions, tasks] = await Promise.all([
     contactView(db, contact),
     listInteractions(db, id),
     listTasks(db, id),
   ]);
-  return NextResponse.json({
+  return NextResponse.json(presentForActor(auth.actor, {
     contact: view,
     interactions,
     tasks,
     canManage: auth.capabilities.editExisting,
-  });
+  }));
   });
 }
 
@@ -129,15 +139,25 @@ export async function handleDeleteContact(db: Db, auth: HandlerAuth, id: string)
 }
 
 export async function handleNote(db: Db, auth: HandlerAuth, id: string, note: string) {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
+  if (!canOps(auth.actor, 'remark')) {
+    return NextResponse.json({ error: 'You do not have permission to add a remark.' }, { status: 403 });
+  }
+  const contact = await requireContact(db, id);
+  if (!recordVisibleTo(auth.actor, contact, 'contact')) {
+    return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
+  }
   const interaction = await addNote(db, auth.actor, id, note);
   return NextResponse.json({ interaction }, { status: 201 });
 }
 
 export async function handleOutcome(db: Db, auth: HandlerAuth, id: string, body: { outcome?: string; note?: string; callbackOn?: string }) {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
+  if (!canOps(auth.actor, 'remark')) {
+    return NextResponse.json({ error: 'You do not have permission to add a remark.' }, { status: 403 });
+  }
   const result = await recordOutcome(db, auth.actor, id, {
     outcome: String(body.outcome || ''),
     note: body.note,
@@ -147,14 +167,17 @@ export async function handleOutcome(db: Db, auth: HandlerAuth, id: string, body:
 }
 
 export async function handleAssign(db: Db, auth: HandlerAuth, id: string, assigneeId: string) {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
+  if (!canOps(auth.actor, 'assign')) {
+    return NextResponse.json({ error: 'Only an admin can assign records.' }, { status: 403 });
+  }
   const contact = await assignContact(db, auth.actor, id, assigneeId);
   return NextResponse.json({ contact });
 }
 
 export async function handleCallTap(db: Db, auth: HandlerAuth, id: string, phone: string) {
-  const block = denied(auth);
+  const block = denied(auth) || contactsClosed(auth);
   if (block) return block;
   const interaction = await recordCallTap(db, auth.actor, id, phone);
   return NextResponse.json({ interaction }, { status: 201 });
@@ -165,17 +188,25 @@ export async function handleQueue(db: Db, auth: HandlerAuth, url: URL) {
   if (block) return block;
   const complex = url.searchParams.get('complex') || '';
   const assignedTo = url.searchParams.get('assignedTo') || '';
+  const closed = contactsClosed(auth);
+  if (closed) return closed;
   const [items, callbacks, complexes] = await Promise.all([
     listColdCallQueue(db, { complex, assignedTo }),
     listDueCallbacks(db, { assignedTo }),
     listComplexNames(db),
   ]);
-  return NextResponse.json({
-    items,
-    callbacks,
+  const visibleItems = scopeRecords(auth.actor, items, 'contact');
+  const visibleCallbacks = callbacks.filter((callback) => {
+    if (!canOps(auth.actor, 'view')) return false;
+    return recordVisibleTo(auth.actor, { assignedTo: callback.assigneeId, createdBy: callback.createdBy }, 'contact')
+      || recordVisibleTo(auth.actor, callback, 'contact');
+  });
+  return NextResponse.json(presentForActor(auth.actor, {
+    items: visibleItems,
+    callbacks: visibleCallbacks,
     complexes,
     canManage: auth.capabilities.editExisting,
-  });
+  }));
 }
 
 export async function handleExport(db: Db, auth: HandlerAuth) {

@@ -5,11 +5,14 @@ import { requireOpsEditAccess, requireOpsViewAccess } from '@/lib/ops/auth';
 import { revenueQueueQuerySchema } from '@/lib/ops/revenue/schemas';
 import { queryRevenueWorkspace, syncRevenueFromDeals } from '@/lib/ops/revenue/query';
 import { isRevenueStatus } from '@/lib/ops/revenue/statuses';
+import { forbidUnlessOps, releaseWorkspace } from '@/lib/ops/os/guard';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  const blocked = forbidUnlessOps(auth.admin, 'see_internal_brokerage');
+  if (blocked) return blocked;
 
   const { searchParams } = new URL(request.url);
   const parsed = revenueQueueQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
       request,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(releaseWorkspace(auth.admin, result, 'deal'));
   } catch (error) {
     console.error('[ops-revenue] queue_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load revenue workspace.' }, { status: 500 });

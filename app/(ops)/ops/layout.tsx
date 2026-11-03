@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import OpsAccessDenied from '@/components/ops/OpsAccessDenied';
+import { OpsActorProvider } from '@/components/ops/OpsActor';
 import OpsAuthGate from '@/components/ops/OpsAuthGate';
 import { AUTH_STATUS_CODES, type AuthStatusResponse } from '@/lib/auth/auth-status-types';
 import { resolveAuthStatusFromCookies } from '@/lib/auth/resolve-auth-status-from-cookies';
@@ -38,7 +39,7 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
   }
 
   if (auth.authenticated && auth.opsAccess) {
-    return children;
+    return <OpsActorProvider role={auth.role}>{children}</OpsActorProvider>;
   }
 
   if (auth.authenticated && !auth.opsAccess) {

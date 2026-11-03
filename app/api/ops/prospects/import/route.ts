@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
+import { forbidUnlessOps } from '@/lib/ops/os/guard';
 import {
   commitProspectImport,
   parseProspectImportDocument,
@@ -12,10 +13,6 @@ import { getDatabase, listProspects } from '@/lib/ops/calls/prospect-store';
 export const runtime = 'nodejs';
 
 const MAX_BYTES = 2_000_000;
-
-function isOpsAdmin(role?: string): boolean {
-  return role === 'admin' || role === 'super_admin';
-}
 
 async function readImportPayload(request: Request): Promise<{
   rows: unknown[];
@@ -62,9 +59,8 @@ async function readImportPayload(request: Request): Promise<{
 export async function POST(request: Request) {
   const auth = await requireOpsEditAccess(request);
   if (!auth.ok) return authResultToResponse(auth);
-  if (!isOpsAdmin(auth.admin.role)) {
-    return NextResponse.json({ error: 'Owner import is limited to ops admins.' }, { status: 403 });
-  }
+  const blocked = forbidUnlessOps(auth.admin, 'import');
+  if (blocked) return blocked;
 
   try {
     const { rows, dryRun, filename } = await readImportPayload(request);

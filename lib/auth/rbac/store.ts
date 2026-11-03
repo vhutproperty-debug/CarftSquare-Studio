@@ -10,8 +10,11 @@ import {
 } from '@/lib/auth/rbac/matrix';
 import {
   ADMIN_STATUSES,
+  ASSIGNABLE_ROLES,
+  LOGIN_ROLES,
   ROLES,
   isSuperAdmin,
+  type AdminRole,
 } from '@/lib/auth/rbac/roles';
 import type { AdminUser, AuditAction, AuditLog, PublicAdminUser } from '@/lib/auth/rbac/types';
 import type { ModuleKey } from '@/lib/auth/rbac/modules';
@@ -21,7 +24,7 @@ import { withTimeout } from '@/lib/auth/async-timeout';
 const ADMINS_COLLECTION = 'admins';
 const AUDIT_COLLECTION = 'admin_activity_logs';
 
-const ADMIN_QUERY_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, 'admin'];
+const ADMIN_QUERY_ROLES: string[] = [...LOGIN_ROLES];
 
 /** Primary bootstrap account — promoted when no Super Admin exists. */
 export const BOOTSTRAP_SUPER_ADMIN_EMAIL = 'vhutproperty@gmail.com';
@@ -243,6 +246,18 @@ export async function listAdmins(
   );
 }
 
+function isAssignableRole(role: string | undefined): role is AdminRole {
+  return Boolean(role && ASSIGNABLE_ROLES.includes(role as AdminRole));
+}
+
+/** Team and broker accounts start with Operations view. Admin keeps the legacy matrix. */
+function permissionsForRole(role: AdminRole, input: unknown): PermissionMatrix {
+  const normalized = normalizeStoredPermissions(input || {});
+  if (role === ROLES.ADMIN) return normalized;
+  const ops = { ...(normalized.ops || {}), view: true as const };
+  return { ...normalized, ops };
+}
+
 export async function createAdmin(
   db: Db,
   input: {
@@ -250,16 +265,18 @@ export async function createAdmin(
     name: string;
     password: string;
     permissions?: PermissionMatrix;
+    role?: AdminRole;
     createdBy: string;
   },
 ): Promise<PublicAdminUser> {
   const now = new Date().toISOString();
+  const role = isAssignableRole(input.role) ? input.role : ROLES.ADMIN;
   const admin: AdminUser = {
     id: uuidv4(),
     email: input.email.trim().toLowerCase(),
     name: input.name.trim(),
-    role: ROLES.ADMIN,
-    permissions: normalizeStoredPermissions(input.permissions || {}),
+    role,
+    permissions: permissionsForRole(role, input.permissions),
     status: ADMIN_STATUSES.ACTIVE,
     passwordHash: hashPassword(input.password),
     createdAt: now,
@@ -274,7 +291,7 @@ export async function createAdmin(
 export async function updateAdmin(
   db: Db,
   id: string,
-  patch: Partial<Pick<AdminUser, 'name' | 'email' | 'permissions' | 'status'>>,
+  patch: Partial<Pick<AdminUser, 'name' | 'email' | 'permissions' | 'status' | 'role'>>,
 ): Promise<PublicAdminUser | null> {
   const existing = await findAdminById(db, id);
   if (!existing) return null;
@@ -286,6 +303,12 @@ export async function updateAdmin(
   if (patch.email !== undefined) update.email = String(patch.email).trim().toLowerCase();
   if (patch.permissions !== undefined) update.permissions = normalizeStoredPermissions(patch.permissions);
   if (patch.status !== undefined) update.status = patch.status;
+  if (patch.role !== undefined && !isSuperAdmin(existing) && isAssignableRole(patch.role)) {
+    update.role = patch.role;
+    if (patch.permissions === undefined && patch.role !== ROLES.ADMIN) {
+      update.permissions = permissionsForRole(patch.role, existing.permissions);
+    }
+  }
 
   await db.collection(ADMINS_COLLECTION).updateOne({ id }, { $set: update });
   return findAdminById(db, id).then((admin) => toPublicAdmin(admin));

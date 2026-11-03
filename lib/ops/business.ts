@@ -188,6 +188,12 @@ export const OPS_NAV_SECTIONS: Array<{
         exact: true,
       },
       {
+        href: '/ops/users',
+        label: 'Users',
+        status: 'active',
+        icon: 'contacts',
+      },
+      {
         href: '/ops/leads',
         label: 'Demand',
         pillar: 'demand',

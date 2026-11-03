@@ -1,5 +1,6 @@
 import { isSuperAdmin } from '@/lib/auth/rbac/roles';
 import { MODULES } from '@/lib/auth/rbac/modules';
+import { canOps } from '@/lib/ops/os/permissions';
 
 export const OPS_MODULE = MODULES.OPS;
 
@@ -44,12 +45,12 @@ export function contactCapabilities(
   const active = Boolean(actor) && actor?.status !== 'suspended';
   const full = active && (actor?.via === 'token' || isSuperAdmin(actor));
   return {
-    view: active,
-    importData: full,
-    exportData: full,
-    editExisting: full,
-    deleteData: full,
-    addInformation: active,
-    fillEmpty: active,
+    view: active && canOps(actor, 'see_contact_fields'),
+    importData: full && canOps(actor, 'import'),
+    exportData: full && canOps(actor, 'export'),
+    editExisting: full && canOps(actor, 'edit'),
+    deleteData: full && canOps(actor, 'delete'),
+    addInformation: active && canOps(actor, 'fill_empty'),
+    fillEmpty: active && canOps(actor, 'fill_empty'),
   };
 }

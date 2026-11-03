@@ -12,9 +12,51 @@ import { type ActionKey } from '@/lib/auth/rbac/actions';
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
+  OPS_EXEC: 'ops_exec',
+  SALES_EXEC: 'sales_exec',
+  INTERIOR: 'interior',
+  BROKER: 'broker',
 } as const;
 
 export type AdminRole = (typeof ROLES)[keyof typeof ROLES];
+
+/** Roles that can sign in. Existing admin documents stay valid. */
+export const LOGIN_ROLES: AdminRole[] = [
+  ROLES.SUPER_ADMIN,
+  ROLES.ADMIN,
+  ROLES.OPS_EXEC,
+  ROLES.SALES_EXEC,
+  ROLES.INTERIOR,
+  ROLES.BROKER,
+];
+
+/** Staff who may view, add remarks, and fill empty fields. Not the external broker. */
+export const TEAM_ROLES: AdminRole[] = [
+  ROLES.ADMIN,
+  ROLES.OPS_EXEC,
+  ROLES.SALES_EXEC,
+  ROLES.INTERIOR,
+];
+
+export const EXEC_ROLES: AdminRole[] = [ROLES.OPS_EXEC, ROLES.SALES_EXEC];
+
+export const ROLE_LABELS: Record<AdminRole, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  ops_exec: 'Ops executive',
+  sales_exec: 'Sales executive',
+  interior: 'Interior',
+  broker: 'Broker',
+};
+
+/** Roles a super admin can assign. Super admin itself is never granted from the form. */
+export const ASSIGNABLE_ROLES: AdminRole[] = [
+  ROLES.ADMIN,
+  ROLES.OPS_EXEC,
+  ROLES.SALES_EXEC,
+  ROLES.INTERIOR,
+  ROLES.BROKER,
+];
 
 export const ADMIN_STATUSES = {
   ACTIVE: 'active',
@@ -31,9 +73,30 @@ export function isActiveAdmin(admin: { status?: string } | null | undefined): bo
   return !admin?.status || admin.status === ADMIN_STATUSES.ACTIVE;
 }
 
-function isLegacyFullAccess(admin: { permissions?: unknown } | null | undefined): boolean {
+export function isBrokerRole(admin: { role?: string } | null | undefined): boolean {
+  return admin?.role === ROLES.BROKER;
+}
+
+export function isExecRole(admin: { role?: string } | null | undefined): boolean {
+  return admin?.role === ROLES.OPS_EXEC || admin?.role === ROLES.SALES_EXEC;
+}
+
+export function isTeamRole(admin: { role?: string } | null | undefined): boolean {
+  return Boolean(admin?.role && TEAM_ROLES.includes(admin.role as AdminRole));
+}
+
+/** New roles never inherit the blank-matrix full-access shortcut. */
+export function isRestrictedRole(admin: { role?: string } | null | undefined): boolean {
+  return admin?.role === ROLES.OPS_EXEC
+    || admin?.role === ROLES.SALES_EXEC
+    || admin?.role === ROLES.INTERIOR
+    || admin?.role === ROLES.BROKER;
+}
+
+function isLegacyFullAccess(admin: { role?: string; permissions?: unknown } | null | undefined): boolean {
   if (!admin) return false;
   if (isSuperAdmin(admin)) return true;
+  if (isRestrictedRole(admin)) return false;
   if (admin.permissions === undefined || admin.permissions === null) return true;
   if (Array.isArray(admin.permissions) && admin.permissions.length === 0) return true;
   if (typeof admin.permissions === 'object' && !Array.isArray(admin.permissions)) {

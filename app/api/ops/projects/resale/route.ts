@@ -5,6 +5,8 @@ import { isListingType, isPriceBand, isResaleUnitStatus } from '@/lib/ops/projec
 import { projectError } from '@/lib/ops/projects/http';
 import { filterResaleProjects, filterResaleUnits, resaleFilterOptions } from '@/lib/ops/projects/query';
 import { presentResaleUnit } from '@/lib/ops/projects/redact';
+import { releaseList } from '@/lib/ops/os/guard';
+import { presentForActor } from '@/lib/ops/os/redact';
 import {
   countUnitsByProject,
   getProjectsDatabase,
@@ -45,7 +47,11 @@ export async function GET(request: Request) {
     const [projects, units] = await Promise.all([listResaleProjects(db), listResaleUnits(db)]);
     const query = queryFrom(new URL(request.url));
     const visibleProjects = filterResaleProjects(projects, query);
-    const visibleUnits = filterResaleUnits(units, query, projects, auth.canSeeSensitive).map((unit) => presentResaleUnit(unit, auth.canSeeSensitive));
+    const visibleUnits = releaseList(
+      auth.actor,
+      filterResaleUnits(units, query, projects, auth.canSeeSensitive).map((unit) => presentResaleUnit(unit, auth.canSeeSensitive)),
+      'resale',
+    );
     const counts = await countUnitsByProject(units);
     await logOpsActivity({
       action: 'view_resale_inventory',
@@ -55,13 +61,13 @@ export async function GET(request: Request) {
       details: { projects: projects.length, units: units.length },
       request,
     });
-    return NextResponse.json({
+    return NextResponse.json(presentForActor(auth.actor, {
       projects: visibleProjects.map((project) => ({ ...project, unitCount: counts[project.slug] || 0 })),
       units: visibleUnits,
       filterOptions: resaleFilterOptions(projects, units),
       canManage: auth.canManage,
       canSeeSensitive: auth.canSeeSensitive,
-    });
+    }));
   } catch (error) {
     return projectError(error, 'Unable to load resale inventory.');
   }

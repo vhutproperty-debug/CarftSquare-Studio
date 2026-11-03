@@ -9,6 +9,8 @@ import { SUPPLY_STATUS_LABELS } from '@/lib/ops/supply/statuses';
 import { getDatabase, getSupplyRecord, updateSupplyRecord } from '@/lib/ops/supply/store';
 import { listOpsTeamMembers } from '@/lib/ops/calls/query';
 import { normalizeIndianMobile } from '@/lib/phone/indian-mobile';
+import { recordVisibleTo } from '@/lib/ops/os/permissions';
+import { presentForActor } from '@/lib/ops/os/redact';
 
 type RouteContext = { params: { id: string } };
 
@@ -29,7 +31,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   try {
     const detail = await getSupplyDetail(id, auth.admin);
-    if (!detail) {
+    if (!detail || !recordVisibleTo(auth.admin, detail.record, 'supply')) {
       return NextResponse.json({ error: 'Supply record not found.' }, { status: 404 });
     }
 
@@ -42,7 +44,7 @@ export async function GET(request: Request, context: RouteContext) {
       request,
     });
 
-    return NextResponse.json(detail);
+    return NextResponse.json(presentForActor(auth.admin, detail));
   } catch (error) {
     console.error('[ops-supply] detail_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load supply record.' }, { status: 500 });

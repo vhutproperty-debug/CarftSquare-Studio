@@ -8,6 +8,7 @@ import type { OpsLeadCategory, OpsLeadSource } from '@/lib/ops/leads/types';
 import { isOpsLeadSource } from '@/lib/ops/leads/types';
 import type { DemandPriority, DemandStatus } from '@/lib/ops/demand/statuses';
 import { isDemandPriority, isDemandStatus } from '@/lib/ops/demand/statuses';
+import { releaseWorkspace } from '@/lib/ops/os/guard';
 
 export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
       request,
     }).catch(() => undefined);
 
-    return NextResponse.json(result);
+    return NextResponse.json(releaseWorkspace(auth.admin, result, 'demand'));
   } catch (error) {
     console.error('[ops-demand] queue_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load demand workspace.' }, { status: 500 });
