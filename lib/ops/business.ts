@@ -298,6 +298,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'contacts',
       },
       {
+        href: '/ops/contacts/duplicates',
+        label: 'Duplicate reviews',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'contacts',
+      },
+      {
         href: '/ops/contacts',
         label: 'Contacts',
         pillar: 'supply',

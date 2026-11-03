@@ -38,6 +38,7 @@
         "test:projects": "npx tsx scripts/projects-inventory.test.ts",
         "test:contacts": "npx tsx scripts/contacts-directory.test.ts",
         "test:os-phase0": "npx tsx scripts/os-phase0-access.test.ts",
+        "test:os-phase1": "npx tsx scripts/os-phase1-workspace.test.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },
