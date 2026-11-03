@@ -8,7 +8,7 @@ import BrandLogo from '@/components/BrandLogo';
 import { OpsNavIcon } from '@/components/ops/ops-nav-icons';
 import { Button } from '@/components/ui/button';
 import { OPS_NAV_SECTIONS, OPS_PRODUCT } from '@/lib/ops/business';
-import { useEnabledPhases, useOpsRole } from '@/components/ops/OpsActor';
+import { useEnabledGrowth, useEnabledPhases, useOpsRole } from '@/components/ops/OpsActor';
 import { filterOpsNav } from '@/lib/ops/os/nav';
 
 const SIDEBAR_STORAGE_KEY = 'ops-sidebar-collapsed';
@@ -34,7 +34,7 @@ function NavSections({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
-  const sections = filterOpsNav(OPS_NAV_SECTIONS, useOpsRole(), useEnabledPhases());
+  const sections = filterOpsNav(OPS_NAV_SECTIONS, useOpsRole(), useEnabledPhases(), useEnabledGrowth());
   return (
     <nav className="flex-1 overflow-y-auto px-2 py-3">
       {sections.map((section) => (

@@ -18,6 +18,16 @@ Every `CSOS_PHASE_N` is off until it is set to `1`. Permission checks from Phase
 
 `CSOS_META_AUTOMATION` defaults off. Set it to `1` only to store paused campaign drafts. It cannot activate a campaign or change a budget. WhatsApp sending from the new channel route stays blocked, and the existing sender stays blocked while the WABA is restricted.
 
+WhatsApp sends stay blocked unless `WHATSAPP_WABA_SEND_OVERRIDE=unrestricted` and Meta reports the WABA as unrestricted (`account_review_status=APPROVED`, `business_verification_status=verified`, and `health_status.can_send_message=AVAILABLE`). The override defaults to blocked. Unset it, or set it to `blocked`, to stop sends again. That does not delete conversations.
+
+## Phase 7 flags
+
+Every `CSOS_P7_*` module is off until it is set to `1`. Turning one off hides that module. Stored rows stay.
+
+| Module | Flag to turn it on | Safe default when unset |
+| --- | --- | --- |
+| Campaign Studio | `CSOS_P7_CAMPAIGN_STUDIO=1` | Off. Proposals stay hidden. Nothing is created or activated on Meta. |
+
 ## Revert a phase
 
 1. Revert that phase's pull request. Later phases stack on earlier ones, so revert from the top of the stack downward, or revert the range you want gone.
@@ -37,6 +47,7 @@ Down steps do not delete documents.
 | 4 | `ops_site_visits` | Ignore the collection. Deal documents are not deleted. |
 | 5 | `ops_expenses`, `ops_payments` | Ignore the collections. Commission is not marked collected without a verified payment row. |
 | 6 | `ops_interior_projects` | Ignore the collection. No campaign is activated. |
+| 7 Campaign Studio | `ops_growth_campaigns` | Ignore the collection. Pausing the flag does not activate or delete a Meta campaign. |
 
 ## Phase 0 access change to know about
 

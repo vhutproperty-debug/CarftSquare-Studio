@@ -274,6 +274,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'campaigns',
       },
       {
+        href: '/ops/growth/campaigns',
+        label: 'Campaign Studio',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'campaigns',
+      },
+      {
         href: '/ops/meta-business',
         label: 'Meta Business',
         pillar: 'demand',

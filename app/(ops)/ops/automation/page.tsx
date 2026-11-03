@@ -91,7 +91,23 @@ function AutomationWorkspace() {
             </div>
             <div>
               <dt className="text-slate-500">Sending</dt>
-              <dd className="font-medium">{status.sendingPaused ? 'Paused (account restricted)' : 'Allowed'}</dd>
+              <dd className={`font-medium ${status.sendingPaused ? 'text-rose-700' : ''}`}>
+                {String(status.sendingLabel || (status.sendingPaused ? 'Blocked' : 'Allowed'))}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500">WABA restriction</dt>
+              <dd className="font-medium">
+                {String(status.sendBlockReason || (status.sendingPaused ? 'Blocked until Meta confirms this WABA is unrestricted.' : 'Unrestricted'))}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Account review</dt>
+              <dd className="font-medium">{String(status.wabaAccountReviewStatus || '—')}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Business verification</dt>
+              <dd className="font-medium">{String(status.wabaBusinessVerificationStatus || '—')}</dd>
             </div>
             <div>
               <dt className="text-slate-500">Last webhook</dt>

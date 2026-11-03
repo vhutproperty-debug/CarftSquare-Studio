@@ -36,6 +36,15 @@ curl -X POST "https://graph.facebook.com/v22.0/4424945177816319/subscribed_apps"
 
 WhatsApp fields: `messages`, `message_template_status_update`, `message_template_quality_update`, `phone_number_quality_update`, `account_update`.
 
+## Sending while the WABA is restricted
+
+WABA `4424945177816319` stays blocked until both of these are true:
+
+1. `WHATSAPP_WABA_SEND_OVERRIDE=unrestricted` (anything else, including unset, is blocked).
+2. Graph `GET /{waba-id}?fields=account_review_status,business_verification_status,health_status` shows account review `APPROVED`, business verification `verified`, and `health_status.can_send_message=AVAILABLE`.
+
+`/ops/automation` shows Sending as **Blocked** and the Meta reason (including “Solution Provider will need to verify your business”) until that pair is true. Phone quality alone does not mark sending as Allowed.
+
 ## Templates to submit in WhatsApp Manager
 
 | Name | Category | Body variables |

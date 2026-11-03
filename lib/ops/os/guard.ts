@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { canOps, recordVisibleTo, scopeRecords, seesAllRecords, type AccessActor, type AssignedKind, type OpsPermission } from '@/lib/ops/os/permissions';
 import { presentForActor } from '@/lib/ops/os/redact';
-import { phaseDisabledResponse, phaseEnabled, type OsPhase } from '@/lib/ops/os/flags';
+import { growthDisabledResponse, growthModuleEnabled, phaseDisabledResponse, phaseEnabled, type GrowthModule, type OsPhase } from '@/lib/ops/os/flags';
+import { ROLES } from '@/lib/auth/rbac/roles';
 
 export function forbidUnlessOps(actor: AccessActor, permission: OpsPermission): NextResponse | null {
   if (canOps(actor, permission)) return null;
@@ -11,6 +12,18 @@ export function forbidUnlessOps(actor: AccessActor, permission: OpsPermission): 
 export function forbidUnlessPhase(phase: OsPhase): NextResponse | null {
   if (phaseEnabled(phase)) return null;
   return NextResponse.json(phaseDisabledResponse(phase), { status: 404 });
+}
+
+export function forbidUnlessGrowth(module: GrowthModule): NextResponse | null {
+  if (growthModuleEnabled(module)) return null;
+  return NextResponse.json(growthDisabledResponse(module), { status: 404 });
+}
+
+export function forbidBrokerGrowth(actor: AccessActor): NextResponse | null {
+  if (actor?.role === ROLES.BROKER) {
+    return NextResponse.json({ error: 'Brokers cannot access growth data.' }, { status: 403 });
+  }
+  return null;
 }
 
 export function hiddenRecordResponse(): NextResponse {
