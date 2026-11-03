@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  if (!auth.ok) return denied;
   const db = await getCrmDb();
   const requirements = await listRequirements(db);
   const demands = await db.collection('ops_demand_records').find({}).limit(100).toArray();

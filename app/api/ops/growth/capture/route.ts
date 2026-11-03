@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  if (!auth.ok) return denied;
   const broker = forbidBrokerGrowth(auth.admin);
   if (broker) return broker;
   const events = await listGrowthCaptures(await getGrowthCaptureDb());
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  if (!auth.ok) return denied;
   const broker = forbidBrokerGrowth(auth.admin);
   if (broker) return broker;
   const body = await request.json().catch(() => null) as { leadgenId?: string } | null;

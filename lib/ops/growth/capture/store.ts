@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { META_ADS_LEADS_COLLECTION } from '@/lib/ops/leads/adapters/meta-ads';
 import { stampCreate } from '@/lib/ops/os/records';
@@ -74,7 +73,7 @@ export async function listGrowthCaptures(db: Db): Promise<GrowthCapture[]> {
 export async function captureGrowthLead(db: Db, input: CaptureInput, actorId = 'system'): Promise<{ created: boolean; event: GrowthCapture }> {
   await ensureIndexes(db);
   const idempotencyKey = keyFor(input.source, input.externalId);
-  const existing = await db.collection(GROWTH_CAPTURE_COLLECTION).findOne({ idempotencyKey }) as GrowthCapture | null;
+  const existing = await db.collection(GROWTH_CAPTURE_COLLECTION).findOne({ idempotencyKey }) as unknown as GrowthCapture | null;
   if (existing) {
     const canFill = existing.status === 'awaiting_permission' && input.status === 'captured';
     if (!canFill) return { created: false, event: existing };
@@ -118,7 +117,7 @@ export async function captureGrowthLead(db: Db, input: CaptureInput, actorId = '
   } catch (error) {
     const code = (error as { code?: number }).code;
     if (code !== 11000) throw error;
-    const raced = await db.collection(GROWTH_CAPTURE_COLLECTION).findOne({ idempotencyKey }) as GrowthCapture | null;
+    const raced = await db.collection(GROWTH_CAPTURE_COLLECTION).findOne({ idempotencyKey }) as unknown as GrowthCapture | null;
     if (!raced) throw error;
     return { created: false, event: raced };
   }
