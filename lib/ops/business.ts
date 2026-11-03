@@ -266,6 +266,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'supply',
       },
       {
+        href: '/ops/inventory',
+        label: 'Inventory',
+        pillar: 'supply',
+        pipelineStage: 'supply',
+        status: 'active',
+        icon: 'projects',
+      },
+      {
         href: '/ops/projects',
         label: 'Projects',
         pillar: 'supply',
