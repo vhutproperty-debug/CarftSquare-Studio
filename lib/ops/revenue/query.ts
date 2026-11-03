@@ -18,6 +18,7 @@ import {
   updateRevenueRecord,
 } from '@/lib/ops/revenue/store';
 import type { PublicAdminUser } from '@/lib/auth/rbac/types';
+import { verifiedCollectedForDeal } from '@/lib/ops/finance/store';
 
 export type RevenueQueryParams = {
   page?: number;
@@ -48,11 +49,11 @@ function expectedFromDeal(deal: OpsDealRecord): number {
   return parseBrokerageAmount(deal.actualBrokerage || deal.expectedBrokerage);
 }
 
-function statusFromDeal(deal: OpsDealRecord, expected: number, collected: number): RevenueStatus {
-  if (deal.paymentStatus === 'COLLECTED' || collected >= expected && expected > 0) return 'COLLECTED';
-  if (collected > 0 && collected < expected) return 'PARTIAL';
+function statusFromDeal(deal: OpsDealRecord, expected: number, verifiedCollectedAmount: number): RevenueStatus {
+  if (expected > 0 && verifiedCollectedAmount >= expected) return 'COLLECTED';
+  if (verifiedCollectedAmount > 0 && verifiedCollectedAmount < expected) return 'PARTIAL';
   if (deal.stage === 'COMMISSION_PENDING') return 'INVOICED';
-  if (deal.targetClosingDate && new Date(deal.targetClosingDate) < new Date() && collected < expected) return 'OVERDUE';
+  if (deal.targetClosingDate && new Date(deal.targetClosingDate) < new Date() && verifiedCollectedAmount < expected) return 'OVERDUE';
   return 'EXPECTED';
 }
 
@@ -117,7 +118,7 @@ export async function syncRevenueFromDeals(actor: PublicAdminUser, db?: Db): Pro
     }
 
     const expected = expectedFromDeal(deal);
-    const collected = parseAmount(deal.commissionCollected);
+    const collected = await verifiedCollectedForDeal(database, deal.id);
     const pending = Math.max(0, expected - collected);
     const status = statusFromDeal(deal, expected, collected);
     const existing = await getRevenueByDealId(database, deal.id);
@@ -148,7 +149,7 @@ export async function syncRevenueFromDeals(actor: PublicAdminUser, db?: Db): Pro
         pendingAmount: pending,
         status,
         dueDate: deal.targetClosingDate,
-        collectedAt: deal.paymentStatus === 'COLLECTED' ? new Date().toISOString() : undefined,
+        collectedAt: status === 'COLLECTED' ? new Date().toISOString() : undefined,
         interiorReferral: deal.interiorOpportunity,
         notes: deal.internalNotes,
         updatedBy: actor.id,
