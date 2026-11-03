@@ -306,6 +306,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'intelligence',
       },
       {
+        href: '/ops/growth/followup',
+        label: 'Follow-up',
+        pillar: 'demand',
+        pipelineStage: 'demand',
+        status: 'active',
+        icon: 'automation',
+      },
+      {
         href: '/ops/meta-business',
         label: 'Meta Business',
         pillar: 'demand',

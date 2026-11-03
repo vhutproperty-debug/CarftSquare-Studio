@@ -49,6 +49,7 @@
         "test:os-phase7-capture": "npx tsx scripts/os-phase7-lead-capture.test.ts",
         "test:os-phase7-demand": "npx tsx scripts/os-phase7-demand-profiler.test.ts",
         "test:os-phase7-intelligence": "npx tsx scripts/os-phase7-lead-intelligence.test.ts",
+        "test:os-phase7-followup": "npx tsx scripts/os-phase7-followup.test.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },
