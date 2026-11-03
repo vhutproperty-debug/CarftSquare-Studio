@@ -20,7 +20,9 @@ import {
   ACTION_KEYS,
   ACTION_LABELS,
   ADMIN_GRANT_MODULES,
+  ASSIGNABLE_ROLES,
   MODULE_LABELS,
+  ROLE_LABELS,
   adminApiFetch,
   emptyPermissionMatrix,
   formatDateTime,
@@ -86,7 +88,7 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [mode, setMode] = useState('list');
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin' });
   const [permissions, setPermissions] = useState(emptyPermissionMatrix());
   const [resetPassword, setResetPassword] = useState('');
 
@@ -124,7 +126,7 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
   function openCreate() {
     setMode('create');
     setSelectedId(null);
-    setForm({ name: '', email: '', password: '' });
+    setForm({ name: '', email: '', password: '', role: 'ops_exec' });
     setPermissions(emptyPermissionMatrix());
     setResetPassword('');
   }
@@ -132,7 +134,7 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
   function openEdit(admin) {
     setMode('edit');
     setSelectedId(admin.id);
-    setForm({ name: admin.name, email: admin.email, password: '' });
+    setForm({ name: admin.name, email: admin.email, password: '', role: admin.role || 'admin' });
     setPermissions(admin.permissions || emptyPermissionMatrix());
     setResetPassword('');
   }
@@ -161,7 +163,7 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
       const { response: updateRes, data: updateData } = await adminApiFetch(`/api/admin/rbac/admins/${selectedAdmin.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email }),
+        body: JSON.stringify({ name: form.name, email: form.email, role: form.role }),
       });
       if (!updateRes.ok) throw new Error(updateData.error || 'Could not update admin.');
 
@@ -288,7 +290,7 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-black text-slate-950">{admin.name}</p>
                         <Badge className={admin.role === 'super_admin' ? 'bg-purple-600 text-white hover:bg-purple-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-200'}>
-                          {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                          {ROLE_LABELS[admin.role] || admin.role}
                         </Badge>
                         <Badge className={admin.status === 'suspended' ? 'bg-red-100 text-red-700 hover:bg-red-100' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'}>
                           {admin.status === 'suspended' ? 'Suspended' : 'Active'}
@@ -352,6 +354,23 @@ export default function RbacManagementPanel({ currentUser, onMessage }) {
                   <Input type="password" minLength={8} value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required />
                 </label>
               )}
+              {mode === 'create' || (mode === 'edit' && !isSuperAdmin(selectedAdmin)) ? (
+                <label className="space-y-2 text-sm font-bold md:col-span-2">
+                  Role
+                  <select
+                    value={ASSIGNABLE_ROLES.includes(form.role) ? form.role : 'admin'}
+                    onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
+                    className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+                  >
+                    {ASSIGNABLE_ROLES.map((item) => (
+                      <option key={item} value={item}>{ROLE_LABELS[item]}</option>
+                    ))}
+                  </select>
+                  <span className="block pt-1 text-xs font-medium text-slate-500">
+                    Ops executive is the view-only teammate: remarks and empty fields only. Import, export, edit, and delete stay with the super admin.
+                  </span>
+                </label>
+              ) : null}
               {mode === 'edit' && (
                 <label className="space-y-2 text-sm font-bold md:col-span-2">
                   Reset Password (optional)

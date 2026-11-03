@@ -9,6 +9,7 @@ import {
   saveDeveloperProject,
 } from '@/lib/ops/projects/store';
 import { parseDeveloperWrite } from '@/lib/ops/projects/validate';
+import { presentForActor } from '@/lib/ops/os/redact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       details: { slug: project.slug },
       request,
     });
-    return NextResponse.json({ project, canManage: auth.canManage });
+    return NextResponse.json(presentForActor(auth.actor, { project, canManage: auth.canManage }));
   } catch (error) {
     return projectError(error, 'Unable to load the project.');
   }

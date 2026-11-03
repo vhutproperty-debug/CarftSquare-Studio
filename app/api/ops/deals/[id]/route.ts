@@ -8,6 +8,8 @@ import { patchDealRecordSchema } from '@/lib/ops/deals/schemas';
 import { DEAL_STAGE_LABELS, STAGE_PROBABILITY } from '@/lib/ops/deals/statuses';
 import { getDatabase, getDealRecord, updateDealRecord } from '@/lib/ops/deals/store';
 import { listOpsTeamMembers } from '@/lib/ops/calls/query';
+import { recordVisibleTo } from '@/lib/ops/os/permissions';
+import { presentForActor } from '@/lib/ops/os/redact';
 
 type RouteContext = { params: { id: string } };
 
@@ -32,7 +34,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   try {
     const detail = await getDealDetail(id, auth.admin);
-    if (!detail) {
+    if (!detail || !recordVisibleTo(auth.admin, detail.deal, 'deal')) {
       return NextResponse.json({ error: 'Deal not found.' }, { status: 404 });
     }
 
@@ -45,7 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
       request,
     });
 
-    return NextResponse.json(detail);
+    return NextResponse.json(presentForActor(auth.admin, detail));
   } catch (error) {
     console.error('[ops-deals] detail_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load deal.' }, { status: 500 });

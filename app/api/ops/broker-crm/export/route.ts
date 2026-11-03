@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
+import { forbidUnlessOps } from '@/lib/ops/os/guard';
 import { isDoNotContact, outreachCsvFor, selectOutreachRecipients } from '@/lib/ops/broker-crm/privacy';
 import { getBrokerCrmDatabase, loadBrokerCrmRecords } from '@/lib/ops/broker-crm/store';
 
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   if (!auth.ok) {
     return authResultToResponse(auth) ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const blocked = forbidUnlessOps(auth.admin, 'export');
+  if (blocked) return blocked;
 
   try {
     const records = await loadBrokerCrmRecords(await getBrokerCrmDatabase());

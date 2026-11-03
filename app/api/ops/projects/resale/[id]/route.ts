@@ -3,6 +3,9 @@ import { logOpsActivity } from '@/lib/ops/activity/store';
 import { actorLabel, authorizeProjectRead, authorizeProjectWrite, deniedProjectAuth } from '@/lib/ops/projects/api-auth';
 import { projectError } from '@/lib/ops/projects/http';
 import { presentResaleUnit } from '@/lib/ops/projects/redact';
+import { releaseList } from '@/lib/ops/os/guard';
+import { recordVisibleTo } from '@/lib/ops/os/permissions';
+import { presentForActor } from '@/lib/ops/os/redact';
 import {
   deleteResaleProject,
   deleteResaleUnit,
@@ -34,9 +37,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (kind !== 'unit') {
       const project = await getResaleProject(db, params.id);
       if (project) {
-        const units = (await listResaleUnits(db))
-          .filter((unit) => unit.projectSlug === project.slug)
-          .map((unit) => presentResaleUnit(unit, auth.canSeeSensitive));
+        const units = releaseList(
+          auth.actor,
+          (await listResaleUnits(db))
+            .filter((unit) => unit.projectSlug === project.slug)
+            .map((unit) => presentResaleUnit(unit, auth.canSeeSensitive)),
+          'resale',
+        );
         await logOpsActivity({
           action: 'view_resale_record',
           actorId: auth.actor.id,
@@ -46,12 +53,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
           details: { slug: project.slug, recordType: 'project' },
           request,
         });
-        return NextResponse.json({ recordType: 'project', project, units, canManage: auth.canManage, canSeeSensitive: auth.canSeeSensitive });
+        return NextResponse.json(presentForActor(auth.actor, { recordType: 'project', project, units, canManage: auth.canManage, canSeeSensitive: auth.canSeeSensitive }));
       }
       if (kind === 'project') return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
     }
     const unit = await getResaleUnit(db, params.id);
-    if (!unit) return NextResponse.json({ error: 'Record not found.' }, { status: 404 });
+    if (!unit || !recordVisibleTo(auth.actor, unit, 'resale')) {
+      return NextResponse.json({ error: 'Record not found.' }, { status: 404 });
+    }
     await logOpsActivity({
       action: 'view_resale_record',
       actorId: auth.actor.id,
@@ -61,12 +70,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       details: { slug: unit.slug, recordType: 'unit' },
       request,
     });
-    return NextResponse.json({
+    return NextResponse.json(presentForActor(auth.actor, {
       recordType: 'unit',
       unit: presentResaleUnit(unit, auth.canSeeSensitive),
       canManage: auth.canManage,
       canSeeSensitive: auth.canSeeSensitive,
-    });
+    }));
   } catch (error) {
     return projectError(error, 'Unable to load the resale record.');
   }

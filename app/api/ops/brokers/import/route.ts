@@ -4,6 +4,7 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { getSessionTokenFromRequest, SESSION_COOKIE } from '@/lib/auth/session-constants';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
+import { forbidUnlessOps } from '@/lib/ops/os/guard';
 import {
   enqueueBrokerImport,
   processEnqueuedImport,
@@ -41,6 +42,8 @@ export async function POST(request: Request) {
     );
     return authResultToResponse(auth);
   }
+  const blocked = forbidUnlessOps(auth.admin, 'import');
+  if (blocked) return blocked;
 
   console.info(
     '[ops-brokers] import_auth_ok',

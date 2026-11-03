@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdmin, getDatabase, listAdmins } from '@/lib/auth/rbac/store';
 import { logAuditEvent } from '@/lib/auth/rbac/audit';
+import { appendOpsAudit } from '@/lib/ops/os/audit';
 import { createAdminSchema } from '@/lib/auth/rbac/schemas';
 import { authorizeRequest } from '@/lib/auth/require-admin-api';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
@@ -58,7 +59,16 @@ export async function POST(request: Request) {
     }, 'admin', {
       module: 'admin',
       resourceId: admin.id,
-      details: { email: admin.email, permissions: admin.permissions },
+      details: { email: admin.email, role: admin.role, permissions: admin.permissions },
+    });
+    await appendOpsAudit(db, {
+      actorId: auth.admin.id,
+      actorEmail: auth.admin.email,
+      action: 'user_created',
+      entity: 'admin',
+      entityId: admin.id,
+      before: null,
+      after: { email: admin.email, role: admin.role, status: admin.status },
     });
 
     return NextResponse.json({ admin }, { status: 201 });

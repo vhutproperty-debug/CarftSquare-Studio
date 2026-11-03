@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { logOpsActivity } from '@/lib/ops/activity/store';
 import { requireOpsEditAccess } from '@/lib/ops/auth';
+import { forbidUnlessOps } from '@/lib/ops/os/guard';
 import { BrokerCrmParseError } from '@/lib/ops/broker-crm/errors';
 import { parseBrokerCrmFile } from '@/lib/ops/broker-crm/parse';
 import { getBrokerCrmDatabase, importBrokerCrmRows } from '@/lib/ops/broker-crm/store';
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return authResultToResponse(auth) ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const blocked = forbidUnlessOps(auth.admin, 'import');
+  if (blocked) return blocked;
 
   try {
     const form = await request.formData();
