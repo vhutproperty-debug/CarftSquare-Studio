@@ -32,3 +32,31 @@ export function metaAutomationEnabled(): boolean {
 export function phaseDisabledResponse(phase: OsPhase): { error: string } {
   return { error: `CraftSquare OS phase ${phase} is off. Set CSOS_PHASE_${phase}=1 to turn it on.` };
 }
+
+export const GROWTH_MODULES = [
+  'CAMPAIGN_STUDIO',
+  'LEAD_CAPTURE',
+  'DEMAND_PROFILER',
+  'LEAD_INTELLIGENCE',
+  'FOLLOWUP',
+  'REVENUE',
+] as const;
+
+export type GrowthModule = (typeof GROWTH_MODULES)[number];
+
+export function growthFlagName(module: GrowthModule): string {
+  return `CSOS_P7_${module}`;
+}
+
+/** Each Phase 7 module stays off until its own CSOS_P7_* flag is set. */
+export function growthModuleEnabled(module: GrowthModule): boolean {
+  return phaseFlagOn(growthFlagName(module));
+}
+
+export function enabledGrowthModules(): GrowthModule[] {
+  return GROWTH_MODULES.filter((module) => growthModuleEnabled(module));
+}
+
+export function growthDisabledResponse(module: GrowthModule): { error: string } {
+  return { error: `CraftSquare growth module ${module} is off. Set ${growthFlagName(module)}=1 to turn it on.` };
+}

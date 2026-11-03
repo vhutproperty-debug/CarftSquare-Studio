@@ -7,7 +7,7 @@ import {
   getWhatsAppWabaId,
 } from '@/lib/whatsapp-cloud/config';
 import { toWhatsAppRecipient } from '@/lib/whatsapp-cloud/phone';
-import { isWhatsAppSendingPausedSync } from '@/lib/whatsapp-cloud/send-policy';
+import { getWhatsAppSendDecision } from '@/lib/whatsapp-cloud/send-policy';
 
 const MAX_ATTEMPTS = 3;
 
@@ -94,8 +94,9 @@ export async function graph<T = Record<string, unknown>>(
 }
 
 async function assertCanSend(): Promise<void> {
-  if (isWhatsAppSendingPausedSync()) {
-    throw new WhatsAppApiError('WhatsApp sending is paused because the account is restricted.', {
+  const decision = await getWhatsAppSendDecision();
+  if (decision.blocked) {
+    throw new WhatsAppApiError(decision.reason || 'WhatsApp sending is blocked because the WABA is restricted.', {
       code: 131031,
       retryable: false,
       kind: 'account_restricted',

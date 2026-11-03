@@ -5,7 +5,7 @@ import {
   markFollowUpSucceeded,
 } from '@/lib/ops/followups/store';
 import { sendWaTemplate } from '@/lib/whatsapp-cloud/client';
-import { isWhatsAppSendingPaused } from '@/lib/whatsapp-cloud/send-policy';
+import { getWhatsAppSendDecision } from '@/lib/whatsapp-cloud/send-policy';
 import { isOptedOut } from '@/lib/whatsapp-cloud/consent';
 import { toWhatsAppRecipient } from '@/lib/whatsapp-cloud/phone';
 import { findConversationByPhone } from '@/lib/whatsapp-cloud/conversation-store';
@@ -25,8 +25,9 @@ export async function processDueFollowUpJobs(
 
   for (const job of claimed) {
     try {
-      if (await isWhatsAppSendingPaused(db)) {
-        throw new Error('WhatsApp sending is paused.');
+      const sendDecision = await getWhatsAppSendDecision(db);
+      if (sendDecision.blocked) {
+        throw new Error(sendDecision.reason || 'WhatsApp sending is blocked.');
       }
       if (await isOptedOut(db, toWhatsAppRecipient(job.normalizedPhone))) {
         throw new Error('Contact opted out.');

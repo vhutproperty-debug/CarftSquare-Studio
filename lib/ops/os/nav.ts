@@ -1,6 +1,7 @@
 import type { AdminRole } from '@/lib/auth/rbac/roles';
 import { ROLES } from '@/lib/auth/rbac/roles';
 import type { OpsNavItem } from '@/lib/ops/business';
+import type { GrowthModule } from '@/lib/ops/os/flags';
 
 type NavSection = {
   pillar: string;
@@ -19,6 +20,7 @@ const SALES_PREFIXES = [
   '/ops/inbox',
   '/ops/finance',
   '/ops/revenue',
+  '/ops/growth',
 ];
 
 const OPS_PREFIXES = [
@@ -32,6 +34,7 @@ const OPS_PREFIXES = [
   '/ops/inventory',
   '/ops/portfolio-owners',
   '/ops/rerent',
+  '/ops/growth',
 ];
 
 const INTERIOR_PREFIXES = ['/ops', '/ops/interior', '/ops/leads', '/ops/requirements'];
@@ -73,6 +76,23 @@ const PHASE_PREFIXES: Array<{ prefix: string; phase: number }> = [
   { prefix: '/ops/users', phase: 0 },
 ];
 
+const GROWTH_PREFIXES: Array<{ prefix: string; module: GrowthModule }> = [
+  { prefix: '/ops/growth/campaigns', module: 'CAMPAIGN_STUDIO' },
+  { prefix: '/ops/growth/capture', module: 'LEAD_CAPTURE' },
+  { prefix: '/ops/growth/demand', module: 'DEMAND_PROFILER' },
+  { prefix: '/ops/growth/intelligence', module: 'LEAD_INTELLIGENCE' },
+  { prefix: '/ops/growth/followup', module: 'FOLLOWUP' },
+  { prefix: '/ops/growth/revenue', module: 'REVENUE' },
+];
+
+/** Growth screens stay hidden until their own CSOS_P7_* flag is on. */
+export function growthAllowsHref(href: string | undefined, enabled: ReadonlySet<string> | null | undefined): boolean {
+  if (!href) return false;
+  const match = GROWTH_PREFIXES.find((item) => href === item.prefix || href.startsWith(`${item.prefix}/`));
+  if (!match) return true;
+  return Boolean(enabled?.has(match.module));
+}
+
 /** New screens stay out of the nav until their CSOS_PHASE_N flag is on. Existing pages have no phase. */
 export function phaseAllowsHref(href: string | undefined, enabled: ReadonlySet<number> | null | undefined): boolean {
   if (!href) return false;
@@ -86,11 +106,12 @@ export function filterOpsNav<T extends NavSection>(
   sections: T[],
   role: string | null | undefined,
   enabled?: ReadonlySet<number> | null,
+  growth?: ReadonlySet<string> | null,
 ): T[] {
   return sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => navHrefVisible(role, item.href) && phaseAllowsHref(item.href, enabled)),
+      items: section.items.filter((item) => navHrefVisible(role, item.href) && phaseAllowsHref(item.href, enabled) && growthAllowsHref(item.href, growth)),
     }))
     .filter((section) => section.items.length > 0);
 }

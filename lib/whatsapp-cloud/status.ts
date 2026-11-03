@@ -7,7 +7,7 @@ import {
   isWhatsAppEnabled,
 } from '@/lib/whatsapp-cloud/config';
 import { getWhatsAppAccessToken } from '@/lib/whatsapp-cloud/config';
-import { isWhatsAppSendingPaused } from '@/lib/whatsapp-cloud/send-policy';
+import { getWhatsAppSendDecision } from '@/lib/whatsapp-cloud/send-policy';
 import { getWaTemplateCatalog, listStoredTemplates } from '@/lib/whatsapp-cloud/templates';
 import { getLastWebhookReceivedAt } from '@/lib/whatsapp-cloud/webhook-store';
 import { OPS_FOLLOW_UP_JOBS_COLLECTION } from '@/lib/ops/followups/store';
@@ -38,6 +38,7 @@ export async function buildWhatsAppHealth(db: Db) {
   const followUpQueued = await db.collection(OPS_FOLLOW_UP_JOBS_COLLECTION).countDocuments({
     status: { $in: ['queued', 'retrying'] },
   });
+  const decision = await getWhatsAppSendDecision(db);
 
   return {
     provider: 'whatsapp_cloud' as const,
@@ -53,7 +54,13 @@ export async function buildWhatsAppHealth(db: Db) {
     phoneError,
     qualityRating: (phone?.quality_rating as string | undefined) || null,
     nameStatus: (phone?.name_status as string | undefined) || null,
-    sendingPaused: await isWhatsAppSendingPaused(db),
+    sendingPaused: decision.blocked,
+    sendingLabel: decision.blocked ? 'Blocked' as const : 'Allowed' as const,
+    sendBlockReason: decision.reason,
+    wabaOverride: decision.override,
+    wabaAccountReviewStatus: decision.accountReviewStatus,
+    wabaBusinessVerificationStatus: decision.businessVerificationStatus,
+    wabaCanSendMessage: decision.canSendMessage,
     templates: catalog,
     lastWebhookAt: await getLastWebhookReceivedAt(db),
     followUpQueued,

@@ -8,6 +8,7 @@ process.env.WHATSAPP_ENABLED = 'true';
 process.env.WHATSAPP_PHONE_NUMBER_ID = '1307101749164145';
 process.env.WHATSAPP_WABA_ID = '4424945177816319';
 process.env.WHATSAPP_ACCESS_TOKEN = 'wa-test-token';
+process.env.WHATSAPP_WABA_SEND_OVERRIDE = 'unrestricted';
 process.env.META_GRAPH_API_VERSION = 'v22.0';
 process.env.OWNER_ALERT_WHATSAPP = '919800000001';
 process.env.OWNER_ALERT_EMAIL = 'owner@example.com';
@@ -38,6 +39,13 @@ global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     assert.match(parsed.html, /tel:/);
     assert.match(parsed.html, /ops\/leads\/meta_ads\/lead-1/);
     return new Response(JSON.stringify({ id: 'email_1' }), { status: 200 });
+  }
+  if (url.includes('/4424945177816319')) {
+    return new Response(JSON.stringify({
+      account_review_status: 'APPROVED',
+      business_verification_status: 'verified',
+      health_status: { can_send_message: 'AVAILABLE', entities: [] },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/me/permissions')) {
     return new Response(JSON.stringify({
