@@ -98,8 +98,7 @@ function AutomationWorkspace() {
             <div className="sm:col-span-2">
               <dt className="text-slate-500">WABA restriction</dt>
               <dd className="font-medium">
-                {status.sendBlockReason
-                  || (status.sendingPaused ? 'Blocked until Meta confirms this WABA is unrestricted.' : 'Unrestricted')}
+                {String(status.sendBlockReason || (status.sendingPaused ? 'Blocked until Meta confirms this WABA is unrestricted.' : 'Unrestricted'))}
               </dd>
             </div>
             <div>

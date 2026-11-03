@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { listApartments, listRentals } from '@/lib/ops/inventory/store';
 import { listDeveloperProjects, listResaleUnits } from '@/lib/ops/projects/store';
@@ -160,7 +159,7 @@ export async function listGrowthCampaigns(db: Db): Promise<GrowthCampaign[]> {
 
 async function loadCampaign(db: Db, id: string): Promise<GrowthCampaign | null> {
   await ensureIndexes(db);
-  const row = await db.collection(GROWTH_CAMPAIGNS_COLLECTION).findOne({ id }) as GrowthCampaign | null;
+  const row = await db.collection(GROWTH_CAMPAIGNS_COLLECTION).findOne({ id }) as unknown as GrowthCampaign | null;
   if (!row || row.deletedAt) return null;
   return row;
 }
