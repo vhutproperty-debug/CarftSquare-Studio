@@ -40,6 +40,7 @@
         "test:os-phase0": "npx tsx scripts/os-phase0-access.test.ts",
         "test:os-phase1": "npx tsx scripts/os-phase1-workspace.test.ts",
         "test:os-phase2": "npx tsx scripts/os-phase2-inventory.test.ts",
+        "test:os-phase3": "npx tsx scripts/os-phase3-crm.test.ts",
         "test:lead-pipeline": "npx tsx scripts/test-lead-pipeline.ts",
         "migrate:wa-cloud": "npx tsx scripts/migrate-wa-cloud.ts"
     },
