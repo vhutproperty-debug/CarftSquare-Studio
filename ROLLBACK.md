@@ -33,6 +33,39 @@ Every `CSOS_P7_*` module is off until it is set to `1`. Turning one off hides th
 | Automated Follow-up | `CSOS_P7_FOLLOWUP=1` | Off. New batches stay hidden. Sends stay blocked while the WABA is restricted. |
 | Revenue Attribution | `CSOS_P7_REVENUE=1` | Off. The report stays hidden. Payments are not edited. |
 
+## Phase 7 production snapshot
+
+Recorded on 3 November 2026, before any `CSOS_P7_*` flag was set in production. This is the deployment to promote if Phase 7 must come back down. Nothing was deleted to take this snapshot.
+
+| Item | Value |
+| --- | --- |
+| Project | `craftsquare-studio` |
+| Production deployment | `dpl_GKMyNRGXLKg4KXnnEiptF8hEcYa3` |
+| Commit | `0de2efdd793af6c9934010deb65e87e71aaa1c15` |
+| Aliases | `craftsquare.co.in`, `www.craftsquare.co.in` |
+
+Production `CSOS_*` values at that deployment. `WHATSAPP_WABA_SEND_OVERRIDE` was unset.
+
+| Name | Production value |
+| --- | --- |
+| `CSOS_PHASE_0` | `1` |
+| `CSOS_PHASE_1` | `1` |
+| `CSOS_PHASE_2` | `1` |
+| `CSOS_PHASE_3` | `1` |
+| `CSOS_PHASE_4` | `1` |
+| `CSOS_PHASE_5` | `1` |
+| `CSOS_PHASE_6` | `1` |
+| `CSOS_META_AUTOMATION` | `1` |
+| `CSOS_P7_CAMPAIGN_STUDIO` | unset |
+| `CSOS_P7_LEAD_CAPTURE` | unset |
+| `CSOS_P7_DEMAND_PROFILER` | unset |
+| `CSOS_P7_LEAD_INTELLIGENCE` | unset |
+| `CSOS_P7_FOLLOWUP` | unset |
+| `CSOS_P7_REVENUE` | unset |
+| `WHATSAPP_WABA_SEND_OVERRIDE` | unset |
+
+To roll production back: promote `dpl_GKMyNRGXLKg4KXnnEiptF8hEcYa3`, then remove the six `CSOS_P7_*` production variables or set them to `0`. Leave `WHATSAPP_WABA_SEND_OVERRIDE` unset. Leave the new collections in place.
+
 ## Revert a phase
 
 1. Revert that phase's pull request. Later phases stack on earlier ones, so revert from the top of the stack downward, or revert the range you want gone.
