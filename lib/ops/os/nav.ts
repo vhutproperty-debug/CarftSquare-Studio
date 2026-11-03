@@ -50,7 +50,6 @@ export function navHrefVisible(role: string | null | undefined, href: string | u
     return role === ROLES.SUPER_ADMIN;
   }
   if (!role || role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN) {
-    if (href.startsWith('/ops/broker-portal') || href.startsWith('/ops/portal')) return false;
     return true;
   }
   if (role === ROLES.BROKER) return matches(href, BROKER_PREFIXES);
