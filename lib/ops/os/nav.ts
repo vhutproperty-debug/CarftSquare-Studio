@@ -17,6 +17,8 @@ const SALES_PREFIXES = [
   '/ops/site-visits',
   '/ops/requirements',
   '/ops/inbox',
+  '/ops/finance',
+  '/ops/revenue',
 ];
 
 const OPS_PREFIXES = [

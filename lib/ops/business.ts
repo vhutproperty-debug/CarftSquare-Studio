@@ -409,6 +409,14 @@ export const OPS_NAV_SECTIONS: Array<{
     label: 'Financial',
     items: [
       {
+        href: '/ops/finance',
+        label: 'Finance',
+        pillar: 'revenue',
+        pipelineStage: 'revenue',
+        status: 'active',
+        icon: 'revenue',
+      },
+      {
         href: '/ops/revenue',
         label: 'Revenue',
         pillar: 'revenue',
