@@ -387,6 +387,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'contacts',
       },
       {
+        href: '/ops/site-visits',
+        label: 'Site visits',
+        pillar: 'revenue',
+        pipelineStage: 'deal',
+        status: 'active',
+        icon: 'deal',
+      },
+      {
         href: '/ops/deals',
         label: 'Deals',
         pillar: 'revenue',

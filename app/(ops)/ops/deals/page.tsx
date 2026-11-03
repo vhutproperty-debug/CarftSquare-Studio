@@ -9,6 +9,9 @@ export default function OpsDealsPage() {
       pipelineStage="deal"
     >
       <DealWorkspace />
+      <p className="mt-4 text-sm">
+        <a className="font-semibold text-orange-700" href="/ops/site-visits">Open site visits</a>
+      </p>
     </OpsShell>
   );
 }
