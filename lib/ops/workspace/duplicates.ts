@@ -15,6 +15,8 @@ export type DuplicateReview = {
   contactIds: string[];
   status: 'open' | 'resolved';
   decision: '' | 'keep_both' | 'dismiss';
+  /** Lead ids that share the phone. Contacts are still not merged. */
+  leadIds?: string[];
   createdAt: string;
   updatedAt: string;
   createdBy: string;
