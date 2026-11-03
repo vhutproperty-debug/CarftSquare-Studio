@@ -7,7 +7,8 @@ import * as auditApi from '../lib/ops/os/audit';
 import { appendOpsAudit, listOpsAudit } from '../lib/ops/os/audit';
 import { canSeeResalePrivate } from '../lib/ops/projects/access';
 import { contactCapabilities } from '../lib/ops/permissions';
-import { navHrefVisible } from '../lib/ops/os/nav';
+import { metaAutomationEnabled, phaseEnabled } from '../lib/ops/os/flags';
+import { navHrefVisible, phaseAllowsHref } from '../lib/ops/os/nav';
 import { canOps, OPS_PERMISSION_MATRIX, recordVisibleTo, scopeRecords } from '../lib/ops/os/permissions';
 import { payloadLeaksBrokerSecrets, redactBrokerPayload } from '../lib/ops/os/redact';
 import { isSoftDeleted, notDeletedFilter, softDeletePatch, stampCreate } from '../lib/ops/os/records';
@@ -131,6 +132,14 @@ function main() {
   assert.equal(navHrefVisible('broker', '/ops/broker-portal'), true);
   assert.equal(navHrefVisible('admin', '/ops/contacts'), true);
   assert.equal(navHrefVisible('interior', '/ops/interior'), true);
+  assert.equal(phaseEnabled(0), false);
+  assert.equal(phaseEnabled(1), false);
+  assert.equal(metaAutomationEnabled(), false);
+  const off = new Set<number>();
+  assert.equal(phaseAllowsHref('/ops/users', off), false);
+  assert.equal(phaseAllowsHref('/ops/contacts', off), true);
+  assert.equal(phaseAllowsHref('/ops/finance', off), false);
+  assert.equal(phaseAllowsHref('/ops/users', new Set([0])), true);
 }
 
 async function auditRoundTrip() {

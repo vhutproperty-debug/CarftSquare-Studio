@@ -4,24 +4,24 @@ New work is additive. Existing pages, APIs, and collections stay in place. Turni
 
 ## Flags
 
-Set the variable to `0` and redeploy. Permission checks from Phase 0 stay in force when `CSOS_PHASE_0=0`; that flag only hides the new user screen, it does not grant import, export, edit, or delete.
+Every `CSOS_PHASE_N` is off until it is set to `1`. Permission checks from Phase 0 stay in force when `CSOS_PHASE_0` is unset. That flag only shows the new user screen. It does not grant import, export, edit, or delete.
 
-| Phase | Flag | Safe default when unset |
+| Phase | Flag to turn it on | Safe default when unset |
 | --- | --- | --- |
-| 0 Access and audit | `CSOS_PHASE_0` | On. Enforcement cannot be widened by the flag. |
-| 1 Ops workspace | `CSOS_PHASE_1` | On. Set `0` to hide the duplicate queue, agreement terms, and dashboard strip. |
-| 2 Inventory | `CSOS_PHASE_2` | On. Set `0` to hide the inventory registry. |
-| 3 Leads and broker portal | `CSOS_PHASE_3` | On. Set `0` to hide requirements, the inbox, and the broker portal. |
-| 4 Deals and visits | `CSOS_PHASE_4` | On. Set `0` to hide site visits. |
-| 5 Finance | `CSOS_PHASE_5` | On. Set `0` to hide expenses and the payments ledger. |
-| 6 Channels and interior | `CSOS_PHASE_6` | On for the interior screen. Meta automation stays off unless `CSOS_META_AUTOMATION=1`. WhatsApp send stays blocked while the WABA is restricted. |
+| 0 Access and audit | `CSOS_PHASE_0=1` | Off for the user screen. Enforcement stays on. |
+| 1 Ops workspace | `CSOS_PHASE_1=1` | Off. Duplicate queue, agreement terms, and dashboard strip stay hidden. |
+| 2 Inventory | `CSOS_PHASE_2=1` | Off. Inventory registry stays hidden. |
+| 3 Leads and broker portal | `CSOS_PHASE_3=1` | Off. Requirements, inbox, and broker portal stay hidden. |
+| 4 Deals and visits | `CSOS_PHASE_4=1` | Off. Site visits stay hidden. |
+| 5 Finance | `CSOS_PHASE_5=1` | Off. Expenses and the payments ledger stay hidden. |
+| 6 Channels and interior | `CSOS_PHASE_6=1` | Off. Interior screen stays hidden. |
 
-`CSOS_META_AUTOMATION` defaults off. Even when it is on, campaign creation is paused-only and cannot activate a campaign or change a budget.
+`CSOS_META_AUTOMATION` defaults off. Set it to `1` only to store paused campaign drafts. It cannot activate a campaign or change a budget. WhatsApp sending from the new channel route stays blocked, and the existing sender stays blocked while the WABA is restricted.
 
 ## Revert a phase
 
 1. Revert that phase's pull request. Later phases stack on earlier ones, so revert from the top of the stack downward, or revert the range you want gone.
-2. Set that phase's `CSOS_PHASE_N=0` if the deploy still contains the code.
+2. Remove that phase's `CSOS_PHASE_N` value, or set it to `0`, if the deploy still contains the code.
 3. Leave the new collections in MongoDB. They are unused once the code is gone, and dropping them is a separate, explicit decision.
 
 ## Data written by each phase

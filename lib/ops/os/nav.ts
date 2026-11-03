@@ -60,11 +60,36 @@ export function navHrefVisible(role: string | null | undefined, href: string | u
   return true;
 }
 
-export function filterOpsNav<T extends NavSection>(sections: T[], role: string | null | undefined): T[] {
+const PHASE_PREFIXES: Array<{ prefix: string; phase: number }> = [
+  { prefix: '/ops/contacts/duplicates', phase: 1 },
+  { prefix: '/ops/broker-portal', phase: 3 },
+  { prefix: '/ops/requirements', phase: 3 },
+  { prefix: '/ops/site-visits', phase: 4 },
+  { prefix: '/ops/inventory', phase: 2 },
+  { prefix: '/ops/interior', phase: 6 },
+  { prefix: '/ops/finance', phase: 5 },
+  { prefix: '/ops/inbox', phase: 3 },
+  { prefix: '/ops/users', phase: 0 },
+];
+
+/** New screens stay out of the nav until their CSOS_PHASE_N flag is on. Existing pages have no phase. */
+export function phaseAllowsHref(href: string | undefined, enabled: ReadonlySet<number> | null | undefined): boolean {
+  if (!href) return false;
+  if (!enabled) return true;
+  const match = PHASE_PREFIXES.find((item) => href === item.prefix || href.startsWith(`${item.prefix}/`));
+  if (!match) return true;
+  return enabled.has(match.phase);
+}
+
+export function filterOpsNav<T extends NavSection>(
+  sections: T[],
+  role: string | null | undefined,
+  enabled?: ReadonlySet<number> | null,
+): T[] {
   return sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => navHrefVisible(role, item.href)),
+      items: section.items.filter((item) => navHrefVisible(role, item.href) && phaseAllowsHref(item.href, enabled)),
     }))
     .filter((section) => section.items.length > 0);
 }

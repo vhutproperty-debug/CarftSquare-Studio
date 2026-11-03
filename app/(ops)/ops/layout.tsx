@@ -4,6 +4,7 @@ import { OpsActorProvider } from '@/components/ops/OpsActor';
 import OpsAuthGate from '@/components/ops/OpsAuthGate';
 import { AUTH_STATUS_CODES, type AuthStatusResponse } from '@/lib/auth/auth-status-types';
 import { resolveAuthStatusFromCookies } from '@/lib/auth/resolve-auth-status-from-cookies';
+import { enabledPhases } from '@/lib/ops/os/flags';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
   }
 
   if (auth.authenticated && auth.opsAccess) {
-    return <OpsActorProvider role={auth.role}>{children}</OpsActorProvider>;
+    return <OpsActorProvider role={auth.role} enabledPhases={enabledPhases()}>{children}</OpsActorProvider>;
   }
 
   if (auth.authenticated && !auth.opsAccess) {
