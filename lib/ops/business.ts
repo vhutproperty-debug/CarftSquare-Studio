@@ -314,6 +314,14 @@ export const OPS_NAV_SECTIONS: Array<{
         icon: 'automation',
       },
       {
+        href: '/ops/growth/revenue',
+        label: 'Revenue Attribution',
+        pillar: 'revenue',
+        pipelineStage: 'revenue',
+        status: 'active',
+        icon: 'revenue',
+      },
+      {
         href: '/ops/meta-business',
         label: 'Meta Business',
         pillar: 'demand',
