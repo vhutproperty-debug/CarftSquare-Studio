@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { enqueueFollowUpJob } from '@/lib/ops/followups/store';
 import { assertOsWhatsAppSendAllowed } from '@/lib/ops/channels/safety';
@@ -66,7 +65,7 @@ export async function syncApprovedTemplates(
   for (const row of approved) {
     const name = String(row.name);
     const language = String(row.language || 'en');
-    const existing = await db.collection(GROWTH_TEMPLATES_COLLECTION).findOne({ name, language }) as GrowthTemplate | null;
+    const existing = await db.collection(GROWTH_TEMPLATES_COLLECTION).findOne({ name, language }) as unknown as GrowthTemplate | null;
     const doc: GrowthTemplate = {
       id: existing?.id || uuidv4(),
       name,
@@ -88,7 +87,7 @@ export async function listFollowUpBatches(db: Db): Promise<FollowUpBatch[]> {
 }
 
 async function loadBatch(db: Db, id: string): Promise<FollowUpBatch | null> {
-  const row = await db.collection(GROWTH_FOLLOWUPS_COLLECTION).findOne({ id }) as FollowUpBatch | null;
+  const row = await db.collection(GROWTH_FOLLOWUPS_COLLECTION).findOne({ id }) as unknown as FollowUpBatch | null;
   if (!row || row.deletedAt) return null;
   return row;
 }

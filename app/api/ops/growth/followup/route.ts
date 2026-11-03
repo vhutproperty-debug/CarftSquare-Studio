@@ -26,6 +26,7 @@ export async function GET(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  if (!auth.ok) return denied;
   const broker = forbidBrokerGrowth(auth.admin);
   if (broker) return broker;
   const db = await getFollowUpGrowthDb();
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
   const auth = await requireOpsViewAccess(request);
   const denied = authResultToResponse(auth);
   if (denied) return denied;
+  if (!auth.ok) return denied;
   const broker = forbidBrokerGrowth(auth.admin);
   if (broker) return broker;
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
