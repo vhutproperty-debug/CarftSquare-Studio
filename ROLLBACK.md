@@ -30,6 +30,7 @@ Every `CSOS_P7_*` module is off until it is set to `1`. Turning one off hides th
 | Lead Capture | `CSOS_P7_LEAD_CAPTURE=1` | Off. Meta and WhatsApp webhooks do not write growth inbox rows. |
 | Demand Profiler | `CSOS_P7_DEMAND_PROFILER=1` | Off. Profiles stay hidden. Contacts are not edited. |
 | Lead Intelligence | `CSOS_P7_LEAD_INTELLIGENCE=1` | Off. Scores and new duplicate reviews stay hidden. Contacts are not merged. |
+| Automated Follow-up | `CSOS_P7_FOLLOWUP=1` | Off. New batches stay hidden. Sends stay blocked while the WABA is restricted. |
 
 ## Revert a phase
 
@@ -54,6 +55,7 @@ Down steps do not delete documents.
 | 7 Lead Capture | `ops_growth_inbox_events` | Ignore the collection. Contacts, deals, and existing leads are not rewritten. |
 | 7 Demand Profiler | `ops_growth_demand_profiles` | Ignore the collection. Linked contacts are not edited. A requirement row may exist and can stay. |
 | 7 Lead Intelligence | `ops_growth_score_weights`. New rows in `contact_duplicate_reviews` include `leadIds`. | Ignore the weight document. Duplicate reviews stay open until a person resolves them. Contacts are not merged. |
+| 7 Follow-up | `ops_growth_wa_templates`, `ops_growth_followup_batches`. Approved sends also enqueue existing `ops_follow_up_jobs`. | Ignore the new collections. Queued jobs remain queued and are not sent while the WABA is restricted. |
 
 ## Phase 0 access change to know about
 
