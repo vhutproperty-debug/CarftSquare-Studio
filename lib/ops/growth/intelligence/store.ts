@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-// @ts-expect-error JS module without types
 import { getDb } from '@/lib/mongodb';
 import { CONTACTS_COLLECTION } from '@/lib/ops/contacts/types';
 import { GROWTH_CAPTURE_COLLECTION, type GrowthCapture } from '@/lib/ops/growth/capture/store';
