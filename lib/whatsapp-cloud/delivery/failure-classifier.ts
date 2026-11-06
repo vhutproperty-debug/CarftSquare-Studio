@@ -52,7 +52,7 @@ export function classifyDeliveryFailure(input: {
     /\b(invalid.?phone|phone.?number.?invalid|not a valid|does not exist|user not found|undeliverable)\b/.test(hay)
     || /\b(opt.?out|opted.?out|unsubscribed|do not (message|contact)|blocked|blacklist)\b/.test(hay)
     || /\b(template.*(rejected|not.?approved|disabled|invalid)|policy|spam)\b/.test(hay)
-    || /\b(131026|131047|131051|132000|132001|132005|132007|132012|132015|132016)\b/.test(hay)
+    || /\b(131047|131050|131051|132000|132001|132005|132007|132012|132015|132016)\b/.test(hay)
     || input.httpStatus === 400
   ) {
     // 400 often permanent (bad request / invalid template / phone) — still check transient cues
@@ -67,7 +67,7 @@ export function classifyDeliveryFailure(input: {
     || input.httpStatus === 429
     || (input.httpStatus != null && input.httpStatus >= 500)
     || /\b(rate.?limit|throttl|timeout|temporar|unavailable|try again|server error|network)\b/.test(hay)
-    || /\b(130429|131000|131016|131048|131049)\b/.test(hay)
+    || /\b(130429|130472|131000|131016|131026|131048|131049)\b/.test(hay)
   ) {
     return { failureClass: 'RETRYABLE', reason, code };
   }

@@ -38,10 +38,11 @@ function floatEnv(name: string, fallback: number): number {
 
 export function getDeliveryRetryConfig(): DeliveryRetryConfig {
   return {
-    maxAttempts: intEnv('WA_DELIVERY_MAX_ATTEMPTS', 5),
+    // Initial send + up to 2 automatic retries (Arun: max 2 retries for 131049-class).
+    maxAttempts: intEnv('WA_DELIVERY_MAX_ATTEMPTS', 3),
     baseDelayMs: intEnv('WA_DELIVERY_BASE_DELAY_MS', 60_000),
     backoffFactor: floatEnv('WA_DELIVERY_BACKOFF_FACTOR', 2),
-    maxDelayMs: intEnv('WA_DELIVERY_MAX_DELAY_MS', 3_600_000),
+    maxDelayMs: intEnv('WA_DELIVERY_MAX_DELAY_MS', 48 * 60 * 60 * 1000),
     jitterFraction: floatEnv('WA_DELIVERY_JITTER', 0.2),
     concurrency: intEnv('WA_DELIVERY_RETRY_CONCURRENCY', 5),
     maxRetriesPerTick: intEnv('WA_DELIVERY_MAX_RETRIES_PER_TICK', 20),
@@ -57,4 +58,23 @@ export function computeRetryDelayMs(attemptNumber: number, config = getDeliveryR
   );
   const jitter = exp * config.jitterFraction * Math.random();
   return Math.floor(exp + jitter);
+}
+
+/** Codes that Meta asks us to wait ≥24h before retrying. */
+export const LONG_DELAY_FAILURE_CODES = new Set(['131049', '130472', '131026']);
+
+export function computeRetryDelayMsForFailure(
+  attemptNumber: number,
+  failureCode: string | null | undefined,
+  config = getDeliveryRetryConfig(),
+): number {
+  const code = (failureCode || '').toString().trim();
+  if (LONG_DELAY_FAILURE_CODES.has(code)) {
+    // ≥24h, grow gently on later attempts, capped by maxDelayMs.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const exp = Math.min(config.maxDelayMs, dayMs * (attemptNumber <= 1 ? 1 : 2));
+    const jitter = exp * config.jitterFraction * Math.random();
+    return Math.floor(exp + jitter);
+  }
+  return computeRetryDelayMs(attemptNumber, config);
 }

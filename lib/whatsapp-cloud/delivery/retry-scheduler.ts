@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Db } from 'mongodb';
-import { computeRetryDelayMs, getDeliveryRetryConfig } from '@/lib/whatsapp-cloud/delivery/config';
+import { computeRetryDelayMsForFailure, getDeliveryRetryConfig } from '@/lib/whatsapp-cloud/delivery/config';
 import type { DeliveryRetryJob } from '@/lib/whatsapp-cloud/delivery/types';
 
 export const WA_DELIVERY_RETRIES_COLLECTION = 'wa_delivery_retries';
@@ -27,11 +27,12 @@ export async function scheduleDeliveryRetry(
     normalizedPhone: string;
     attemptNumber: number;
     scheduledFor?: string;
+    failureCode?: string | null;
   },
 ): Promise<{ job: DeliveryRetryJob; created: boolean }> {
   await ensureRetryIndexes(db);
   const config = getDeliveryRetryConfig();
-  const delay = computeRetryDelayMs(input.attemptNumber, config);
+  const delay = computeRetryDelayMsForFailure(input.attemptNumber, input.failureCode, config);
   const now = new Date().toISOString();
   const scheduledFor =
     input.scheduledFor || new Date(Date.now() + delay).toISOString();

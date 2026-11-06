@@ -79,6 +79,7 @@ export type OpsWaCampaignRecipient = {
   lastError?: string;
   attemptCount?: number;
   failureClass?: string | null;
+  failureCode?: string | null;
   failureReason?: string | null;
   nextRetryAt?: string | null;
   currentAttemptId?: string | null;

@@ -1,4 +1,5 @@
 import { graphUrl } from '@/lib/meta/config';
+import { LONG_DELAY_FAILURE_CODES } from '@/lib/whatsapp-cloud/delivery/config';
 import { classifyWhatsAppError } from '@/lib/whatsapp-cloud/errors';
 import {
   getWhatsAppAccessToken,
@@ -104,6 +105,13 @@ async function assertCanSend(): Promise<void> {
   }
 }
 
+function shouldRetryImmediately(err: WhatsAppApiError): boolean {
+  if (!err.retryable) return false;
+  // 131049 / 130472 / 131026 wait ≥24h in the delivery scheduler. Do not hammer Graph.
+  if (err.code != null && LONG_DELAY_FAILURE_CODES.has(String(err.code))) return false;
+  return true;
+}
+
 async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
@@ -116,7 +124,7 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
           retryable: true,
         });
       lastError = err;
-      if (!err.retryable || attempt === MAX_ATTEMPTS) throw err;
+      if (!shouldRetryImmediately(err) || attempt === MAX_ATTEMPTS) throw err;
       await new Promise((resolve) => setTimeout(resolve, attempt * 400));
       console.warn('[whatsapp] retry', JSON.stringify({ label, attempt, code: err.code }));
     }
