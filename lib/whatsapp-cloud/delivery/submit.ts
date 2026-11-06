@@ -1,5 +1,5 @@
 import type { Db } from 'mongodb';
-import { sendWaTemplate } from '@/lib/whatsapp-cloud/client';
+import { sendWaTemplate, WhatsAppApiError } from '@/lib/whatsapp-cloud/client';
 import { classifyDeliveryFailure } from '@/lib/whatsapp-cloud/delivery/failure-classifier';
 import { createAttempt, markAttemptOutcome } from '@/lib/whatsapp-cloud/delivery/attempts';
 import { getDeliveryRetryConfig } from '@/lib/whatsapp-cloud/delivery/config';
@@ -276,12 +276,27 @@ export async function submitRecipientMessage(
     await reconcileCampaign(db, campaign.id);
     return { ok: true, providerMessageId: result.id, attemptId: attempt.id };
   } catch (error) {
-    const httpStatus = (error as { status?: number }).status ?? null;
-    const details = (error as { details?: unknown }).details;
+    const apiError = error instanceof WhatsAppApiError ? error : null;
+    const httpStatus = apiError?.httpStatus
+      ?? (error as { httpStatus?: number; status?: number }).httpStatus
+      ?? (error as { status?: number }).status
+      ?? null;
+    const metaCode = apiError?.code != null ? String(apiError.code) : null;
+    const details = apiError
+      ? {
+        code: apiError.code,
+        subcode: apiError.subcode,
+        httpStatus: apiError.httpStatus,
+        kind: apiError.kind,
+        fbtraceId: apiError.fbtraceId,
+        message: apiError.message,
+      }
+      : (error as { details?: unknown }).details;
     const apiMessage = error instanceof Error ? error.message : 'send_failed';
     const classified = classifyDeliveryFailure({
       httpStatus,
       apiMessage,
+      channelErrorCode: metaCode,
       channelFailureReason: apiMessage,
       raw: details,
     });
@@ -308,6 +323,7 @@ export async function submitRecipientMessage(
         attemptId: attempt.id,
         normalizedPhone: recipient.normalizedPhone,
         attemptNumber,
+        failureCode: classified.code,
       });
       await transitionRecipientState(db, {
         recipientId: recipient.id,

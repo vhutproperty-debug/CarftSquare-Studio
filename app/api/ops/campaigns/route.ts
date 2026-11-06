@@ -8,6 +8,7 @@ import {
   getCampaignDatabase,
   listCampaigns,
   materializeManualRecipients,
+  materializeManualRecipientRows,
   getCampaign,
 } from '@/lib/ops/campaigns/store';
 import {
@@ -40,6 +41,11 @@ const createSchema = z.object({
   languageCode: z.string().trim().min(2).max(10).optional(),
   bodyValues: z.array(z.string().max(1000)).max(20).optional(),
   phones: z.array(z.string().trim().min(8).max(20)).max(500).optional(),
+  recipients: z.array(z.object({
+    phone: z.string().trim().min(8).max(20),
+    name: z.string().trim().max(120).optional(),
+    bodyValues: z.array(z.string().max(1000)).max(20).optional(),
+  })).max(500).optional(),
   audience: z.object({
     source: z.enum(['manual_phones', 'ops_prospects']).optional(),
     projectName: z.string().trim().max(200).optional(),
@@ -54,7 +60,8 @@ const createSchema = z.object({
   scheduledFor: z.string().optional(),
   throttlePerMinute: z.number().int().min(1).max(60).optional(),
 }).superRefine((data, ctx) => {
-  const source = data.audience?.source || (data.phones?.length ? 'manual_phones' : undefined);
+  const source = data.audience?.source
+    || (data.phones?.length || data.recipients?.length ? 'manual_phones' : undefined);
   if (source === 'ops_prospects') {
     if (!data.audience?.projectName?.trim()) {
       ctx.addIssue({
@@ -65,10 +72,10 @@ const createSchema = z.object({
     }
     return;
   }
-  if (!data.phones?.length) {
+  if (!data.phones?.length && !data.recipients?.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Provide phone numbers or a prospect audience.',
+      message: 'Provide phone numbers, recipients, or a prospect audience.',
       path: ['phones'],
     });
   }
@@ -88,23 +95,39 @@ function prospectFilterFrom(
   };
 }
 
-function previewManualPhones(phones: string[], bodyValues: string[]) {
+function previewManualPhones(
+  phones: string[],
+  bodyValues: string[],
+  named?: Array<{ phone?: string; name?: string; bodyValues?: string[] }>,
+) {
   const seen = new Set<string>();
-  const recipients = phones.map((phone) => {
+  const rows: Array<{ phone?: string; name?: string; bodyValues?: string[] }> = named?.length
+    ? named
+    : phones.map((phone) => ({ phone, bodyValues }));
+  const recipients = rows.map((row) => {
+    const phone = row.phone || '';
+    const values = row.bodyValues?.length ? row.bodyValues : bodyValues;
     const outreach = normalizeOutreachPhone(phone);
     if (!outreach) {
-      return { phone, status: 'skipped_invalid' as const, reason: 'invalid_phone', bodyValues };
+      return {
+        phone,
+        name: row.name,
+        status: 'skipped_invalid' as const,
+        reason: 'invalid_phone',
+        bodyValues: values,
+      };
     }
     if (seen.has(outreach.phone)) {
       return {
         phone: outreach.phone,
+        name: row.name,
         status: 'skipped_invalid' as const,
         reason: 'duplicate_phone',
-        bodyValues,
+        bodyValues: values,
       };
     }
     seen.add(outreach.phone);
-    return { phone: outreach.phone, status: 'queued' as const, bodyValues };
+    return { phone: outreach.phone, name: row.name, status: 'queued' as const, bodyValues: values };
   });
   return {
     total: recipients.length,
@@ -127,14 +150,18 @@ export async function POST(request: Request) {
 
     const db = await getCampaignDatabase();
     const source = parsed.data.audience?.source
-      || (parsed.data.phones?.length ? 'manual_phones' : 'manual_phones');
+      || ((parsed.data.phones?.length || parsed.data.recipients?.length) ? 'manual_phones' : 'manual_phones');
     const variableFields = parsed.data.audience?.variableFields;
     const bodyValues = parsed.data.bodyValues || [];
 
     if (parsed.data.dryRun) {
       const preview = source === 'ops_prospects'
         ? await previewProspectAudience(db, prospectFilterFrom(parsed.data.audience || {}))
-        : previewManualPhones(parsed.data.phones || [], bodyValues);
+        : previewManualPhones(
+          parsed.data.phones || [],
+          bodyValues,
+          parsed.data.recipients,
+        );
       return NextResponse.json({
         dryRun: true,
         preview,
@@ -153,7 +180,12 @@ export async function POST(request: Request) {
         intent: parsed.data.audience?.intent,
         variableFields,
       }
-      : { source: 'manual_phones' as const, phones: parsed.data.phones || [] };
+      : {
+        source: 'manual_phones' as const,
+        phones: parsed.data.recipients?.length
+          ? parsed.data.recipients.map((row) => row.phone)
+          : (parsed.data.phones || []),
+      };
 
     const campaign = await createCampaign(db, {
       name: parsed.data.name,
@@ -168,6 +200,16 @@ export async function POST(request: Request) {
 
     if (source === 'ops_prospects') {
       await materializeProspectAudience(db, campaign, prospectFilterFrom(parsed.data.audience || {}));
+    } else if (parsed.data.recipients?.length) {
+      await materializeManualRecipientRows(
+        db,
+        campaign,
+        parsed.data.recipients.map((row) => ({
+          phone: row.phone,
+          name: row.name,
+          bodyValues: row.bodyValues,
+        })),
+      );
     } else {
       await materializeManualRecipients(db, campaign, parsed.data.phones || []);
     }

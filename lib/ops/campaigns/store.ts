@@ -95,15 +95,34 @@ export async function updateCampaignStatus(
   );
 }
 
+export type ManualRecipientInput = {
+  phone: string;
+  name?: string;
+  bodyValues?: string[];
+};
+
 export async function materializeManualRecipients(
   db: Db,
   campaign: OpsWaCampaign,
   phones: string[],
 ): Promise<number> {
+  return materializeManualRecipientRows(
+    db,
+    campaign,
+    phones.map((phone) => ({ phone, bodyValues: campaign.bodyValues })),
+  );
+}
+
+export async function materializeManualRecipientRows(
+  db: Db,
+  campaign: OpsWaCampaign,
+  rows: ManualRecipientInput[],
+): Promise<number> {
   await ensureCampaignIndexes(db);
   const now = new Date().toISOString();
   let queued = 0;
-  for (const phone of phones) {
+  for (const row of rows) {
+    const phone = row.phone;
     const outreach = normalizeOutreachPhone(phone);
     const normalizedPhone = outreach?.phone || '';
     if (!outreach) {
@@ -112,6 +131,7 @@ export async function materializeManualRecipients(
         campaignId: campaign.id,
         phone,
         normalizedPhone: normalizedPhone || phone,
+        name: row.name,
         status: 'skipped_invalid',
         deliveryState: 'CANCELLED',
         failureClass: 'PERMANENT',
@@ -133,6 +153,8 @@ export async function materializeManualRecipients(
       campaignId: campaign.id,
       phone,
       normalizedPhone,
+      name: row.name,
+      bodyValues: row.bodyValues?.length ? row.bodyValues : (campaign.bodyValues || []),
       status: 'queued',
       deliveryState: 'QUEUED',
       attemptCount: 0,

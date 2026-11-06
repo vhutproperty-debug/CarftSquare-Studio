@@ -246,6 +246,8 @@ async function processInbound(db: Db, event: WaWebhookEvent) {
 
   if (isStopKeyword(provider.message)) {
     await recordOptOut(db, `+${waId}`);
+    const { cancelQueuedRetriesForPhone } = await import('@/lib/whatsapp-cloud/delivery/webhook-bridge');
+    await cancelQueuedRetriesForPhone(db, phoneKey, 'stop_keyword');
     await applyProspectWhatsAppReply(db, waId, provider.message);
     await db.collection('wa_conversations').updateOne(
       { id: conversation.id },

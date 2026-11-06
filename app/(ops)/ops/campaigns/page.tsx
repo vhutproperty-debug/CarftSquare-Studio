@@ -41,6 +41,7 @@ type Recipient = {
   providerMessageId?: string;
   attemptCount?: number;
   failureClass?: string | null;
+  failureCode?: string | null;
   failureReason?: string | null;
   nextRetryAt?: string | null;
   reviewRequired?: boolean;
@@ -506,9 +507,10 @@ function CampaignsWorkspace() {
                       </td>
                       <td className="py-2 pr-3">{r.attemptCount || 0}</td>
                       <td className="py-2 pr-3 text-xs text-slate-600">
+                        {r.failureCode ? `${r.failureCode} · ` : ''}
                         {r.failureClass || '—'}
                         {r.failureReason ? ` · ${r.failureReason}` : ''}
-                        {r.nextRetryAt ? ` · next ${r.nextRetryAt}` : ''}
+                        {r.nextRetryAt ? ` · retry ${new Date(r.nextRetryAt).toLocaleString('en-IN', { timeZone: 'Asia/Calcutta' })} IST` : ''}
                       </td>
                       <td className="py-2 pr-3 font-mono text-[11px]">
                         {r.providerMessageId || '—'}

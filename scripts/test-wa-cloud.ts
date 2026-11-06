@@ -17,7 +17,14 @@ assert.equal(isStopKeyword(' STOP '), true);
 assert.equal(isStopKeyword('hello'), false);
 
 assert.equal(classifyWhatsAppError(131047).kind, 'needs_template');
-assert.equal(classifyWhatsAppError(131026).kind, 'undeliverable');
+assert.equal(classifyWhatsAppError(131026).kind, 'retryable');
+assert.equal(classifyWhatsAppError(131026).retryable, true);
+assert.equal(classifyWhatsAppError(131049).kind, 'rate_limit');
+assert.equal(classifyWhatsAppError(131049).retryable, true);
+assert.equal(classifyWhatsAppError(130472).retryable, true);
+assert.equal(classifyWhatsAppError(131050).kind, 'permanent');
+assert.equal(classifyWhatsAppError(131050).retryable, false);
+assert.equal(classifyWhatsAppError(131021).kind, 'undeliverable');
 assert.equal(classifyWhatsAppError(131056).retryable, true);
 assert.equal(classifyWhatsAppError(132001).kind, 'template');
 assert.equal(classifyWhatsAppError(131031).pauseSends, true);
