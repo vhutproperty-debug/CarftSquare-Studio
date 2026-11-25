@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import { BRAND, whatsappUrl } from '@/lib/brand';
 import { getSiteDomain, getSiteUrl } from '@/lib/site';
+import { PROPERTIES_PHONE_DISPLAY, PROPERTIES_PHONE_E164 } from '@/lib/properties/constants';
 import BrandLogo from '@/components/BrandLogo';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,9 @@ function SiteNav() {
           <Link href="/painting" className="transition-colors hover:text-white">
             Painting
           </Link>
+          <Link href="/properties" className="transition-colors hover:text-white">
+            Properties
+          </Link>
         </div>
         <a href={whatsappUrl} target="_blank" rel="noreferrer">
           <Button className="rounded-full bg-emerald-600 font-bold text-white hover:bg-emerald-700">
@@ -120,6 +124,34 @@ export default function TermsOfUsePage() {
               </p>
             </Section>
 
+            <Section title="CraftSquare Properties (buying, selling and renting)">
+              <p>
+                CraftSquare Properties helps people buy, sell, rent and rent out homes in Mumbai&apos;s
+                western suburbs. When you send us a property enquiry:
+              </p>
+              <BulletList
+                items={[
+                  'Listings, prices, availability and property details are shared in good faith based on information from owners, developers or other brokers, and can change. Please verify details yourself before you commit.',
+                  'An enquiry or site visit does not create an agreement to buy, sell, rent or pay a fee. Any brokerage or service fee is agreed with you separately, before a deal.',
+                  'We may share your name and requirement with property owners, buyers, tenants or other brokers only as needed to progress your enquiry.',
+                  'Interior work is provided separately by CraftSquare Studio on its own quotation.',
+                ]}
+              />
+            </Section>
+
+            <Section title="Calls and messages">
+              <p>
+                If you tick the consent box on our property enquiry form, you agree that CraftSquare
+                Properties may contact you about properties by call, SMS, WhatsApp and RCS messages. You
+                can reply STOP to any message, or call or WhatsApp us on {PROPERTIES_PHONE_DISPLAY}, to
+                stop further messages. Details are in our{' '}
+                <Link href="/privacy-policy" className="font-semibold text-orange-600 hover:text-orange-700">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+            </Section>
+
             <Section title="Acceptance">
               <p>
                 If you do not agree to these Terms of Use or our{' '}
@@ -139,6 +171,7 @@ export default function TermsOfUsePage() {
                   'Browse services, projects, and content',
                   'Submit an enquiry, estimate request, or consultation form',
                   'Message us on WhatsApp about interiors or property',
+                  'Send a property enquiry to CraftSquare Properties to buy, sell, rent or rent out a home',
                   'See ads or lead forms associated with our Facebook Page',
                 ]}
               />
@@ -225,6 +258,13 @@ export default function TermsOfUsePage() {
                     <span className="font-semibold text-slate-950">Website: </span>
                     <a href={websiteUrl} className="text-orange-600 hover:text-orange-700">
                       {websiteUrl.replace(/^https?:\/\//, '')}
+                    </a>
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-950">CraftSquare Properties: </span>
+                    Arun Pandey,{' '}
+                    <a href={`tel:${PROPERTIES_PHONE_E164}`} className="text-orange-600 hover:text-orange-700">
+                      {PROPERTIES_PHONE_DISPLAY}
                     </a>
                   </li>
                 </ul>

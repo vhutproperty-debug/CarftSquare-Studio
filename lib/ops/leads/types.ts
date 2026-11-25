@@ -7,7 +7,8 @@ export type OpsLeadSource =
   | 'quotation'
   | 'housing_com'
   | 'housing'
-  | 'meta_ads';
+  | 'meta_ads'
+  | 'properties';
 
 export type OpsLeadCategory =
   | 'general'
@@ -72,6 +73,7 @@ export const OPS_LEAD_SOURCES: OpsLeadSource[] = [
   'housing_com',
   'housing',
   'meta_ads',
+  'properties',
 ];
 
 export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
@@ -84,6 +86,7 @@ export const OPS_LEAD_SOURCE_LABELS: Record<OpsLeadSource, string> = {
   housing_com: 'Housing.com (Manual)',
   housing: 'Housing.com (API)',
   meta_ads: 'Meta Lead Ads',
+  properties: 'Website (CraftSquare Properties)',
 };
 
 export const OPS_LEAD_CATEGORY_LABELS: Record<OpsLeadCategory, string> = {

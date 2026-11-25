@@ -2,6 +2,12 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import { BRAND, whatsappUrl } from '@/lib/brand';
 import { getSiteDomain, getSiteUrl } from '@/lib/site';
+import {
+  PROPERTIES_CONSENT_TEXT,
+  PROPERTIES_PHONE_DISPLAY,
+  PROPERTIES_PHONE_E164,
+  PROPERTIES_WHATSAPP_URL,
+} from '@/lib/properties/constants';
 import BrandLogo from '@/components/BrandLogo';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -62,6 +68,9 @@ function SiteNav() {
           <Link href="/painting" className="transition-colors hover:text-white">
             Painting
           </Link>
+          <Link href="/properties" className="transition-colors hover:text-white">
+            Properties
+          </Link>
         </div>
         <a href={whatsappUrl} target="_blank" rel="noreferrer">
           <Button className="rounded-full bg-emerald-600 font-bold text-white hover:bg-emerald-700">
@@ -102,7 +111,8 @@ export default function PrivacyPolicyPage() {
             <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
               This policy describes how {BRAND.name} handles personal information when you visit our
               website, submit enquiry forms, or interact with our painting, interior design, and
-              related services.
+              related services. It also covers CraftSquare Properties, our property brokerage
+              service for buying, selling and renting homes in Mumbai.
             </p>
           </div>
         </div>
@@ -121,6 +131,14 @@ export default function PrivacyPolicyPage() {
                 By using our website, submitting a form, or communicating with us, you acknowledge
                 that you have read and understood this policy. If you do not agree with our
                 practices, please do not submit personal information through our channels.
+              </p>
+              <p>
+                CraftSquare also operates CraftSquare Properties, which helps people buy, sell, rent
+                and rent out homes in Mumbai&apos;s western suburbs. Enquiries made through our{' '}
+                <Link href="/properties" className="font-semibold text-orange-600 hover:text-orange-700">
+                  Properties page
+                </Link>
+                , by phone or on WhatsApp are handled under this policy as described below.
               </p>
             </Section>
 
@@ -170,6 +188,82 @@ export default function PrivacyPolicyPage() {
                 Lead data from Meta platforms is not used for unrelated marketing, is not sold to
                 third parties, and is handled in accordance with this Privacy Policy and applicable
                 data protection requirements.
+              </p>
+            </Section>
+
+            <Section title="CraftSquare Properties Enquiries (Buy, Sell, Rent)">
+              <p>
+                When you send a property enquiry to CraftSquare Properties, for example through the
+                form on our Properties page, we collect:
+              </p>
+              <BulletList
+                items={[
+                  'Your name and mobile number, and your email address if you choose to give it',
+                  'What you want to do (buy, rent, sell, rent out your flat, or interiors)',
+                  'Your preferred area or project, budget and any message you write',
+                  'A record of your messaging consent: the exact consent wording and its version, the date and time, your IP address, your browser user agent and the page you submitted from',
+                  'Campaign details in the page link (UTM parameters) and the referring page, if any',
+                ]}
+              />
+              <p>We use this information to:</p>
+              <BulletList
+                items={[
+                  'Contact you about your enquiry and understand your requirement',
+                  'Share suitable properties, buyers or tenants and arrange site visits',
+                  'Introduce you to property owners, buyers, tenants or other brokers only as needed to progress your enquiry',
+                  'Pass interior enquiries to CraftSquare Studio, our interiors service',
+                  'Keep a record of your consent and any opt-out request',
+                ]}
+              />
+              <p>
+                We do not sell property enquiry data and do not share it with unrelated third parties
+                for their own marketing.
+              </p>
+            </Section>
+
+            <Section title="Messaging Consent (Calls, SMS, WhatsApp and RCS)">
+              <p>
+                Our property enquiry form has an unticked consent checkbox. You must tick it yourself
+                to submit the form. The wording is:
+              </p>
+              <blockquote className="rounded-xl border-l-4 border-orange-500 bg-slate-50 px-4 py-3 text-slate-800">
+                &ldquo;{PROPERTIES_CONSENT_TEXT}&rdquo;
+              </blockquote>
+              <p>
+                By ticking it, you agree that CraftSquare Properties may contact you about properties
+                by phone call, SMS, WhatsApp and RCS (rich business messages shown in your phone&apos;s
+                messaging app). We send messages only during reasonable hours and keep them relevant to
+                your enquiry. Standard charges from your mobile operator, if any, may apply.
+              </p>
+            </Section>
+
+            <Section title="Opting Out (STOP)">
+              <p>You can stop messages from us at any time:</p>
+              <BulletList
+                items={[
+                  'Reply STOP to any SMS, WhatsApp or RCS message from us',
+                  `Call or WhatsApp CraftSquare Properties on ${PROPERTIES_PHONE_DISPLAY} and ask us to stop`,
+                  'Tell us during any call that you do not want further calls',
+                ]}
+              />
+              <p>
+                We record your opt-out and stop promotional messages to that number promptly. We may
+                send one message confirming the opt-out. Opting out does not affect a deal or service
+                already in progress, and you can opt in again at any time by contacting us.
+              </p>
+            </Section>
+
+            <Section title="Data Retention and Deletion">
+              <p>
+                We keep enquiry and consent records for as long as needed to handle your enquiry and
+                to show that we had your consent, unless you ask us to delete them earlier or the law
+                requires us to keep them. To ask for your data to be deleted, use our{' '}
+                <Link href="/data-deletion" className="font-semibold text-orange-600 hover:text-orange-700">
+                  Data deletion
+                </Link>{' '}
+                page, or call or WhatsApp CraftSquare Properties on {PROPERTIES_PHONE_DISPLAY}. We may
+                keep a minimal record of your number on a do-not-contact list so that we do not message
+                you again.
               </p>
             </Section>
 
@@ -277,6 +371,30 @@ export default function PrivacyPolicyPage() {
                     <span className="font-semibold text-slate-950">Official Phone: </span>
                     <a href={phoneHref} className="text-orange-600 hover:text-orange-700">
                       {BRAND.phone}
+                    </a>
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-950">Website: </span>
+                    <a href={websiteUrl} className="text-orange-600 hover:text-orange-700">
+                      {websiteUrl.replace(/^https?:\/\//, '')}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-800">
+                <p className="font-black text-slate-950">CraftSquare Properties</p>
+                <ul className="mt-4 space-y-2 text-sm md:text-base">
+                  <li>
+                    <span className="font-semibold text-slate-950">Contact: </span>
+                    Arun Pandey,{' '}
+                    <a href={`tel:${PROPERTIES_PHONE_E164}`} className="text-orange-600 hover:text-orange-700">
+                      {PROPERTIES_PHONE_DISPLAY}
+                    </a>
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-950">WhatsApp: </span>
+                    <a href={PROPERTIES_WHATSAPP_URL} target="_blank" rel="noreferrer" className="text-orange-600 hover:text-orange-700">
+                      {PROPERTIES_PHONE_DISPLAY}
                     </a>
                   </li>
                   <li>

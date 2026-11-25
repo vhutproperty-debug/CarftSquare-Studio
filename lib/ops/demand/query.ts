@@ -38,6 +38,7 @@ const SOURCE_TO_CHANNEL: Record<OpsLeadSource, string> = {
   housing_com: 'housing_com',
   housing: 'housing_com',
   meta_ads: 'meta_ads',
+  properties: 'craftsquare_website',
 };
 
 export type DemandWorkspaceQueryParams = UnifiedLeadsQueryParams & {

@@ -7,7 +7,7 @@ import JsonLd from '@/components/JsonLd';
 const PAGE_PATH = '/privacy-policy';
 const PAGE_TITLE = `Privacy Policy | ${BRAND.name}`;
 const PAGE_DESCRIPTION =
-  'Learn how CraftSquare Studio collects, uses, and protects your personal information for painting, interior design, and related services in Mumbai.';
+  'How CraftSquare Studio and CraftSquare Properties collect, use and protect personal information for interiors, painting and property (buy, sell, rent) enquiries in Mumbai, including messaging consent and opt-out.';
 
 export const metadata = buildMetadata({
   seo: {

@@ -12,6 +12,7 @@ const SOURCE_STYLES: Record<OpsLeadSource, string> = {
   housing_com: 'bg-orange-100 text-orange-800',
   housing: 'bg-orange-100 text-orange-900',
   meta_ads: 'bg-blue-100 text-blue-800',
+  properties: 'bg-teal-100 text-teal-800',
 };
 
 type LeadSourceBadgeProps = {
