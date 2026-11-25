@@ -35,6 +35,7 @@ export default function Footer() {
               <li><a href="/estimate/office" className="hover:text-orange-600">Office AI Estimate</a></li>
               <li><a href="/blog" className="hover:text-orange-600">Blog</a></li>
               <li><a href="/partner" className="hover:text-orange-600">Partner Network</a></li>
+              <li><a href="/properties" className="hover:text-orange-600">CraftSquare Properties</a></li>
               <li><a href="/privacy-policy" className="hover:text-orange-600">Privacy Policy</a></li>
               <li><a href="/terms" className="hover:text-orange-600">Terms of Use</a></li>
               <li><a href="/data-deletion" className="hover:text-orange-600">Data deletion</a></li>
@@ -45,6 +46,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-slate-500">
               <li><a href="tel:+917304242604" className="hover:text-orange-600">+91 73042 42604</a></li>
               <li><a href={whatsappUrl} target="_blank" rel="noreferrer" className="hover:text-orange-600">WhatsApp</a></li>
+              <li><a href="tel:+919022404260" className="hover:text-orange-600">Properties: Arun Pandey, 90224 04260</a></li>
               <li><a href="/admin" className="hover:text-orange-600">Admin Portal</a></li>
             </ul>
           </div>

@@ -21,6 +21,7 @@ const LEAD_PHONE_SOURCES: LeadPhoneSource[] = [
   { source: 'painting', collection: 'painting_leads', phonePaths: ['mobile'], matchField: 'lead.mobile', namePath: 'name' },
   { source: 'auris_serenity', collection: 'auris_serenity_leads', phonePaths: ['mobile'], matchField: 'lead.mobile', namePath: 'name' },
   { source: 'satellite_elegance', collection: 'satellite_elegance_leads', phonePaths: ['mobile'], matchField: 'lead.mobile', namePath: 'name' },
+  { source: 'properties', collection: 'properties_leads', phonePaths: ['mobile'], matchField: 'lead.mobile', namePath: 'name' },
   { source: 'designer_callback', collection: 'designer_callback_leads', phonePaths: ['phone'], matchField: 'lead.phone', namePath: 'name' },
   {
     source: 'quotation',

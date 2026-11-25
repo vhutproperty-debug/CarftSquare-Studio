@@ -25,6 +25,7 @@ export default function Navbar({ onQuote }) {
     { label: 'Wardrobes', href: '#wardrobes' },
     { label: 'Projects', href: '#projects' },
     { label: 'Partner Network', href: '/partner' },
+    { label: 'Properties', href: '/properties' },
   ];
 
   return (
