@@ -17,7 +17,9 @@ export default function Navbar({ onQuote }) {
   }, []);
 
   const navLinks = [
-    { label: 'AI Estimate', href: '/estimate' },
+    // Desktop already has the "AI Consultation" button to /estimate, so this duplicate
+    // link shows only in the mobile menu. That keeps room for Properties on one line.
+    { label: 'AI Estimate', href: '/estimate', mobileOnly: true },
     { label: 'Services', href: '#services' },
     { label: 'About', href: '#about' },
     { label: 'Interiors', href: '#interiors' },
@@ -36,7 +38,7 @@ export default function Navbar({ onQuote }) {
             <BrandLogo variant="nav" />
           </a>
           <div className="hidden items-center gap-5 text-sm font-semibold text-slate-300 lg:flex">
-            {navLinks.map((link) => (
+            {navLinks.filter((link) => !link.mobileOnly).map((link) => (
               <a key={link.label} href={link.href} className="hover:text-white transition-colors">{link.label}</a>
             ))}
             <a href="/gallery" className="hover:text-white transition-colors">Gallery</a>

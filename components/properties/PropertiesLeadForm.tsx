@@ -26,8 +26,9 @@ const INITIAL = {
   companyWebsite: '',
 };
 
-const inputClass =
-  'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200';
+const inputBase =
+  'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200';
+const inputClass = `mt-1 ${inputBase}`;
 const labelClass = 'block text-sm font-semibold text-slate-800';
 const errorClass = 'mt-1 text-xs font-semibold text-red-600';
 
@@ -132,9 +133,9 @@ export default function PropertiesLeadForm() {
         </div>
         <div>
           <label htmlFor="pl-mobile" className={labelClass}>Mobile *</label>
-          <div className="mt-1 flex">
+          <div className="mt-1 flex items-stretch">
             <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-600">+91</span>
-            <input id="pl-mobile" name="mobile" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="10-digit mobile" className={`${inputClass} mt-0 rounded-l-none`} value={values.mobile} onChange={(e) => update('mobile', e.target.value)} maxLength={14} aria-invalid={Boolean(errors.mobile)} />
+            <input id="pl-mobile" name="mobile" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="10-digit mobile" className={`${inputBase} rounded-l-none`} value={values.mobile} onChange={(e) => update('mobile', e.target.value)} maxLength={14} aria-invalid={Boolean(errors.mobile)} />
           </div>
           {errors.mobile && <p className={errorClass}>{errors.mobile}</p>}
         </div>
