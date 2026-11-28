@@ -8,6 +8,8 @@ import type { WaConversation, WaMatchStatus } from '@/lib/whatsapp-cloud/types';
 export type ConversationListFilters = {
   matchStatus?: WaMatchStatus;
   unreadOnly?: boolean;
+  repliedOnly?: boolean;
+  project?: string;
   search?: string;
   limit?: number;
   businessWaNumber?: string;
@@ -29,6 +31,12 @@ export async function listWaConversations(
   }
   if (filters.unreadOnly) {
     query.unreadCount = { $gt: 0 };
+  }
+  if (filters.repliedOnly) {
+    query.repliedAfterTemplate = true;
+  }
+  if (filters.project) {
+    query.project = filters.project;
   }
 
   const search = filters.search?.trim();
@@ -54,7 +62,7 @@ export async function getWaConversationMetrics(db: Db, businessWaNumber?: string
   const match: Filter<WaConversation> = { hidden: { $ne: true } };
   if (businessWaNumber) match.businessWaNumber = businessWaNumber;
 
-  const [total, unread, unmatched, ambiguous, matched] = await Promise.all([
+  const [total, unread, unmatched, ambiguous, matched, replied] = await Promise.all([
     db.collection(WA_CONVERSATIONS_COLLECTION).countDocuments(match),
     db.collection(WA_CONVERSATIONS_COLLECTION).countDocuments({ ...match, unreadCount: { $gt: 0 } }),
     db.collection(WA_CONVERSATIONS_COLLECTION).countDocuments({ ...match, matchStatus: 'unmatched' }),
@@ -63,7 +71,8 @@ export async function getWaConversationMetrics(db: Db, businessWaNumber?: string
       ...match,
       matchStatus: { $in: ['matched', 'manually_linked'] },
     }),
+    db.collection(WA_CONVERSATIONS_COLLECTION).countDocuments({ ...match, repliedAfterTemplate: true }),
   ]);
 
-  return { total, unread, unmatched, ambiguous, matched };
+  return { total, unread, unmatched, ambiguous, matched, replied };
 }

@@ -10,9 +10,10 @@ type Metrics = {
   unmatched: number;
   ambiguous: number;
   matched: number;
+  replied: number;
 };
 
-type FilterId = 'all' | 'unread' | 'unmatched' | 'ambiguous' | 'matched';
+type FilterId = 'all' | 'unread' | 'replied' | 'unmatched' | 'ambiguous' | 'matched';
 
 type TemplateOption = {
   name: string;
@@ -34,8 +35,23 @@ function matchLabel(status: WaConversation['matchStatus']) {
   }
 }
 
+function ProjectBadge({ project, selected = false }: { project?: string | null; selected?: boolean }) {
+  if (!project) return null;
+  return (
+    <span
+      className={`inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        selected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800'
+      }`}
+    >
+      {project}
+    </span>
+  );
+}
+
 export default function WhatsAppInbox() {
   const [filter, setFilter] = useState<FilterId>('all');
+  const [project, setProject] = useState('');
+  const [projects, setProjects] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [conversations, setConversations] = useState<WaConversation[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -58,9 +74,11 @@ export default function WhatsAppInbox() {
     try {
       const params = new URLSearchParams();
       if (filter === 'unread') params.set('unreadOnly', 'true');
+      if (filter === 'replied') params.set('replied', 'true');
       if (filter === 'unmatched' || filter === 'ambiguous' || filter === 'matched') {
         params.set('matchStatus', filter === 'matched' ? 'matched' : filter);
       }
+      if (project) params.set('project', project);
       if (search.trim()) params.set('search', search.trim());
 
       const res = await fetch(`/api/ops/whatsapp/conversations?${params}`, { credentials: 'include' });
@@ -71,12 +89,13 @@ export default function WhatsAppInbox() {
       }
       setConversations(data.conversations || []);
       setMetrics(data.metrics || null);
+      setProjects(Array.isArray(data.projects) ? data.projects : []);
     } catch {
       setError('Unable to load conversations.');
     } finally {
       setLoading(false);
     }
-  }, [filter, search]);
+  }, [filter, project, search]);
 
   useEffect(() => {
     fetch('/api/ops/whatsapp/status', { credentials: 'include' })
@@ -210,6 +229,7 @@ export default function WhatsAppInbox() {
           {([
             ['all', 'All'],
             ['unread', 'Unread'],
+            ['replied', 'Replied'],
             ['unmatched', 'Unmatched'],
             ['ambiguous', 'Ambiguous'],
             ['matched', 'Matched'],
@@ -226,6 +246,20 @@ export default function WhatsAppInbox() {
             </button>
           ))}
         </div>
+        <select
+          value={project}
+          onChange={(e) => setProject(e.target.value)}
+          aria-label="Filter by project"
+          className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <option value="">All projects</option>
+          {projects.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+          {project && !projects.includes(project) && (
+            <option value={project}>{project}</option>
+          )}
+        </select>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -234,7 +268,7 @@ export default function WhatsAppInbox() {
         />
         {metrics && (
           <p className="mb-3 text-xs text-slate-500">
-            {metrics.total} threads · {metrics.unread} unread · {metrics.ambiguous} ambiguous
+            {metrics.total} threads · {metrics.unread} unread · {metrics.replied ?? 0} replied · {metrics.ambiguous} ambiguous
           </p>
         )}
         {loading && <p className="text-sm text-slate-500">Loading…</p>}
@@ -251,11 +285,14 @@ export default function WhatsAppInbox() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{formatPhoneDisplay(c.normalizedPhone)}</span>
-                  {c.unreadCount > 0 && (
-                    <span className={`rounded-full px-2 text-xs ${selectedId === c.id ? 'bg-white/20' : 'bg-amber-100 text-amber-800'}`}>
-                      {c.unreadCount}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-1">
+                    <ProjectBadge project={c.project} selected={selectedId === c.id} />
+                    {c.unreadCount > 0 && (
+                      <span className={`rounded-full px-2 text-xs ${selectedId === c.id ? 'bg-white/20' : 'bg-amber-100 text-amber-800'}`}>
+                        {c.unreadCount}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className={`mt-0.5 text-xs ${selectedId === c.id ? 'text-slate-300' : 'text-slate-500'}`}>
                   {matchLabel(c.matchStatus)}
@@ -276,9 +313,18 @@ export default function WhatsAppInbox() {
         {selected && !threadLoading && (
           <div className="flex h-full min-h-[60vh] flex-col">
             <header className="mb-4 border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {formatPhoneDisplay(selected.normalizedPhone)}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {formatPhoneDisplay(selected.normalizedPhone)}
+                </h2>
+                <ProjectBadge project={selected.project} />
+              </div>
+              {selected.projectTemplate && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Last template {selected.projectTemplate}
+                  {selected.repliedAfterTemplate ? ' · Replied' : ''}
+                </p>
+              )}
               <p className="text-sm text-slate-500">
                 {matchLabel(selected.matchStatus)}
                 {selected.primaryLink

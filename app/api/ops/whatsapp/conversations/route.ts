@@ -6,6 +6,8 @@ import {
   getWaConversationMetrics,
   listWaConversations,
 } from '@/lib/whatsapp-cloud/conversation-query';
+import { syncConversationProjects } from '@/lib/whatsapp-cloud/project-tag';
+import { listInboxProjects } from '@/lib/whatsapp-cloud/replies';
 import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
 import type { WaMatchStatus } from '@/lib/whatsapp-cloud/types';
 
@@ -29,14 +31,19 @@ export async function GET(request: Request) {
 
   try {
     const db = await getWaDatabase();
-    const [conversations, metrics] = await Promise.all([
+    await syncConversationProjects(db);
+    const project = searchParams.get('project')?.trim() || undefined;
+    const [conversations, metrics, projects] = await Promise.all([
       listWaConversations(db, {
         matchStatus,
         unreadOnly: searchParams.get('unreadOnly') === 'true',
+        repliedOnly: searchParams.get('replied') === 'true',
+        project,
         search: searchParams.get('search') || undefined,
         limit: Number(searchParams.get('limit') || 200),
       }),
       getWaConversationMetrics(db),
+      listInboxProjects(db),
     ]);
 
     await logOpsActivity({
@@ -44,11 +51,11 @@ export async function GET(request: Request) {
       actorId: auth.admin.id,
       actorEmail: auth.admin.email,
       resource: 'wa_conversations',
-      details: { count: conversations.length, matchStatus: matchStatus || null },
+      details: { count: conversations.length, matchStatus: matchStatus || null, project: project || null },
       request,
     });
 
-    return NextResponse.json({ conversations, metrics });
+    return NextResponse.json({ conversations, metrics, projects });
   } catch (error) {
     console.error('[ops-whatsapp] list_failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Unable to load WhatsApp conversations.' }, { status: 500 });

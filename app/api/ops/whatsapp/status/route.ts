@@ -3,6 +3,7 @@ import { authResultToResponse } from '@/lib/auth/rbac/guard';
 import { requireOpsViewAccess } from '@/lib/ops/auth';
 import { buildWhatsAppHealth } from '@/lib/whatsapp-cloud/status';
 import { getWaConversationMetrics } from '@/lib/whatsapp-cloud/conversation-query';
+import { syncConversationProjects } from '@/lib/whatsapp-cloud/project-tag';
 import { getWaDatabase } from '@/lib/whatsapp-cloud/webhook-store';
 
 export async function GET(request: Request) {
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
 
   try {
     const db = await getWaDatabase();
+    await syncConversationProjects(db);
     const status = await buildWhatsAppHealth(db);
     const metrics = await getWaConversationMetrics(db);
     const { collectDeliveryAlerts } = await import('@/lib/whatsapp-cloud/delivery/alerts');
