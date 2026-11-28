@@ -151,6 +151,13 @@ export type WaConversation = {
   lastInboundAt: string | null;
   lastOutboundAt: string | null;
   unreadCount: number;
+  /** Project inferred from the last outbound template. Null when that template is unmapped. */
+  project?: string | null;
+  projectTemplate?: string | null;
+  projectTemplateAt?: string | null;
+  projectInferredAt?: string | null;
+  /** True when at least one inbound message arrived after projectTemplateAt. */
+  repliedAfterTemplate?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -172,6 +179,7 @@ export type WaMessage = {
   businessWaNumber: string;
   rawMessage: WaProviderMessage;
   rawEventType: string;
+  templateName?: string | null;
   createdAt: string;
   updatedAt: string;
 };

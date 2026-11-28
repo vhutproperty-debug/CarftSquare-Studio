@@ -26,6 +26,8 @@ export async function ensureWaConversationIndexes(db: Db): Promise<void> {
   await col.createIndex({ matchStatus: 1 });
   await col.createIndex({ unreadCount: 1, lastInboundAt: -1 });
   await col.createIndex({ lastMessageAt: -1 });
+  await col.createIndex({ project: 1, lastMessageAt: -1 });
+  await col.createIndex({ repliedAfterTemplate: 1, lastMessageAt: -1 });
   indexesEnsured = true;
 }
 

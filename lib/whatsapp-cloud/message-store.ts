@@ -8,6 +8,8 @@ import type {
   WaProviderMessage,
   WaStatusTimestamps,
 } from '@/lib/whatsapp-cloud/types';
+import { templateNameFromOutbound } from '@/lib/whatsapp-cloud/project-map';
+import { tagConversationFromOutboundMessage } from '@/lib/whatsapp-cloud/project-tag';
 import { shouldApplyMessageStatus } from '@/lib/whatsapp-cloud/status-precedence';
 
 export const WA_MESSAGES_COLLECTION = 'wa_messages';
@@ -66,11 +68,20 @@ export async function upsertWaMessage(
     businessWaNumber: string;
     rawMessage: WaProviderMessage;
     rawEventType: string;
+    templateName?: string | null;
   },
 ): Promise<{ message: WaMessage; created: boolean }> {
   await ensureWaMessageIndexes(db);
   const existing = await getMessageByProviderId(db, input.providerMessageId);
   const now = new Date().toISOString();
+
+  const recognizedTemplate = templateNameFromOutbound({
+    direction: input.direction,
+    messageType: input.messageType,
+    bodyText: input.bodyText,
+    templateName: input.templateName,
+    rawMessage: input.rawMessage,
+  });
 
   if (!existing) {
     const message: WaMessage = {
@@ -90,12 +101,14 @@ export async function upsertWaMessage(
       businessWaNumber: input.businessWaNumber,
       rawMessage: input.rawMessage,
       rawEventType: input.rawEventType,
+      ...(recognizedTemplate ? { templateName: recognizedTemplate } : {}),
       createdAt: now,
       updatedAt: now,
     };
 
     try {
       await db.collection(WA_MESSAGES_COLLECTION).insertOne(message);
+      await tagConversationFromOutboundMessage(db, message);
       return { message, created: true };
     } catch (error) {
       const code = (error as { code?: number })?.code;
@@ -127,6 +140,7 @@ async function applyStatusUpdate(
     callbackData: string | null;
     rawMessage: WaProviderMessage;
     rawEventType: string;
+    templateName?: string | null;
   },
 ): Promise<{ message: WaMessage; created: boolean }> {
   const now = new Date().toISOString();
@@ -169,11 +183,23 @@ async function applyStatusUpdate(
   if (input.messageType && input.messageType !== 'Unknown') {
     patch.messageType = input.messageType;
   }
+  const recognizedTemplate = templateNameFromOutbound({
+    direction: input.direction,
+    messageType: input.messageType,
+    bodyText: input.bodyText || existing.bodyText,
+    templateName: input.templateName || existing.templateName,
+    rawMessage: input.rawMessage,
+  });
+  if (recognizedTemplate && !existing.templateName) {
+    patch.templateName = recognizedTemplate;
+  }
 
   await db.collection(WA_MESSAGES_COLLECTION).updateOne(
     { id: existing.id },
     { $set: patch },
   );
 
-  return { message: { ...existing, ...patch }, created: false };
+  const message = { ...existing, ...patch };
+  await tagConversationFromOutboundMessage(db, message);
+  return { message, created: false };
 }

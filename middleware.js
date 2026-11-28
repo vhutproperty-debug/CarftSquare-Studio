@@ -48,6 +48,23 @@ export function isOpsProjectUpsertPath(pathname, method) {
     || normalized === '/api/ops/contacts/upsert';
 }
 
+/**
+ * Assistant reads of WhatsApp replies carry Authorization: Bearer OPS_API_TOKEN
+ * and no admin session cookie. Only this GET path skips the session gate.
+ * The route still rejects a missing or wrong token. Every other ops route
+ * keeps the admin session check.
+ */
+const OPS_TOKEN_READ_PATHS = new Set([
+  '/api/ops/whatsapp/replies',
+]);
+
+export function isOpsTokenReadPath(pathname, method) {
+  const path = String(pathname || '');
+  const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  const verb = String(method || 'GET').toUpperCase();
+  return verb === 'GET' && OPS_TOKEN_READ_PATHS.has(normalized);
+}
+
 function isPublicAuthPath(pathname) {
   return PUBLIC_AUTH_PATHS.has(pathname);
 }
@@ -122,6 +139,7 @@ export async function middleware(request) {
   if (
     !isCronAuthPath(pathname)
     && !isOpsProjectUpsertPath(pathname, request.method)
+    && !isOpsTokenReadPath(pathname, request.method)
     && (
       isProtectedAdminApi(pathname)
       || isProtectedDataApi(pathname)

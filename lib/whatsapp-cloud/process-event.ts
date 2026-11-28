@@ -6,6 +6,7 @@ import {
   upsertConversationIdentity,
 } from '@/lib/whatsapp-cloud/conversation-store';
 import { upsertWaMessage } from '@/lib/whatsapp-cloud/message-store';
+import { noteInboundAfterTemplate } from '@/lib/whatsapp-cloud/project-tag';
 import { runInboundMessageAutomations } from '@/lib/whatsapp-cloud/automation';
 import { extractInboundMessageContent } from '@/lib/whatsapp-cloud/inbound-content';
 import {
@@ -243,6 +244,7 @@ async function processInbound(db: Db, event: WaWebhookEvent) {
     direction: 'inbound',
     incrementUnread: created,
   });
+  await noteInboundAfterTemplate(db, conversation.id, at);
 
   if (isStopKeyword(provider.message)) {
     await recordOptOut(db, `+${waId}`);
